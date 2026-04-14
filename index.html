@@ -1,0 +1,1910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AutoEdu — Car Electronics Learning Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+
+<!--
+  ════════════════════════════════════════════════════════════════
+  FIREBASE SETUP INSTRUCTIONS
+  ════════════════════════════════════════════════════════════════
+  1. Go to https://console.firebase.google.com
+  2. Create a new project (e.g. "autoedu")
+  3. Click "Web" icon (</>)  to add a web app
+  4. Copy your firebaseConfig values into the CONFIG section below
+  5. In Firebase Console → Authentication → Sign-in method → Enable "Email/Password"
+  6. In Firebase Console → Firestore Database → Create database (start in test mode)
+  7. Replace the Firestore Security Rules with the ones at the bottom of this file
+  8. Push this file to your GitHub repo and enable GitHub Pages
+
+  GITHUB PAGES DEPLOYMENT
+  1. Create a GitHub repo
+  2. Add this file as  index.html  in the root
+  3. Go to Settings → Pages → Source → Deploy from branch (main / root)
+  4. Your app is live at https://yourusername.github.io/yourrepo/
+
+  FIRST ADMIN ACCOUNT
+  After deploying, open the app and sign up.
+  Then in Firebase Console → Firestore → users collection,
+  find your document and change  role: "student"  to  role: "admin"
+  ════════════════════════════════════════════════════════════════
+-->
+
+<style>
+:root{
+  --bg:#0d0f14;--bg2:#141720;--bg3:#1a1e2b;--surface:#1f2433;--surface2:#252a3a;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#e8eaf2;--text2:#8b90a8;--text3:#555a6e;
+  --accent:#f5a623;--accent2:#e8891a;--blue:#4f8ef7;--blue2:#3a6fd8;
+  --green:#2ecc8a;--green2:#239c6a;--red:#e05454;--purple:#9b6dff;
+  --r:10px;--r2:6px;
+  --font-display:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;
+  --shadow:0 4px 24px rgba(0,0,0,0.4);--glow:0 0 30px rgba(245,166,35,0.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.6;min-height:100vh;overflow-x:hidden}
+h1,h2,h3,h4{font-family:var(--font-display);letter-spacing:-0.02em}
+button{cursor:pointer;font-family:var(--font-body)}
+input,textarea,select{font-family:var(--font-body)}
+.hidden{display:none!important}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:3px}
+
+/* ── PAGES ── */
+.page{display:none}
+.page.active{display:block}
+
+/* ── LOADING SCREEN ── */
+#loading-screen{
+  position:fixed;inset:0;background:var(--bg);z-index:9999;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;
+  transition:opacity 0.3s;
+}
+#loading-screen.hide{opacity:0;pointer-events:none}
+.loader-logo{font-family:var(--font-display);font-size:28px;font-weight:800;color:#fff}
+.loader-logo span{color:var(--accent)}
+.loader-bar{width:160px;height:2px;background:var(--surface2);border-radius:1px;overflow:hidden}
+.loader-bar-fill{height:100%;background:var(--accent);border-radius:1px;animation:loadProg 1.5s ease-in-out infinite}
+@keyframes loadProg{0%{width:0;margin-left:0}50%{width:100%}100%{width:0;margin-left:100%}}
+
+/* ── LOGIN ── */
+#login-page{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);position:relative;overflow:hidden;
+}
+#login-page::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(245,166,35,0.08) 0%,transparent 70%),
+             radial-gradient(ellipse 50% 40% at 80% 80%,rgba(79,142,247,0.06) 0%,transparent 60%);
+  pointer-events:none;
+}
+.login-grid{
+  display:grid;grid-template-columns:1fr 1fr;max-width:900px;width:100%;
+  background:var(--bg2);border:1px solid var(--border2);border-radius:16px;
+  overflow:hidden;box-shadow:var(--shadow),var(--glow);margin:20px;
+}
+.login-hero{
+  background:linear-gradient(135deg,#1a1e2b 0%,#0d1117 100%);
+  padding:60px 48px;display:flex;flex-direction:column;justify-content:center;
+  border-right:1px solid var(--border);position:relative;overflow:hidden;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.2);
+  color:var(--accent);font-size:12px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;
+  padding:5px 12px;border-radius:20px;margin-bottom:28px;width:fit-content;
+}
+.login-hero h1{font-size:36px;font-weight:800;line-height:1.1;margin-bottom:16px;color:#fff}
+.login-hero h1 span{color:var(--accent)}
+.login-hero p{color:var(--text2);font-size:14px;line-height:1.7;margin-bottom:32px}
+.hero-features{list-style:none;display:flex;flex-direction:column;gap:10px}
+.hero-features li{display:flex;align-items:center;gap:10px;color:var(--text2);font-size:13px}
+.hero-features li::before{content:'✓';color:var(--green);font-weight:700;font-size:12px}
+.login-form-wrap{padding:48px 40px;display:flex;flex-direction:column;justify-content:center}
+.login-form-wrap h2{font-size:22px;font-weight:700;margin-bottom:6px}
+.login-form-wrap p{color:var(--text2);font-size:13px;margin-bottom:24px}
+.login-tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px;margin-bottom:24px}
+.login-tab{flex:1;padding:7px;border-radius:6px;border:none;background:transparent;color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;text-align:center}
+.login-tab.active{background:var(--bg2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,0.3)}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:12px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);margin-bottom:7px}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;background:var(--surface);border:1px solid var(--border2);
+  color:var(--text);padding:11px 14px;border-radius:var(--r2);font-size:14px;
+  transition:border-color 0.2s;outline:none;
+}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,166,35,0.08)}
+.form-group select option{background:var(--surface)}
+.form-group textarea{resize:vertical;min-height:80px}
+.btn{padding:11px 20px;border-radius:var(--r2);font-size:14px;font-weight:500;border:none;transition:all 0.2s;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#000;font-weight:600}
+.btn-primary:hover{background:var(--accent2);transform:translateY(-1px)}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border2)}
+.btn-secondary:hover{background:var(--surface)}
+.btn-danger{background:rgba(224,84,84,0.1);color:var(--red);border:1px solid rgba(224,84,84,0.2)}
+.btn-danger:hover{background:rgba(224,84,84,0.2)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--surface);color:var(--text)}
+.btn-full{width:100%;justify-content:center}
+.btn-sm{padding:7px 14px;font-size:12px}
+.btn-green{background:rgba(46,204,138,0.1);color:var(--green);border:1px solid rgba(46,204,138,0.2)}
+.btn-green:hover{background:rgba(46,204,138,0.18)}
+.btn-blue{background:rgba(79,142,247,0.1);color:var(--blue);border:1px solid rgba(79,142,247,0.2)}
+.btn-blue:hover{background:rgba(79,142,247,0.18)}
+.alert{padding:10px 14px;border-radius:var(--r2);font-size:13px;margin-bottom:14px;display:none}
+.alert.show{display:flex;align-items:center;gap:8px}
+.alert-error{background:rgba(224,84,84,0.08);border:1px solid rgba(224,84,84,0.2);color:var(--red)}
+.alert-success{background:rgba(46,204,138,0.08);border:1px solid rgba(46,204,138,0.2);color:var(--green)}
+
+/* ── SHELL ── */
+#shell{display:none;min-height:100vh;flex-direction:row}
+#shell.active{display:flex}
+.sidebar{width:240px;min-width:240px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;overflow:hidden}
+.sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+.sidebar-logo span{font-family:var(--font-display);font-size:18px;font-weight:800;color:#fff}
+.sidebar-logo span em{color:var(--accent);font-style:normal}
+.sidebar-role{font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.15);padding:2px 8px;border-radius:10px;margin-top:4px;display:inline-block}
+.sidebar-role.student{color:var(--blue);background:rgba(79,142,247,0.08);border-color:rgba(79,142,247,0.15)}
+.sidebar-nav{flex:1;overflow-y:auto;padding:12px 0}
+.nav-section{padding:6px 16px 4px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-top:8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r2);color:var(--text2);font-size:13px;cursor:pointer;transition:all 0.15s}
+.nav-item:hover{background:var(--surface);color:var(--text)}
+.nav-item.active{background:rgba(245,166,35,0.1);color:var(--accent)}
+.nav-icon{font-size:15px;width:18px;text-align:center;opacity:0.6}
+.nav-item.active .nav-icon{opacity:1}
+.sidebar-footer{padding:16px;border-top:1px solid var(--border)}
+.user-pill{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--r2);background:var(--surface);cursor:default}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#000;flex-shrink:0}
+.avatar.blue{background:var(--blue);color:#fff}
+.user-info-text{flex:1;overflow:hidden}
+.user-name{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-email{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logout-btn{background:none;border:none;color:var(--text3);font-size:16px;padding:4px;cursor:pointer;flex-shrink:0}
+.logout-btn:hover{color:var(--red)}
+.main-content{flex:1;overflow-y:auto;height:100vh;background:var(--bg)}
+.content-view{display:none;padding:32px 36px;max-width:1200px}
+.content-view.active{display:block}
+.page-header{margin-bottom:32px}
+.page-header h2{font-size:26px;font-weight:800;color:#fff;margin-bottom:6px}
+.page-header p{color:var(--text2);font-size:14px}
+.page-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;gap:16px;flex-wrap:wrap}
+.page-header-row h2{font-size:24px;font-weight:800;color:#fff;margin:0}
+
+/* ── STATS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat-card.amber::before{background:linear-gradient(90deg,var(--accent),transparent)}
+.stat-card.blue::before{background:linear-gradient(90deg,var(--blue),transparent)}
+.stat-card.green::before{background:linear-gradient(90deg,var(--green),transparent)}
+.stat-card.purple::before{background:linear-gradient(90deg,var(--purple),transparent)}
+.stat-value{font-family:var(--font-display);font-size:30px;font-weight:800;color:#fff;line-height:1}
+.stat-label{font-size:12px;color:var(--text2);margin-top:4px}
+.stat-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:24px;opacity:0.15}
+
+/* ── TABLE ── */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;overflow-x:auto}
+.data-table{width:100%;border-collapse:collapse;min-width:500px}
+.data-table th{text-align:left;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border)}
+.data-table td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2)}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:rgba(255,255,255,0.02)}
+.data-table td:first-child{color:var(--text)}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:500}
+.badge-draft{background:rgba(139,144,168,0.1);color:var(--text2);border:1px solid var(--border)}
+.badge-published{background:rgba(79,142,247,0.1);color:var(--blue);border:1px solid rgba(79,142,247,0.2)}
+.badge-released{background:rgba(46,204,138,0.1);color:var(--green);border:1px solid rgba(46,204,138,0.2)}
+.badge-not-started{background:rgba(139,144,168,0.08);color:var(--text3);border:1px solid var(--border)}
+.badge-in-progress{background:rgba(245,166,35,0.1);color:var(--accent);border:1px solid rgba(245,166,35,0.2)}
+.badge-completed{background:rgba(46,204,138,0.1);color:var(--green);border:1px solid rgba(46,204,138,0.2)}
+.badge-intro{background:rgba(46,204,138,0.08);color:var(--green);border:1px solid rgba(46,204,138,0.15);font-size:10px}
+.badge-easy{background:rgba(79,142,247,0.08);color:var(--blue);border:1px solid rgba(79,142,247,0.15);font-size:10px}
+.badge-medium{background:rgba(245,166,35,0.08);color:var(--accent);border:1px solid rgba(245,166,35,0.15);font-size:10px}
+.badge-hard{background:rgba(224,84,84,0.08);color:var(--red);border:1px solid rgba(224,84,84,0.15);font-size:10px}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;width:100%;max-width:520px;box-shadow:var(--shadow);max-height:90vh;overflow-y:auto}
+.modal-header{padding:22px 24px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-header h3{font-size:16px;font-weight:700;color:#fff}
+.modal-close{background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;padding:2px 6px;border-radius:4px}
+.modal-close:hover{background:var(--surface);color:var(--text)}
+.modal-body{padding:24px}
+.modal-footer{padding:18px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.divider{height:1px;background:var(--border);margin:20px 0}
+
+/* ── LESSON CARDS ── */
+.lessons-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.lesson-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:all 0.2s}
+.lesson-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.lesson-card-header{padding:18px 18px 14px;background:linear-gradient(135deg,var(--bg3) 0%,var(--surface) 100%);border-bottom:1px solid var(--border)}
+.lesson-card-badges{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.lesson-card-title{font-family:var(--font-display);font-size:15px;font-weight:700;color:#fff;margin-bottom:4px}
+.lesson-card-desc{font-size:12px;color:var(--text2);line-height:1.5}
+.lesson-card-body{padding:14px 18px}
+.lesson-meta{display:flex;align-items:center;gap:14px;font-size:11px;color:var(--text3);margin-bottom:12px}
+.lesson-actions{display:flex;gap:6px;flex-wrap:wrap}
+
+/* ── LEVELS ── */
+.levels-list{display:flex;flex-direction:column;gap:10px}
+.level-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:14px}
+.level-order{width:28px;height:28px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--text2);flex-shrink:0}
+.level-info{flex:1}
+.level-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
+.level-meta{font-size:11px;color:var(--text3)}
+
+/* ── STUDENT HOME ── */
+.student-greeting{margin-bottom:36px}
+.student-greeting h2{font-size:32px;font-weight:800;color:#fff;margin-bottom:6px}
+.student-greeting h2 span{color:var(--accent)}
+.student-greeting p{color:var(--text2);font-size:15px}
+.lesson-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+.lesson-tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:all 0.25s}
+.lesson-tile:hover{border-color:rgba(245,166,35,0.3);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,0.35),0 0 30px rgba(245,166,35,0.06)}
+.lesson-tile.completed{border-color:rgba(46,204,138,0.2)}
+.lesson-tile-accent{height:4px;background:linear-gradient(90deg,var(--accent),var(--blue))}
+.lesson-tile.completed .lesson-tile-accent{background:linear-gradient(90deg,var(--green),var(--blue))}
+.lesson-tile-body{padding:20px}
+.tile-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.tile-icon{font-size:28px;line-height:1}
+.tile-title{font-family:var(--font-display);font-size:16px;font-weight:700;color:#fff;margin-bottom:6px;line-height:1.3}
+.tile-desc{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px}
+.tile-progress-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-bottom:8px}
+.tile-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--blue));border-radius:2px;transition:width 0.4s}
+.tile-progress-fill.complete{background:linear-gradient(90deg,var(--green),var(--blue))}
+.tile-stats{display:flex;justify-content:space-between;font-size:11px;color:var(--text3)}
+
+/* ── LEVEL PLAYER ── */
+.level-player{max-width:760px;margin:0 auto}
+.level-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px}
+.level-back{background:none;border:1px solid var(--border);color:var(--text2);padding:6px 14px;border-radius:var(--r2);font-size:13px;cursor:pointer}
+.level-back:hover{background:var(--surface2);color:var(--text)}
+.level-header-info h3{font-size:18px;font-weight:700;color:#fff;margin-bottom:2px}
+.level-header-info p{font-size:12px;color:var(--text2)}
+.step-progress{display:flex;align-items:center;gap:6px;margin-bottom:20px}
+.step-dot{width:8px;height:8px;border-radius:50%;background:var(--surface2);transition:all 0.2s}
+.step-dot.done{background:var(--green)}
+.step-dot.current{background:var(--accent);transform:scale(1.3)}
+.step-counter{font-size:12px;color:var(--text3);margin-left:6px}
+.step-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px;margin-bottom:16px;animation:fadeUp 0.3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.step-type-badge{font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.step-type-badge::before{content:'';width:16px;height:1px;background:var(--border2)}
+.step-title{font-family:var(--font-display);font-size:20px;font-weight:700;color:#fff;margin-bottom:12px}
+.step-body{font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:20px}
+.step-image{width:100%;border-radius:var(--r2);border:1px solid var(--border);margin-bottom:16px;background:var(--bg3);height:180px;display:flex;align-items:center;justify-content:center;font-size:40px}
+.options-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.option-btn{padding:12px 16px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);color:var(--text);font-size:13px;text-align:left;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:10px;width:100%}
+.option-btn:hover:not(:disabled){background:var(--surface2);border-color:var(--accent)}
+.option-btn.correct{background:rgba(46,204,138,0.1);border-color:var(--green);color:var(--green)}
+.option-btn.wrong{background:rgba(224,84,84,0.1);border-color:var(--red);color:var(--red)}
+.option-btn:disabled{cursor:default;opacity:0.8}
+.option-letter{width:22px;height:22px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.feedback-box{padding:12px 16px;border-radius:var(--r2);margin-top:12px;font-size:13px;display:flex;align-items:flex-start;gap:8px}
+.feedback-box.correct{background:rgba(46,204,138,0.08);border:1px solid rgba(46,204,138,0.2);color:var(--green)}
+.feedback-box.wrong{background:rgba(224,84,84,0.08);border:1px solid rgba(224,84,84,0.2);color:var(--red)}
+.step-nav{display:flex;justify-content:flex-end;gap:10px}
+.level-complete{text-align:center;padding:48px 28px;animation:fadeUp 0.4s ease}
+.level-complete-icon{font-size:56px;margin-bottom:16px}
+.level-complete h3{font-family:var(--font-display);font-size:26px;font-weight:800;color:#fff;margin-bottom:8px}
+.level-complete p{color:var(--text2);font-size:14px;margin-bottom:24px}
+.score-display{display:inline-block;padding:12px 32px;border-radius:40px;font-family:var(--font-display);font-size:28px;font-weight:800;margin-bottom:28px}
+.score-display.pass{background:rgba(46,204,138,0.1);color:var(--green);border:1px solid rgba(46,204,138,0.2)}
+.score-display.fail{background:rgba(224,84,84,0.1);color:var(--red);border:1px solid rgba(224,84,84,0.2)}
+
+/* ── PROGRESS ── */
+.progress-lesson-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:12px}
+.progress-lesson-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.progress-lesson-title{font-size:14px;font-weight:600;color:#fff}
+.progress-bar-wrap{background:var(--surface2);border-radius:3px;height:6px;overflow:hidden;margin-bottom:8px}
+.progress-bar-fill{height:100%;border-radius:3px;transition:width 0.4s;background:linear-gradient(90deg,var(--accent),var(--blue))}
+.progress-bar-fill.full{background:linear-gradient(90deg,var(--green),var(--blue))}
+.progress-levels-row{display:flex;gap:6px;flex-wrap:wrap}
+.progress-level-dot{padding:4px 10px;border-radius:10px;font-size:10px;font-weight:500}
+.progress-level-dot.completed{background:rgba(46,204,138,0.1);color:var(--green);border:1px solid rgba(46,204,138,0.2)}
+.progress-level-dot.in_progress{background:rgba(245,166,35,0.1);color:var(--accent);border:1px solid rgba(245,166,35,0.2)}
+.progress-level-dot.not_started{background:var(--surface2);color:var(--text3);border:1px solid var(--border)}
+
+/* ── ADMIN PROGRESS MATRIX ── */
+.prog-matrix{overflow-x:auto}
+.prog-matrix table{border-collapse:collapse;min-width:600px}
+.prog-matrix th,.prog-matrix td{padding:10px 12px;border:1px solid var(--border);font-size:12px;text-align:center;white-space:nowrap}
+.prog-matrix th{background:var(--bg3);color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;font-size:10px}
+.prog-matrix td:first-child{text-align:left;font-weight:500;color:var(--text);background:var(--bg3)}
+.prog-cell-done{background:rgba(46,204,138,0.08);color:var(--green);font-size:10px;font-weight:500}
+.prog-cell-prog{background:rgba(245,166,35,0.08);color:var(--accent);font-size:10px;font-weight:500}
+.prog-cell-none{color:var(--text3);font-size:10px}
+
+/* ── RELEASE ── */
+.release-list{display:flex;flex-direction:column;gap:8px}
+.release-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:14px;transition:border-color 0.2s}
+.release-item.released{border-color:rgba(46,204,138,0.2)}
+.release-num{width:28px;height:28px;border-radius:50%;background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--accent);flex-shrink:0}
+.release-info{flex:1}
+.release-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
+.release-sub{font-size:11px;color:var(--text3)}
+
+/* ── LIVE ── */
+.session-join-box{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);padding:28px;text-align:center;max-width:340px}
+.session-join-box h3{font-size:18px;font-weight:700;margin-bottom:8px;color:#fff}
+.session-join-box p{font-size:13px;color:var(--text2);margin-bottom:18px}
+.join-code-display{font-family:monospace;font-size:36px;font-weight:800;color:var(--accent);letter-spacing:0.3em;padding:16px;background:var(--bg3);border-radius:var(--r2);margin-bottom:18px;border:1px solid rgba(245,166,35,0.15)}
+
+/* ── PROFILE ── */
+.profile-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px;max-width:520px;margin-bottom:20px}
+.profile-card h3{font-size:15px;font-weight:700;color:#fff;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.profile-avatar-row{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+.profile-avatar-lg{width:56px;height:56px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#000}
+.profile-avatar-lg.blue{background:var(--blue);color:#fff}
+
+/* ── CONFIRM ── */
+.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:1100;align-items:center;justify-content:center}
+.confirm-overlay.show{display:flex}
+.confirm-box{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:28px;max-width:380px;width:100%;text-align:center;box-shadow:var(--shadow)}
+.confirm-icon{font-size:36px;margin-bottom:12px}
+.confirm-box h3{font-size:16px;font-weight:700;color:#fff;margin-bottom:8px}
+.confirm-box p{font-size:13px;color:var(--text2);margin-bottom:22px;line-height:1.6}
+.confirm-actions{display:flex;gap:10px;justify-content:center}
+
+/* ── TOAST ── */
+.toast-container{position:fixed;bottom:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px}
+.toast{padding:10px 16px;border-radius:var(--r2);font-size:13px;font-weight:500;box-shadow:var(--shadow);animation:slideIn 0.25s ease;display:flex;align-items:center;gap:8px;min-width:200px;max-width:320px}
+.toast.success{background:#1a2e25;border:1px solid rgba(46,204,138,0.3);color:var(--green)}
+.toast.error{background:#2a1a1a;border:1px solid rgba(224,84,84,0.3);color:var(--red)}
+.toast.info{background:#1a2030;border:1px solid rgba(79,142,247,0.3);color:var(--blue)}
+@keyframes slideIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-state-icon{font-size:40px;margin-bottom:12px;opacity:0.4}
+.empty-state p{font-size:14px}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:768px){
+  .login-grid{grid-template-columns:1fr}
+  .login-hero{display:none}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .sidebar{width:200px;min-width:200px}
+  .content-view{padding:20px}
+  .form-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="loader-logo">Auto<span>Edu</span></div>
+  <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+  <p style="font-size:12px;color:var(--text3);margin-top:4px">Connecting to Firebase...</p>
+</div>
+
+<!-- Login Page -->
+<div id="login-page" class="page">
+  <div class="login-grid">
+    <div class="login-hero">
+      <div class="hero-badge">⚡ AutoEdu Platform</div>
+      <h1>Master <span>Car Electronics</span> Diagnostics</h1>
+      <p>A structured, interactive learning environment for troubleshooting and diagnosing automotive electronic systems.</p>
+      <ul class="hero-features">
+        <li>Guided diagnostic simulations</li>
+        <li>Progressive difficulty levels</li>
+        <li>Real-time progress tracking</li>
+        <li>Live instructor-led sessions</li>
+        <li>Battery, wiring, sensor faults</li>
+      </ul>
+    </div>
+    <div class="login-form-wrap">
+      <h2 id="auth-title">Sign in</h2>
+      <p id="auth-sub">Welcome back. Enter your credentials to continue.</p>
+      <div class="login-tabs">
+        <button class="login-tab active" onclick="switchAuthMode('login')">Sign In</button>
+        <button class="login-tab" onclick="switchAuthMode('register')">Register</button>
+      </div>
+      <div id="auth-alert" class="alert alert-error">⚠ <span id="auth-alert-msg"></span></div>
+      <div id="auth-success" class="alert alert-success">✓ <span id="auth-success-msg"></span></div>
+      <div id="register-fields" style="display:none">
+        <div class="form-group"><label>Full Name</label><input type="text" id="reg-name" placeholder="Your full name"/></div>
+      </div>
+      <div class="form-group"><label>Email Address</label><input type="email" id="auth-email" placeholder="you@example.com"/></div>
+      <div class="form-group"><label>Password</label><input type="password" id="auth-password" placeholder="••••••••"/></div>
+      <button class="btn btn-primary btn-full" id="auth-submit-btn" onclick="submitAuth()">
+        Sign in →
+      </button>
+      <p style="font-size:11px;color:var(--text3);margin-top:14px;text-align:center" id="auth-switch-link">
+        Don't have an account? <a href="#" style="color:var(--accent)" onclick="switchAuthMode('register');return false">Register</a>
+      </p>
+      <div id="firebase-not-configured" style="display:none;margin-top:16px;padding:12px;background:rgba(224,84,84,0.08);border:1px solid rgba(224,84,84,0.2);border-radius:8px;font-size:12px;color:var(--red)">
+        ⚠ Firebase not configured. Edit the <code>FIREBASE_CONFIG</code> section at the top of this file with your project credentials.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- App Shell -->
+<div id="shell">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div><span>Auto<em>Edu</em></span></div>
+      <div id="sidebar-role-badge" class="sidebar-role">Admin</div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    <div class="sidebar-footer">
+      <div class="user-pill">
+        <div class="avatar" id="sidebar-avatar">A</div>
+        <div class="user-info-text">
+          <div class="user-name" id="sidebar-name">User</div>
+          <div class="user-email" id="sidebar-email">user@email.com</div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="Sign out">⏻</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <!-- Admin: Dashboard -->
+    <div class="content-view" id="view-dashboard">
+      <div class="page-header"><h2>Dashboard</h2><p>Overview of your platform activity</p></div>
+      <div class="stats-grid" id="dash-stats"></div>
+      <div class="page-header-row" style="margin-bottom:16px"><h2 style="font-size:16px;font-weight:700;color:#fff">Recent Students</h2></div>
+      <div class="table-wrap"><table class="data-table" id="dash-students-table"></table></div>
+    </div>
+
+    <!-- Admin: Lesson Manager -->
+    <div class="content-view" id="view-lessons">
+      <div class="page-header-row">
+        <div><h2>Lessons</h2><p style="color:var(--text2);font-size:13px;margin-top:4px">Create and manage your lesson library</p></div>
+        <button class="btn btn-primary" onclick="openLessonModal()">+ New Lesson</button>
+      </div>
+      <div class="lessons-grid" id="admin-lessons-grid"></div>
+    </div>
+
+    <!-- Admin: Level Editor -->
+    <div class="content-view" id="view-level-editor">
+      <div class="page-header-row">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn btn-ghost btn-sm" onclick="navClick('view-lessons')">← Back</button>
+          <div><h2 id="level-editor-title">Lesson</h2><p style="color:var(--text2);font-size:12px;margin-top:2px" id="level-editor-sub">Manage levels</p></div>
+        </div>
+        <button class="btn btn-primary" onclick="openLevelModal()">+ Add Level</button>
+      </div>
+      <div class="levels-list" id="levels-list"></div>
+    </div>
+
+    <!-- Admin: Students -->
+    <div class="content-view" id="view-students">
+      <div class="page-header-row">
+        <div><h2>Students</h2><p style="color:var(--text2);font-size:13px;margin-top:4px">Manage student accounts and progress</p></div>
+        <button class="btn btn-primary" onclick="openAddStudentModal()">+ Add Student</button>
+      </div>
+      <div class="table-wrap"><table class="data-table" id="students-table"></table></div>
+    </div>
+
+    <!-- Admin: Progress Monitor -->
+    <div class="content-view" id="view-progress-admin">
+      <div class="page-header"><h2>Progress Monitor</h2><p>Detailed view of student progress across all lessons and levels</p></div>
+      <div id="progress-admin-content"></div>
+    </div>
+
+    <!-- Admin: Release Control -->
+    <div class="content-view" id="view-release">
+      <div class="page-header"><h2>Release Control</h2><p>Control which lessons are visible to students and in what order</p></div>
+      <div id="release-list-wrap"></div>
+    </div>
+
+    <!-- Admin: Live Session -->
+    <div class="content-view" id="view-live">
+      <div class="page-header"><h2>Live Teaching Session</h2><p>Project a lesson and guide students in real time</p></div>
+      <div id="live-session-content"></div>
+    </div>
+
+    <!-- Shared: Profile -->
+    <div class="content-view" id="view-profile">
+      <div class="page-header"><h2>Profile Settings</h2><p>Update your account details and password</p></div>
+      <div id="profile-content"></div>
+    </div>
+
+    <!-- Student: Home -->
+    <div class="content-view" id="view-student-home">
+      <div class="student-greeting">
+        <h2>Welcome, <span id="student-greeting-name">Student</span> 👋</h2>
+        <p>Continue your journey through automotive electronics diagnostics.</p>
+      </div>
+      <div class="lesson-tiles" id="student-lesson-tiles"></div>
+    </div>
+
+    <!-- Student: Level Player -->
+    <div class="content-view" id="view-level-player">
+      <div class="level-player" id="level-player-wrap"></div>
+    </div>
+
+    <!-- Student: My Progress -->
+    <div class="content-view" id="view-my-progress">
+      <div class="page-header"><h2>My Progress</h2><p>Track your journey across all lessons</p></div>
+      <div id="my-progress-content"></div>
+    </div>
+
+    <!-- Student: Live Session -->
+    <div class="content-view" id="view-live-student">
+      <div class="page-header"><h2>Live Session</h2><p>Join your instructor's live class</p></div>
+      <div id="live-student-content"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Modals -->
+<div class="modal-overlay" id="modal-lesson">
+  <div class="modal">
+    <div class="modal-header"><h3 id="lesson-modal-title">New Lesson</h3><button class="modal-close" onclick="closeModal('modal-lesson')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="lesson-modal-id"/>
+      <div class="form-group"><label>Lesson Title</label><input type="text" id="lesson-modal-name" placeholder="e.g. Diagnosing a Dead Battery"/></div>
+      <div class="form-group"><label>Description</label><textarea id="lesson-modal-desc" placeholder="What will students learn?"></textarea></div>
+      <div class="form-group"><label>Icon (emoji)</label><input type="text" id="lesson-modal-icon" placeholder="🔋" maxlength="4"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-lesson')">Cancel</button>
+      <button class="btn btn-primary" id="save-lesson-btn" onclick="saveLesson()">Save Lesson</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-level">
+  <div class="modal">
+    <div class="modal-header"><h3 id="level-modal-title">New Level</h3><button class="modal-close" onclick="closeModal('modal-level')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="level-modal-id"/>
+      <div class="form-row">
+        <div class="form-group"><label>Level Title</label><input type="text" id="level-modal-name" placeholder="e.g. Checking Battery Voltage"/></div>
+        <div class="form-group"><label>Difficulty</label>
+          <select id="level-modal-difficulty">
+            <option value="intro">Intro</option><option value="easy">Easy</option>
+            <option value="medium">Medium</option><option value="hard">Hard</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Pass Score (%)</label><input type="number" id="level-modal-pass" value="70" min="0" max="100"/></div>
+      <div class="divider"></div>
+      <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px">📝 Steps</p>
+      <div id="steps-builder"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addStep()" style="margin-top:10px">+ Add Step</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-level')">Cancel</button>
+      <button class="btn btn-primary" id="save-level-btn" onclick="saveLevel()">Save Level</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-student">
+  <div class="modal">
+    <div class="modal-header"><h3 id="student-modal-title">Add Student</h3><button class="modal-close" onclick="closeModal('modal-student')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="student-modal-id"/>
+      <div class="form-group"><label>Full Name</label><input type="text" id="student-modal-name" placeholder="Student Name"/></div>
+      <div class="form-group"><label>Email Address</label><input type="email" id="student-modal-email" placeholder="student@example.com"/></div>
+      <div class="form-group" id="student-modal-pass-group"><label>Password</label><input type="password" id="student-modal-pass" placeholder="Set a password"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-student')">Cancel</button>
+      <button class="btn btn-primary" id="save-student-btn" onclick="saveStudent()">Save Student</button>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confirm-icon">⚠️</div>
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-msg">This action cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn" onclick="confirmAction()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ════════════════════════════════════════════════
+  FIREBASE SDK (v10 — modular ESM via CDN)
+════════════════════════════════════════════════ -->
+<script type="module">
+// ════════════════════════════════════════════════
+//  ▼▼▼  PASTE YOUR FIREBASE CONFIG HERE  ▼▼▼
+// ════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAkJkOWPOrEDjJSwDx7-GcXkcCns17QCI8",
+  authDomain: "autoedu-e207d.firebaseapp.com",
+  projectId: "autoedu-e207d",
+  storageBucket: "autoedu-e207d.firebasestorage.app",
+  messagingSenderId: "232010832497",
+  appId: "1:232010832497:web:31f1cd0d9e8369daac99d0",
+  measurementId: "G-83QSGGP28D"
+};
+// ════════════════════════════════════════════════
+//  ▲▲▲  END OF CONFIG  ▲▲▲
+// ════════════════════════════════════════════════
+
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import {
+  getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  onAuthStateChanged, signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import {
+  getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc,
+  deleteDoc, query, where, orderBy, addDoc, serverTimestamp, writeBatch, limit
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ── Check if config is filled in ──
+const isConfigured = FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
+if (!isConfigured) {
+  document.getElementById('loading-screen').classList.add('hide');
+  document.getElementById('login-page').classList.add('active');
+  document.getElementById('login-page').style.display = 'flex';
+  document.getElementById('firebase-not-configured').style.display = 'block';
+  // Fall through — rest of app won't init
+}
+
+let app, auth, db;
+if (isConfigured) {
+  app = initializeApp(FIREBASE_CONFIG);
+  auth = getAuth(app);
+  db = getFirestore(app);
+}
+
+// ════════════════════════════════════════════════
+//  APP STATE
+// ════════════════════════════════════════════════
+let currentUser = null;       // Firebase Auth user
+let currentUserData = null;   // Firestore user doc { name, email, role }
+let currentLessonId = null;
+let currentLevelId = null;
+let editingLessonId = null;
+let editingLevelId = null;
+let editingStudentId = null;
+let pendingConfirm = null;
+let stepCount = 0;
+
+// ════════════════════════════════════════════════
+//  AUTH STATE OBSERVER
+// ════════════════════════════════════════════════
+if (isConfigured) {
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        if (snap.exists()) {
+          currentUserData = { id: user.uid, ...snap.data() };
+          hideLoading();
+          initShell();
+        } else {
+          // User in Auth but no Firestore doc — sign them out
+          await signOut(auth);
+          showLoginPage();
+          hideLoading();
+        }
+      } catch (e) {
+        console.error(e);
+        showLoginPage();
+        hideLoading();
+      }
+    } else {
+      currentUser = null;
+      currentUserData = null;
+      showLoginPage();
+      hideLoading();
+    }
+  });
+}
+
+function hideLoading() {
+  const ls = document.getElementById('loading-screen');
+  ls.classList.add('hide');
+  setTimeout(() => ls.style.display = 'none', 350);
+}
+
+function showLoginPage() {
+  document.getElementById('shell').style.display = 'none';
+  document.getElementById('shell').classList.remove('active');
+  document.getElementById('login-page').style.display = 'flex';
+  document.getElementById('login-page').classList.add('active');
+}
+
+// ════════════════════════════════════════════════
+//  LOGIN / REGISTER
+// ════════════════════════════════════════════════
+let authMode = 'login';
+
+window.switchAuthMode = (mode) => {
+  authMode = mode;
+  const isReg = mode === 'register';
+  document.getElementById('auth-title').textContent = isReg ? 'Create Account' : 'Sign in';
+  document.getElementById('auth-sub').textContent = isReg ? 'Join the AutoEdu platform.' : 'Welcome back. Enter your credentials to continue.';
+  document.getElementById('register-fields').style.display = isReg ? 'block' : 'none';
+  document.getElementById('auth-submit-btn').textContent = isReg ? 'Create Account →' : 'Sign in →';
+  document.getElementById('auth-switch-link').innerHTML = isReg
+    ? 'Already have an account? <a href="#" style="color:var(--accent)" onclick="switchAuthMode(\'login\');return false">Sign in</a>'
+    : 'Don\'t have an account? <a href="#" style="color:var(--accent)" onclick="switchAuthMode(\'register\');return false">Register</a>';
+  document.querySelectorAll('.login-tab').forEach((t, i) => t.classList.toggle('active', (i === 0 && mode === 'login') || (i === 1 && mode === 'register')));
+  hideAuthAlert();
+};
+
+window.submitAuth = async () => {
+  if (!isConfigured) return;
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const btn = document.getElementById('auth-submit-btn');
+  if (!email || !password) { showAuthError('Please fill in all fields.'); return; }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Please wait...';
+  try {
+    if (authMode === 'register') {
+      const name = document.getElementById('reg-name').value.trim();
+      if (!name) { showAuthError('Please enter your full name.'); btn.disabled=false; btn.textContent='Create Account →'; return; }
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      // Create Firestore user doc with role = student (admin must be set manually in Firestore)
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        name, email: email.toLowerCase(), role: 'student',
+        created_at: serverTimestamp(), updated_at: serverTimestamp()
+      });
+      showAuthSuccess('Account created! Signing you in...');
+    } else {
+      await signInWithEmailAndPassword(auth, email, password);
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = authMode === 'register' ? 'Create Account →' : 'Sign in →';
+    const msgs = {
+      'auth/invalid-email': 'Invalid email address.',
+      'auth/user-not-found': 'No account found with this email.',
+      'auth/wrong-password': 'Incorrect password.',
+      'auth/email-already-in-use': 'An account with this email already exists.',
+      'auth/weak-password': 'Password must be at least 6 characters.',
+      'auth/too-many-requests': 'Too many attempts. Please try again later.',
+      'auth/invalid-credential': 'Invalid email or password.',
+    };
+    showAuthError(msgs[e.code] || e.message);
+  }
+};
+
+function showAuthError(msg) {
+  document.getElementById('auth-alert-msg').textContent = msg;
+  const el = document.getElementById('auth-alert');
+  el.classList.remove('alert-success'); el.classList.add('alert-error');
+  el.classList.add('show');
+}
+function showAuthSuccess(msg) {
+  document.getElementById('auth-success-msg').textContent = msg;
+  document.getElementById('auth-success').classList.add('show');
+}
+function hideAuthAlert() {
+  document.getElementById('auth-alert').classList.remove('show');
+  document.getElementById('auth-success').classList.remove('show');
+}
+
+window.doLogout = async () => {
+  await signOut(auth);
+};
+
+// ════════════════════════════════════════════════
+//  SHELL INIT
+// ════════════════════════════════════════════════
+function initShell() {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('login-page').classList.remove('active');
+  document.getElementById('shell').style.display = 'flex';
+  document.getElementById('shell').classList.add('active');
+  const u = currentUserData;
+  const badge = document.getElementById('sidebar-role-badge');
+  badge.textContent = u.role === 'admin' ? 'Admin' : 'Student';
+  badge.className = 'sidebar-role' + (u.role === 'student' ? ' student' : '');
+  document.getElementById('sidebar-name').textContent = u.name;
+  document.getElementById('sidebar-email').textContent = u.email;
+  const av = document.getElementById('sidebar-avatar');
+  av.textContent = u.name[0].toUpperCase();
+  av.className = 'avatar' + (u.role === 'student' ? ' blue' : '');
+  renderNav();
+  if (u.role === 'admin') { renderDashboard(); showView('view-dashboard'); }
+  else { renderStudentHome(); showView('view-student-home'); }
+}
+
+function renderNav() {
+  const nav = document.getElementById('sidebar-nav');
+  const adminItems = [
+    {section:'Overview'},{id:'view-dashboard',icon:'⊞',label:'Dashboard'},
+    {section:'Content'},{id:'view-lessons',icon:'📚',label:'Lessons'},{id:'view-release',icon:'🚀',label:'Release Control'},
+    {section:'Teaching'},{id:'view-live',icon:'📡',label:'Live Session'},
+    {section:'Students'},{id:'view-students',icon:'👥',label:'Students'},{id:'view-progress-admin',icon:'📊',label:'Progress Monitor'},
+    {section:'Account'},{id:'view-profile',icon:'⚙️',label:'Profile'},
+  ];
+  const studentItems = [
+    {section:'Learning'},{id:'view-student-home',icon:'🏠',label:'My Lessons'},{id:'view-my-progress',icon:'📈',label:'My Progress'},
+    {section:'Live'},{id:'view-live-student',icon:'📡',label:'Live Session'},
+    {section:'Account'},{id:'view-profile',icon:'⚙️',label:'Profile'},
+  ];
+  const items = currentUserData.role === 'admin' ? adminItems : studentItems;
+  nav.innerHTML = items.map(i => i.section
+    ? `<div class="nav-section">${i.section}</div>`
+    : `<div class="nav-item" id="nav-${i.id}" onclick="navClick('${i.id}')"><span class="nav-icon">${i.icon}</span>${i.label}</div>`
+  ).join('');
+}
+
+window.navClick = (viewId) => {
+  const handlers = {
+    'view-dashboard': renderDashboard,
+    'view-lessons': renderAdminLessons,
+    'view-students': renderStudents,
+    'view-progress-admin': renderProgressAdmin,
+    'view-release': renderRelease,
+    'view-live': renderLiveAdmin,
+    'view-student-home': renderStudentHome,
+    'view-my-progress': renderMyProgress,
+    'view-live-student': renderLiveStudent,
+    'view-profile': renderProfile,
+  };
+  if (handlers[viewId]) handlers[viewId]();
+  showView(viewId);
+};
+
+function showView(id) {
+  document.querySelectorAll('.content-view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const view = document.getElementById(id);
+  if (view) view.classList.add('active');
+  const navEl = document.getElementById('nav-' + id);
+  if (navEl) navEl.classList.add('active');
+}
+
+// ════════════════════════════════════════════════
+//  FIRESTORE HELPERS
+// ════════════════════════════════════════════════
+async function getCollection(col, ...constraints) {
+  const q = constraints.length ? query(collection(db, col), ...constraints) : collection(db, col);
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+async function getDoc_(col, id) {
+  const snap = await getDoc(doc(db, col, id));
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+function ts(d) {
+  if (!d) return '—';
+  if (d.toDate) return d.toDate().toLocaleDateString();
+  return String(d).substring(0, 10);
+}
+
+// ════════════════════════════════════════════════
+//  ADMIN: DASHBOARD
+// ════════════════════════════════════════════════
+async function renderDashboard() {
+  document.getElementById('dash-stats').innerHTML = '<p style="color:var(--text3);font-size:13px;padding:8px">Loading...</p>';
+  const [students, lessons, progress] = await Promise.all([
+    getCollection('users', where('role', '==', 'student')),
+    getCollection('lessons'),
+    getCollection('progress')
+  ]);
+  const released = lessons.filter(l => l.is_released);
+  const completed = progress.filter(p => p.status === 'completed');
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card amber"><div class="stat-value">${students.length}</div><div class="stat-label">Total Students</div><div class="stat-icon">👥</div></div>
+    <div class="stat-card blue"><div class="stat-value">${lessons.length}</div><div class="stat-label">Total Lessons</div><div class="stat-icon">📚</div></div>
+    <div class="stat-card green"><div class="stat-value">${released.length}</div><div class="stat-label">Released Lessons</div><div class="stat-icon">🚀</div></div>
+    <div class="stat-card purple"><div class="stat-value">${completed.length}</div><div class="stat-label">Levels Completed</div><div class="stat-icon">✓</div></div>
+  `;
+  const tbody = students.slice(0, 6).map(s => {
+    const done = progress.filter(p => p.user_id === s.id && p.status === 'completed').length;
+    return `<tr><td>${s.name}</td><td>${s.email}</td><td>${done} levels</td><td>${ts(s.created_at)}</td></tr>`;
+  }).join('');
+  document.getElementById('dash-students-table').innerHTML = `
+    <thead><tr><th>Name</th><th>Email</th><th>Progress</th><th>Joined</th></tr></thead>
+    <tbody>${tbody || '<tr><td colspan="4" style="text-align:center;color:var(--text3)">No students yet</td></tr>'}</tbody>
+  `;
+}
+
+// ════════════════════════════════════════════════
+//  ADMIN: LESSONS
+// ════════════════════════════════════════════════
+async function renderAdminLessons() {
+  const grid = document.getElementById('admin-lessons-grid');
+  grid.innerHTML = '<p style="color:var(--text3);font-size:13px">Loading...</p>';
+  const [lessons, levels] = await Promise.all([
+    getCollection('lessons'),
+    getCollection('levels')
+  ]);
+  if (!lessons.length) { grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📚</div><p>No lessons yet. Create your first!</p></div>`; return; }
+  grid.innerHTML = lessons.map(l => {
+    const lvls = levels.filter(lv => lv.lesson_id === l.id);
+    let statusBadge = `<span class="badge badge-${l.status}">${l.status}</span>`;
+    if (l.is_released) statusBadge += `<span class="badge badge-released">Released #${l.release_order}</span>`;
+    return `
+    <div class="lesson-card">
+      <div class="lesson-card-header">
+        <div class="lesson-card-badges">${statusBadge}</div>
+        <div class="lesson-card-title">${l.icon || '📘'} ${l.title}</div>
+        <div class="lesson-card-desc">${l.description || ''}</div>
+      </div>
+      <div class="lesson-card-body">
+        <div class="lesson-meta"><span>📋 ${lvls.length} level${lvls.length !== 1 ? 's' : ''}</span><span>📅 ${ts(l.created_at)}</span></div>
+        <div class="lesson-actions">
+          <button class="btn btn-secondary btn-sm" onclick="openLevelEditor('${l.id}')">Edit Levels</button>
+          <button class="btn btn-ghost btn-sm" onclick="openLessonModal('${l.id}')">Edit</button>
+          ${l.status === 'draft' ? `<button class="btn btn-blue btn-sm" onclick="publishLesson('${l.id}')">Publish</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="deleteLesson('${l.id}')">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.openLessonModal = async (id) => {
+  editingLessonId = id || null;
+  document.getElementById('lesson-modal-title').textContent = id ? 'Edit Lesson' : 'New Lesson';
+  if (id) {
+    const l = await getDoc_('lessons', id);
+    document.getElementById('lesson-modal-id').value = l.id;
+    document.getElementById('lesson-modal-name').value = l.title;
+    document.getElementById('lesson-modal-desc').value = l.description || '';
+    document.getElementById('lesson-modal-icon').value = l.icon || '';
+  } else {
+    ['lesson-modal-id','lesson-modal-name','lesson-modal-desc','lesson-modal-icon'].forEach(i => document.getElementById(i).value = '');
+  }
+  openModal('modal-lesson');
+};
+
+window.saveLesson = async () => {
+  const title = document.getElementById('lesson-modal-name').value.trim();
+  if (!title) { toast('Title required', 'error'); return; }
+  const btn = document.getElementById('save-lesson-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const data = {
+      title,
+      description: document.getElementById('lesson-modal-desc').value,
+      icon: document.getElementById('lesson-modal-icon').value || '📘',
+      updated_at: serverTimestamp()
+    };
+    if (editingLessonId) {
+      await updateDoc(doc(db, 'lessons', editingLessonId), data);
+      toast('Lesson updated', 'success');
+    } else {
+      await addDoc(collection(db, 'lessons'), {
+        ...data, status: 'draft', is_released: false, release_order: null,
+        created_by: currentUser.uid, created_at: serverTimestamp()
+      });
+      toast('Lesson created', 'success');
+    }
+    closeModal('modal-lesson');
+    renderAdminLessons();
+  } catch (e) { toast(e.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Save Lesson'; }
+};
+
+window.publishLesson = async (id) => {
+  await updateDoc(doc(db, 'lessons', id), { status: 'published', updated_at: serverTimestamp() });
+  renderAdminLessons(); toast('Lesson published', 'success');
+};
+
+window.deleteLesson = (id) => {
+  showConfirm('🗑️', 'Delete Lesson?', 'This will delete the lesson and all its levels.', async () => {
+    const levels = await getCollection('levels', where('lesson_id', '==', id));
+    const batch = writeBatch(db);
+    levels.forEach(lv => batch.delete(doc(db, 'levels', lv.id)));
+    batch.delete(doc(db, 'lessons', id));
+    await batch.commit();
+    renderAdminLessons(); toast('Lesson deleted', 'info');
+  });
+};
+
+// ════════════════════════════════════════════════
+//  ADMIN: LEVEL EDITOR
+// ════════════════════════════════════════════════
+window.openLevelEditor = async (lessonId) => {
+  currentLessonId = lessonId;
+  const lesson = await getDoc_('lessons', lessonId);
+  document.getElementById('level-editor-title').textContent = lesson.title;
+  document.getElementById('level-editor-sub').textContent = `${lesson.icon || '📘'} ${lesson.status} lesson`;
+  await renderLevelsList();
+  showView('view-level-editor');
+};
+
+async function renderLevelsList() {
+  const levels = await getCollection('levels', where('lesson_id', '==', currentLessonId), orderBy('order_num', 'asc'));
+  const wrap = document.getElementById('levels-list');
+  if (!levels.length) { wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><p>No levels yet.</p></div>`; return; }
+  wrap.innerHTML = levels.map(lv => `
+    <div class="level-item">
+      <div class="level-order">${lv.order_num}</div>
+      <div class="level-info">
+        <div class="level-title">${lv.title}</div>
+        <div class="level-meta">${(lv.content?.steps || []).length} steps · Pass: ${lv.pass_score}%</div>
+      </div>
+      <span class="badge badge-${lv.difficulty}">${lv.difficulty}</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="openLevelModal('${lv.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteLevel('${lv.id}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+window.openLevelModal = async (id) => {
+  editingLevelId = id || null;
+  stepCount = 0;
+  document.getElementById('level-modal-title').textContent = id ? 'Edit Level' : 'New Level';
+  document.getElementById('steps-builder').innerHTML = '';
+  if (id) {
+    const lv = await getDoc_('levels', id);
+    document.getElementById('level-modal-id').value = lv.id;
+    document.getElementById('level-modal-name').value = lv.title;
+    document.getElementById('level-modal-difficulty').value = lv.difficulty;
+    document.getElementById('level-modal-pass').value = lv.pass_score;
+    (lv.content?.steps || []).forEach(s => addStep(s));
+  } else {
+    ['level-modal-id','level-modal-name'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('level-modal-difficulty').value = 'easy';
+    document.getElementById('level-modal-pass').value = '70';
+    addStep();
+  }
+  openModal('modal-level');
+};
+
+window.addStep = (existing) => {
+  const i = stepCount++;
+  const t = existing?.type || 'info';
+  const div = document.createElement('div');
+  div.id = `step-wrap-${i}`;
+  div.style.cssText = 'background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px';
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <span style="font-size:12px;font-weight:600;color:var(--text3)">Step ${i + 1}</span>
+      <select id="step-type-${i}" onchange="updateStepType(${i})" style="background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:4px 8px;border-radius:4px;font-size:12px">
+        <option value="info" ${t==='info'?'selected':''}>Info</option>
+        <option value="interactive" ${t==='interactive'?'selected':''}>Interactive</option>
+        <option value="assessment" ${t==='assessment'?'selected':''}>Assessment</option>
+      </select>
+      <button onclick="removeStep(${i})" style="margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px">×</button>
+    </div>
+    <div id="step-fields-${i}"></div>`;
+  document.getElementById('steps-builder').appendChild(div);
+  renderStepFields(i, t, existing);
+};
+
+window.renderStepFields = (i, type, existing) => {
+  const wrap = document.getElementById(`step-fields-${i}`);
+  if (!wrap) return;
+  if (type === 'info') {
+    wrap.innerHTML = `
+      <div class="form-group" style="margin-bottom:8px"><label style="font-size:11px">Title</label><input id="step-title-${i}" type="text" value="${existing?.title||''}"/></div>
+      <div class="form-group" style="margin-bottom:8px"><label style="font-size:11px">Body Text</label><textarea id="step-body-${i}">${existing?.body||''}</textarea></div>
+      <div class="form-group"><label style="font-size:11px">Icon/Emoji</label><input id="step-img-${i}" type="text" value="${existing?.image||''}" maxlength="4"/></div>`;
+  } else {
+    const isAssess = type === 'assessment';
+    const opts = existing?.options || ['','','',''];
+    const correct = existing?.correct ?? 0;
+    wrap.innerHTML = `
+      <div class="form-group" style="margin-bottom:8px"><label style="font-size:11px">${isAssess?'Question':'Prompt'}</label>
+        <input id="step-title-${i}" type="text" value="${existing?.question||existing?.prompt||''}"/></div>
+      ${opts.map((o, oi) => `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <input type="radio" name="correct-${i}" id="correct-${i}-${oi}" value="${oi}" ${correct===oi?'checked':''}/>
+          <input id="option-${i}-${oi}" type="text" value="${o}" placeholder="Option ${String.fromCharCode(65+oi)}"
+            style="background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:6px 10px;border-radius:4px;font-size:12px;flex:1"/>
+        </div>`).join('')}
+      ${isAssess
+        ? `<div class="form-group" style="margin-top:8px"><label style="font-size:11px">Explanation</label><textarea id="step-body-${i}">${existing?.explanation||''}</textarea></div>`
+        : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <div class="form-group"><label style="font-size:11px">Correct Feedback</label><input id="step-fb-correct-${i}" type="text" value="${existing?.feedback?.correct||''}"/></div>
+            <div class="form-group"><label style="font-size:11px">Wrong Feedback</label><input id="step-fb-wrong-${i}" type="text" value="${existing?.feedback?.incorrect||''}"/></div>
+           </div>`}`;
+  }
+};
+
+window.updateStepType = (i) => renderStepFields(i, document.getElementById(`step-type-${i}`).value, null);
+window.removeStep = (i) => { const el = document.getElementById(`step-wrap-${i}`); if (el) el.remove(); };
+
+function collectSteps() {
+  const steps = [];
+  document.querySelectorAll('[id^="step-wrap-"]').forEach(wrap => {
+    const i = wrap.id.split('-')[2];
+    const type = document.getElementById(`step-type-${i}`)?.value;
+    if (!type) return;
+    const step = { id: `s${i}`, type };
+    const title = document.getElementById(`step-title-${i}`)?.value;
+    const body = document.getElementById(`step-body-${i}`)?.value;
+    if (type === 'info') {
+      step.title = title || ''; step.body = body || '';
+      step.image = document.getElementById(`step-img-${i}`)?.value || '📋';
+    } else {
+      const opts = [0,1,2,3].map(oi => document.getElementById(`option-${i}-${oi}`)?.value || '').filter(Boolean);
+      const correctEl = document.querySelector(`input[name="correct-${i}"]:checked`);
+      const correct = correctEl ? parseInt(correctEl.value) : 0;
+      if (type === 'interactive') {
+        step.prompt = title || ''; step.options = opts; step.correct = correct;
+        step.feedback = {
+          correct: document.getElementById(`step-fb-correct-${i}`)?.value || 'Correct!',
+          incorrect: document.getElementById(`step-fb-wrong-${i}`)?.value || 'Incorrect.'
+        };
+      } else {
+        step.question = title || ''; step.options = opts; step.correct = correct;
+        step.explanation = body || '';
+      }
+    }
+    steps.push(step);
+  });
+  return steps;
+}
+
+window.saveLevel = async () => {
+  const title = document.getElementById('level-modal-name').value.trim();
+  if (!title) { toast('Title required', 'error'); return; }
+  const btn = document.getElementById('save-level-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const steps = collectSteps();
+    const data = {
+      lesson_id: currentLessonId, title,
+      difficulty: document.getElementById('level-modal-difficulty').value,
+      pass_score: parseInt(document.getElementById('level-modal-pass').value) || 70,
+      content: { steps }, updated_at: serverTimestamp()
+    };
+    if (editingLevelId) {
+      await updateDoc(doc(db, 'levels', editingLevelId), data);
+      toast('Level updated', 'success');
+    } else {
+      const existing = await getCollection('levels', where('lesson_id', '==', currentLessonId));
+      data.order_num = existing.length + 1;
+      data.created_at = serverTimestamp();
+      await addDoc(collection(db, 'levels'), data);
+      toast('Level added', 'success');
+    }
+    closeModal('modal-level');
+    await renderLevelsList();
+  } catch (e) { toast(e.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Save Level'; }
+};
+
+window.deleteLevel = (id) => {
+  showConfirm('🗑️', 'Delete Level?', 'Student progress for this level will be removed.', async () => {
+    const progress = await getCollection('progress', where('level_id', '==', id));
+    const batch = writeBatch(db);
+    progress.forEach(p => batch.delete(doc(db, 'progress', p.id)));
+    batch.delete(doc(db, 'levels', id));
+    await batch.commit();
+    await renderLevelsList(); toast('Level deleted', 'info');
+  });
+};
+
+// ════════════════════════════════════════════════
+//  ADMIN: STUDENTS
+// ════════════════════════════════════════════════
+async function renderStudents() {
+  document.getElementById('students-table').innerHTML = '<tbody><tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Loading...</td></tr></tbody>';
+  const [students, progress] = await Promise.all([
+    getCollection('users', where('role', '==', 'student')),
+    getCollection('progress')
+  ]);
+  const tbody = students.map(s => {
+    const done = progress.filter(p => p.user_id === s.id && p.status === 'completed').length;
+    return `<tr>
+      <td>${s.name}</td><td>${s.email}</td>
+      <td><span class="badge badge-released">${done} completed</span></td>
+      <td>${ts(s.created_at)}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="openEditStudentModal('${s.id}')">Edit</button>
+        <button class="btn btn-blue btn-sm" onclick="adminResetPassword('${s.id}')">Reset PW</button>
+        <button class="btn btn-ghost btn-sm" onclick="adminResetProgress('${s.id}')">Reset Progress</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.id}')">Remove</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('students-table').innerHTML = `
+    <thead><tr><th>Name</th><th>Email</th><th>Progress</th><th>Joined</th><th>Actions</th></tr></thead>
+    <tbody>${tbody || '<tr><td colspan="5" style="text-align:center;color:var(--text3)">No students yet</td></tr>'}</tbody>`;
+}
+
+window.openAddStudentModal = () => {
+  editingStudentId = null;
+  document.getElementById('student-modal-title').textContent = 'Add Student';
+  ['student-modal-id','student-modal-name','student-modal-email','student-modal-pass'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('student-modal-pass-group').style.display = 'block';
+  openModal('modal-student');
+};
+
+window.openEditStudentModal = async (id) => {
+  editingStudentId = id;
+  const s = await getDoc_('users', id);
+  document.getElementById('student-modal-title').textContent = 'Edit Student';
+  document.getElementById('student-modal-id').value = id;
+  document.getElementById('student-modal-name').value = s.name;
+  document.getElementById('student-modal-email').value = s.email;
+  document.getElementById('student-modal-pass-group').style.display = 'none';
+  openModal('modal-student');
+};
+
+window.saveStudent = async () => {
+  const name = document.getElementById('student-modal-name').value.trim();
+  const email = document.getElementById('student-modal-email').value.trim();
+  if (!name || !email) { toast('Name and email required', 'error'); return; }
+  const btn = document.getElementById('save-student-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    if (editingStudentId) {
+      await updateDoc(doc(db, 'users', editingStudentId), { name, email: email.toLowerCase(), updated_at: serverTimestamp() });
+      toast('Student updated', 'success');
+    } else {
+      const pw = document.getElementById('student-modal-pass').value;
+      if (!pw) { toast('Password required', 'error'); btn.disabled=false; btn.textContent='Save Student'; return; }
+      const cred = await createUserWithEmailAndPassword(auth, email, pw);
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        name, email: email.toLowerCase(), role: 'student',
+        created_at: serverTimestamp(), updated_at: serverTimestamp()
+      });
+      toast('Student added', 'success');
+    }
+    closeModal('modal-student');
+    await renderStudents();
+  } catch (e) { toast(e.code === 'auth/email-already-in-use' ? 'Email already registered.' : e.message, 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Save Student'; }
+};
+
+window.adminResetPassword = (id) => {
+  showConfirm('🔑', 'Reset Password?', 'You will need to set a new temporary password for this student.', () => {
+    const np = prompt('Enter new temporary password (min 6 chars):');
+    if (!np || np.length < 6) { toast('Password too short', 'error'); return; }
+    // Note: resetting another user's password requires Firebase Admin SDK (Cloud Function)
+    // For now, show the admin what the password would be
+    toast(`Password reset requires Admin SDK. Use Firebase Console to reset password for UID: ${id}`, 'info');
+  });
+};
+
+window.adminResetProgress = (id) => {
+  showConfirm('🔄', 'Reset Progress?', 'All progress for this student will be cleared.', async () => {
+    const progress = await getCollection('progress', where('user_id', '==', id));
+    const batch = writeBatch(db);
+    progress.forEach(p => batch.delete(doc(db, 'progress', p.id)));
+    await batch.commit();
+    await renderStudents(); toast('Progress reset', 'info');
+  });
+};
+
+window.deleteStudent = (id) => {
+  showConfirm('🗑️', 'Remove Student?', 'Deletes their Firestore record and all progress. Auth account must be removed from Firebase Console.', async () => {
+    const progress = await getCollection('progress', where('user_id', '==', id));
+    const batch = writeBatch(db);
+    progress.forEach(p => batch.delete(doc(db, 'progress', p.id)));
+    batch.delete(doc(db, 'users', id));
+    await batch.commit();
+    await renderStudents(); toast('Student record removed', 'info');
+  });
+};
+
+// ════════════════════════════════════════════════
+//  ADMIN: PROGRESS MONITOR
+// ════════════════════════════════════════════════
+async function renderProgressAdmin() {
+  const wrap = document.getElementById('progress-admin-content');
+  wrap.innerHTML = '<p style="color:var(--text3);font-size:13px">Loading...</p>';
+  const [students, lessons, levels, progress] = await Promise.all([
+    getCollection('users', where('role', '==', 'student')),
+    getCollection('lessons', where('is_released', '==', true)),
+    getCollection('levels'),
+    getCollection('progress')
+  ]);
+  const sortedLessons = lessons.sort((a,b) => (a.release_order||99)-(b.release_order||99));
+  const statsHtml = `<div class="stats-grid" style="margin-bottom:28px">
+    ${sortedLessons.map(l => {
+      const lvls = levels.filter(lv => lv.lesson_id === l.id);
+      const total = students.length * lvls.length;
+      const done = progress.filter(p => p.status === 'completed' && lvls.map(lv=>lv.id).includes(p.level_id)).length;
+      const pct = total > 0 ? Math.round((done/total)*100) : 0;
+      return `<div class="stat-card blue"><div class="stat-value">${pct}%</div><div class="stat-label">${l.icon||'📘'} ${l.title.substring(0,20)}</div><div class="stat-icon">📊</div></div>`;
+    }).join('')}
+  </div>`;
+  const matrixHtml = sortedLessons.map(l => {
+    const lvls = levels.filter(lv => lv.lesson_id === l.id).sort((a,b) => a.order_num - b.order_num);
+    const header = `<tr><th>Student</th>${lvls.map(lv=>`<th>Lv${lv.order_num}<br/><span style="font-weight:400">${lv.title.substring(0,10)}</span></th>`).join('')}<th>Avg</th></tr>`;
+    const rows = students.map(s => {
+      let total=0,count=0;
+      const cells = lvls.map(lv => {
+        const p = progress.find(pr => pr.user_id===s.id && pr.level_id===lv.id);
+        if (!p) return `<td class="prog-cell-none">—</td>`;
+        if (p.status==='completed') { if(p.score!=null){total+=p.score;count++;} return `<td class="prog-cell-done">✓ ${p.score!=null?p.score+'%':''}</td>`; }
+        return `<td class="prog-cell-prog">…</td>`;
+      }).join('');
+      return `<tr><td>${s.name}</td>${cells}<td style="font-weight:600;color:var(--accent)">${count>0?Math.round(total/count)+'%':'—'}</td></tr>`;
+    }).join('');
+    return `<div style="margin-bottom:24px">
+      <h3 style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">${l.icon||'📘'} ${l.title}</h3>
+      <div class="prog-matrix table-wrap"><table>${header}${rows}</table></div>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = statsHtml + (matrixHtml || `<div class="empty-state"><div class="empty-state-icon">📊</div><p>No released lessons to track yet.</p></div>`);
+}
+
+// ════════════════════════════════════════════════
+//  ADMIN: RELEASE CONTROL
+// ════════════════════════════════════════════════
+async function renderRelease() {
+  const wrap = document.getElementById('release-list-wrap');
+  wrap.innerHTML = '<p style="color:var(--text3);font-size:13px">Loading...</p>';
+  const lessons = await getCollection('lessons', where('status', '==', 'published'));
+  const released = lessons.filter(l => l.is_released).sort((a,b) => (a.release_order||99)-(b.release_order||99));
+  const unreleased = lessons.filter(l => !l.is_released);
+  wrap.innerHTML = `
+    ${released.length ? `<h3 style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:12px">✓ Released (visible to students)</h3>
+    <div class="release-list" style="margin-bottom:28px">
+      ${released.map(l => `<div class="release-item released">
+        <div class="release-num">${l.release_order}</div>
+        <div class="release-info"><div class="release-title">${l.icon||'📘'} ${l.title}</div><div class="release-sub">Released · Order #${l.release_order}</div></div>
+        <button class="btn btn-danger btn-sm" onclick="unrelease('${l.id}')">Unrelease</button>
+      </div>`).join('')}
+    </div>` : '<p style="color:var(--text2);font-size:14px;margin-bottom:24px">No lessons released yet.</p>'}
+    ${unreleased.length ? `<h3 style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:12px">⏸ Not Released</h3>
+    <div class="release-list">
+      ${unreleased.map(l => `<div class="release-item">
+        <div class="release-num" style="opacity:0.4">—</div>
+        <div class="release-info"><div class="release-title">${l.icon||'📘'} ${l.title}</div><div class="release-sub">${l.status} · not visible to students</div></div>
+        <button class="btn btn-green btn-sm" onclick="releaseLesson('${l.id}')">Release</button>
+      </div>`).join('')}
+    </div>` : ''}
+  `;
+}
+
+window.releaseLesson = async (id) => {
+  const released = await getCollection('lessons', where('is_released', '==', true));
+  const maxOrder = Math.max(0, ...released.map(l => l.release_order || 0));
+  await updateDoc(doc(db, 'lessons', id), { is_released: true, release_order: maxOrder + 1, updated_at: serverTimestamp() });
+  await renderRelease(); toast('Lesson released to students', 'success');
+};
+
+window.unrelease = async (id) => {
+  await updateDoc(doc(db, 'lessons', id), { is_released: false, release_order: null, updated_at: serverTimestamp() });
+  await renderRelease(); toast('Lesson hidden from students', 'info');
+};
+
+// ════════════════════════════════════════════════
+//  ADMIN: LIVE SESSION  (stored in Firestore doc)
+// ════════════════════════════════════════════════
+async function renderLiveAdmin() {
+  const wrap = document.getElementById('live-session-content');
+  const sessionSnap = await getDoc(doc(db, 'settings', 'live_session'));
+  const session = sessionSnap.exists() ? sessionSnap.data() : null;
+  if (session && session.is_active) {
+    const lesson = await getDoc_('lessons', session.lesson_id);
+    const levels = (await getCollection('levels', where('lesson_id', '==', session.lesson_id), orderBy('order_num', 'asc')));
+    const curLevel = levels.find(lv => lv.id === session.current_level_id) || levels[0];
+    const curIdx = levels.findIndex(lv => lv.id === curLevel?.id);
+    wrap.innerHTML = `
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div class="session-join-box">
+          <h3>Session Active</h3><p>Students join with:</p>
+          <div class="join-code-display">${session.code}</div>
+          <button class="btn btn-danger btn-full" onclick="endSession()">End Session</button>
+        </div>
+        <div style="flex:1;min-width:280px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);padding:20px">
+          <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:4px">${lesson.title}</h3>
+          <p style="color:var(--text2);font-size:13px;margin-bottom:18px">Showing: <strong style="color:var(--accent)">${curLevel?.title||'—'}</strong></p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${levels.map((lv,i) => `<button class="btn ${lv.id===curLevel?.id?'btn-primary':'btn-ghost'} btn-sm" onclick="setSessionLevel('${lv.id}')">${i+1}. ${lv.title}</button>`).join('')}
+          </div>
+          ${curIdx < levels.length-1 ? `<div style="margin-top:14px"><button class="btn btn-green" onclick="setSessionLevel('${levels[curIdx+1]?.id}')">Next Level →</button></div>` : '<p style="color:var(--green);font-size:13px;margin-top:14px">✓ Last level reached</p>'}
+        </div>
+      </div>`;
+  } else {
+    const lessons = await getCollection('lessons', where('is_released', '==', true));
+    wrap.innerHTML = `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px;max-width:480px">
+        <h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px">Start a Live Session</h3>
+        <p style="color:var(--text2);font-size:13px;margin-bottom:20px">Choose a released lesson to teach live.</p>
+        <div class="form-group"><label>Select Lesson</label>
+          <select id="live-lesson-select" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:10px 14px;border-radius:var(--r2);width:100%;font-size:14px;outline:none">
+            ${lessons.map(l => `<option value="${l.id}">${l.icon||'📘'} ${l.title}</option>`).join('')}
+          </select>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="startSession()">📡 Start Live Session</button>
+      </div>`;
+  }
+}
+
+window.startSession = async () => {
+  const lessonId = document.getElementById('live-lesson-select')?.value;
+  if (!lessonId) { toast('Select a lesson', 'error'); return; }
+  const levels = await getCollection('levels', where('lesson_id', '==', lessonId), orderBy('order_num', 'asc'));
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+  await setDoc(doc(db, 'settings', 'live_session'), {
+    lesson_id: lessonId, admin_id: currentUser.uid,
+    current_level_id: levels[0]?.id || null,
+    is_active: true, code, started_at: serverTimestamp()
+  });
+  await renderLiveAdmin(); toast(`Session started! Code: ${code}`, 'success');
+};
+
+window.setSessionLevel = async (levelId) => {
+  await updateDoc(doc(db, 'settings', 'live_session'), { current_level_id: levelId });
+  await renderLiveAdmin(); toast('Level updated for students', 'info');
+};
+
+window.endSession = async () => {
+  await updateDoc(doc(db, 'settings', 'live_session'), { is_active: false, ended_at: serverTimestamp() });
+  await renderLiveAdmin(); toast('Session ended', 'info');
+};
+
+// ════════════════════════════════════════════════
+//  PROFILE (Admin + Student)
+// ════════════════════════════════════════════════
+function renderProfile() {
+  const u = currentUserData;
+  document.getElementById('profile-content').innerHTML = `
+    <div class="profile-card">
+      <h3>👤 Account Details</h3>
+      <div class="profile-avatar-row">
+        <div class="profile-avatar-lg ${u.role==='student'?'blue':''}">${u.name[0].toUpperCase()}</div>
+        <div><div style="font-size:15px;font-weight:600;color:#fff">${u.name}</div><div style="font-size:12px;color:var(--text3)">${u.email} · ${u.role}</div></div>
+      </div>
+      <div class="form-group"><label>Full Name</label><input type="text" id="profile-name" value="${u.name}"/></div>
+      <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+    </div>
+    <div class="profile-card">
+      <h3>🔑 Change Password</h3>
+      <div class="form-group"><label>Current Password</label><input type="password" id="profile-old-pw" placeholder="••••••••"/></div>
+      <div class="form-group"><label>New Password</label><input type="password" id="profile-new-pw" placeholder="Min 6 characters"/></div>
+      <div class="form-group"><label>Confirm New Password</label><input type="password" id="profile-confirm-pw" placeholder="Repeat new password"/></div>
+      <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+    </div>`;
+}
+
+window.saveProfile = async () => {
+  const name = document.getElementById('profile-name').value.trim();
+  if (!name) { toast('Name required', 'error'); return; }
+  await updateDoc(doc(db, 'users', currentUser.uid), { name, updated_at: serverTimestamp() });
+  currentUserData.name = name;
+  document.getElementById('sidebar-name').textContent = name;
+  document.getElementById('sidebar-avatar').textContent = name[0].toUpperCase();
+  toast('Profile updated', 'success');
+};
+
+window.changePassword = async () => {
+  const oldPw = document.getElementById('profile-old-pw').value;
+  const newPw = document.getElementById('profile-new-pw').value;
+  const conf = document.getElementById('profile-confirm-pw').value;
+  if (newPw.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
+  if (newPw !== conf) { toast('Passwords do not match', 'error'); return; }
+  try {
+    const cred = EmailAuthProvider.credential(currentUser.email, oldPw);
+    await reauthenticateWithCredential(currentUser, cred);
+    await updatePassword(currentUser, newPw);
+    ['profile-old-pw','profile-new-pw','profile-confirm-pw'].forEach(id => document.getElementById(id).value = '');
+    toast('Password changed successfully', 'success');
+  } catch (e) {
+    toast(e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential' ? 'Current password incorrect' : e.message, 'error');
+  }
+};
+
+// ════════════════════════════════════════════════
+//  STUDENT: HOME
+// ════════════════════════════════════════════════
+async function renderStudentHome() {
+  document.getElementById('student-greeting-name').textContent = currentUserData.name.split(' ')[0];
+  const wrap = document.getElementById('student-lesson-tiles');
+  wrap.innerHTML = '<p style="color:var(--text3);font-size:13px;padding:8px">Loading your lessons...</p>';
+  const [lessons, levels, progress] = await Promise.all([
+    getCollection('lessons', where('is_released', '==', true)),
+    getCollection('levels'),
+    getCollection('progress', where('user_id', '==', currentUser.uid))
+  ]);
+  const sorted = lessons.sort((a,b) => (a.release_order||99)-(b.release_order||99));
+  if (!sorted.length) { wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🚀</div><p>No lessons released yet. Check back soon!</p></div>`; return; }
+  wrap.innerHTML = sorted.map(l => {
+    const lvls = levels.filter(lv => lv.lesson_id === l.id);
+    const prog = progress.filter(p => p.lesson_id === l.id);
+    const done = prog.filter(p => p.status === 'completed').length;
+    const pct = lvls.length > 0 ? Math.round((done/lvls.length)*100) : 0;
+    const status = done===lvls.length&&lvls.length>0 ? 'completed' : prog.length>0 ? 'in_progress' : 'not_started';
+    const labels = {completed:'✓ Completed',in_progress:'In Progress',not_started:'Not Started'};
+    const badgeCls = {completed:'badge-completed',in_progress:'badge-in-progress',not_started:'badge-not-started'};
+    return `
+    <div class="lesson-tile ${status}" onclick="openLesson('${l.id}')">
+      <div class="lesson-tile-accent"></div>
+      <div class="lesson-tile-body">
+        <div class="tile-top"><div class="tile-icon">${l.icon||'📘'}</div><span class="badge ${badgeCls[status]}">${labels[status]}</span></div>
+        <div class="tile-title">${l.title}</div>
+        <div class="tile-desc">${l.description||''}</div>
+        <div class="tile-progress-bar"><div class="tile-progress-fill ${status==='completed'?'complete':''}" style="width:${pct}%"></div></div>
+        <div class="tile-stats"><span>${done}/${lvls.length} levels</span><span>${pct}% complete</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.openLesson = async (lessonId) => {
+  currentLessonId = lessonId;
+  const levels = await getCollection('levels', where('lesson_id', '==', lessonId), orderBy('order_num', 'asc'));
+  const progress = await getCollection('progress', where('user_id', '==', currentUser.uid), where('lesson_id', '==', lessonId));
+  let target = levels[0];
+  for (const lv of levels) {
+    const p = progress.find(pr => pr.level_id === lv.id);
+    if (!p || p.status !== 'completed') { target = lv; break; }
+  }
+  if (target) openLevelPlayer(target.id);
+};
+
+// ════════════════════════════════════════════════
+//  STUDENT: LEVEL PLAYER
+// ════════════════════════════════════════════════
+window.openLevelPlayer = async (levelId) => {
+  currentLevelId = levelId;
+  const [level, allProgress] = await Promise.all([
+    getDoc_('levels', levelId),
+    getCollection('progress', where('user_id', '==', currentUser.uid), where('lesson_id', '==', currentLessonId))
+  ]);
+  const lesson = await getDoc_('lessons', level.lesson_id);
+  const lessonLevels = await getCollection('levels', where('lesson_id', '==', level.lesson_id), orderBy('order_num', 'asc'));
+  const steps = level.content?.steps || [];
+  let stepIndex = 0, answers = {}, answered = false;
+
+  function renderPlayer() {
+    const step = steps[stepIndex];
+    const dots = steps.map((_,i) => `<div class="step-dot ${i<stepIndex?'done':i===stepIndex?'current':''}"></div>`).join('');
+    document.getElementById('level-player-wrap').innerHTML = `
+      <div class="level-header">
+        <button class="level-back" onclick="goBackToHome()">← Lessons</button>
+        <div class="level-header-info">
+          <h3>${level.title}</h3>
+          <p>${lesson.icon||'📘'} ${lesson.title} · Level ${level.order_num} of ${lessonLevels.length} · <span class="badge badge-${level.difficulty}">${level.difficulty}</span></p>
+        </div>
+      </div>
+      <div class="step-progress">${dots}<span class="step-counter">${stepIndex+1} / ${steps.length}</span></div>
+      <div id="step-render"></div>
+      <div class="step-nav" id="step-nav"></div>`;
+    renderStep(step);
+  }
+
+  function renderStep(step) {
+    const el = document.getElementById('step-render');
+    answered = !!answers[step.id];
+    if (step.type === 'info') {
+      el.innerHTML = `<div class="step-card">
+        <div class="step-type-badge">Information</div>
+        <div class="step-image">${step.image||'📋'}</div>
+        <div class="step-title">${step.title||''}</div>
+        <div class="step-body">${step.body||''}</div>
+      </div>`;
+    } else {
+      const q = step.question || step.prompt;
+      const optsHtml = (step.options||[]).map((o,i) => {
+        let extra = '';
+        if (answered) { if(i===step.correct) extra=' correct'; else if(answers[step.id]===i&&i!==step.correct) extra=' wrong'; }
+        return `<button class="option-btn${extra}" ${answered?'disabled':''} data-idx="${i}">
+          <span class="option-letter">${String.fromCharCode(65+i)}</span>${o}
+        </button>`;
+      }).join('');
+      let feedback = '';
+      if (answered) {
+        const isCorrect = answers[step.id] === step.correct;
+        const msg = step.type==='interactive' ? (isCorrect?step.feedback?.correct:step.feedback?.incorrect) : step.explanation;
+        feedback = `<div class="feedback-box ${isCorrect?'correct':'wrong'}">${isCorrect?'✓':'✗'} ${msg||''}</div>`;
+      }
+      el.innerHTML = `<div class="step-card">
+        <div class="step-type-badge">${step.type==='assessment'?'Assessment':'Interactive'}</div>
+        <div class="step-title">${q||''}</div>
+        <div class="options-list">${optsHtml}</div>${feedback}
+      </div>`;
+      if (!answered) {
+        el.querySelectorAll('.option-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            answered = true;
+            answers[step.id] = parseInt(btn.dataset.idx);
+            renderStep(step);
+          });
+        });
+      }
+    }
+    renderNav();
+  }
+
+  function renderNav() {
+    const nav = document.getElementById('step-nav');
+    const step = steps[stepIndex];
+    const canNext = step.type === 'info' || answered;
+    const isLast = stepIndex === steps.length - 1;
+    nav.innerHTML = `
+      ${stepIndex > 0 ? `<button class="btn btn-ghost" id="prev-btn">← Back</button>` : ''}
+      <button class="btn btn-primary" id="next-btn" ${!canNext?'disabled':''}>
+        ${isLast ? 'Complete Level ✓' : 'Continue →'}
+      </button>`;
+    document.getElementById('next-btn')?.addEventListener('click', () => isLast ? finishLevel() : (stepIndex++, renderPlayer()));
+    document.getElementById('prev-btn')?.addEventListener('click', () => { stepIndex--; renderPlayer(); });
+  }
+
+  async function finishLevel() {
+    const qSteps = steps.filter(s => s.type==='interactive'||s.type==='assessment');
+    let correct = 0;
+    qSteps.forEach(s => { if (answers[s.id] === s.correct) correct++; });
+    const score = qSteps.length > 0 ? Math.round((correct/qSteps.length)*100) : 100;
+    const passed = score >= level.pass_score;
+
+    // Save to Firestore
+    const progQuery = await getDocs(query(collection(db, 'progress'),
+      where('user_id','==',currentUser.uid), where('level_id','==',levelId)));
+    if (progQuery.empty) {
+      await addDoc(collection(db, 'progress'), {
+        user_id: currentUser.uid, level_id: levelId, lesson_id: level.lesson_id,
+        status: 'completed', score, attempts: 1,
+        started_at: serverTimestamp(), completed_at: serverTimestamp()
+      });
+    } else {
+      const existing = progQuery.docs[0];
+      await updateDoc(doc(db, 'progress', existing.id), {
+        status: 'completed', score,
+        attempts: (existing.data().attempts||0) + 1,
+        completed_at: serverTimestamp()
+      });
+    }
+
+    document.getElementById('level-player-wrap').innerHTML = `
+      <div class="step-card level-complete">
+        <div class="level-complete-icon">${passed?'🎉':'😅'}</div>
+        <h3>${passed?'Level Complete!':'Almost There!'}</h3>
+        <p>${passed?'Great work! You passed this level.':'You didn\'t reach the pass score. Review and try again.'}</p>
+        <div class="score-display ${passed?'pass':'fail'}">${score}%</div>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          ${!passed ? `<button class="btn btn-ghost" onclick="openLevelPlayer('${levelId}')">Try Again</button>` : ''}
+          <button class="btn btn-secondary" onclick="goBackToHome()">Back to Lessons</button>
+          ${passed ? nextLevelBtn(lessonLevels, levelId) : ''}
+        </div>
+      </div>`;
+  }
+
+  renderPlayer();
+  showView('view-level-player');
+};
+
+function nextLevelBtn(levels, currentId) {
+  const idx = levels.findIndex(lv => lv.id === currentId);
+  if (idx < levels.length - 1) return `<button class="btn btn-primary" onclick="openLevelPlayer('${levels[idx+1].id}')">Next Level →</button>`;
+  return `<p style="color:var(--green);font-size:13px;margin-top:8px">🏆 All levels in this lesson complete!</p>`;
+}
+
+window.goBackToHome = async () => { await renderStudentHome(); showView('view-student-home'); };
+
+// ════════════════════════════════════════════════
+//  STUDENT: MY PROGRESS
+// ════════════════════════════════════════════════
+async function renderMyProgress() {
+  const wrap = document.getElementById('my-progress-content');
+  wrap.innerHTML = '<p style="color:var(--text3);font-size:13px">Loading...</p>';
+  const [lessons, levels, progress] = await Promise.all([
+    getCollection('lessons', where('is_released', '==', true)),
+    getCollection('levels'),
+    getCollection('progress', where('user_id', '==', currentUser.uid))
+  ]);
+  const sorted = lessons.sort((a,b) => (a.release_order||99)-(b.release_order||99));
+  wrap.innerHTML = sorted.map(l => {
+    const lvls = levels.filter(lv => lv.lesson_id===l.id).sort((a,b) => a.order_num-b.order_num);
+    const prog = progress.filter(p => p.lesson_id===l.id);
+    const done = prog.filter(p => p.status==='completed').length;
+    const pct = lvls.length>0 ? Math.round((done/lvls.length)*100) : 0;
+    const dots = lvls.map(lv => {
+      const p = prog.find(pr => pr.level_id===lv.id);
+      const st = p?.status||'not_started';
+      return `<span class="progress-level-dot ${st}">${lv.order_num}. ${lv.title} ${st==='completed'?'✓'+(p.score!=null?' '+p.score+'%':''):''}</span>`;
+    }).join('');
+    return `<div class="progress-lesson-card">
+      <div class="progress-lesson-header">
+        <div class="progress-lesson-title">${l.icon||'📘'} ${l.title}</div>
+        <span class="badge ${pct===100?'badge-completed':pct>0?'badge-in-progress':'badge-not-started'}">${pct}%</span>
+      </div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill ${pct===100?'full':''}" style="width:${pct}%"></div></div>
+      <div class="progress-levels-row">${dots}</div>
+    </div>`;
+  }).join('') || `<div class="empty-state"><div class="empty-state-icon">📈</div><p>No lessons available yet.</p></div>`;
+}
+
+// ════════════════════════════════════════════════
+//  STUDENT: LIVE SESSION JOIN
+// ════════════════════════════════════════════════
+async function renderLiveStudent() {
+  const wrap = document.getElementById('live-student-content');
+  const sessionSnap = await getDoc(doc(db, 'settings', 'live_session'));
+  const session = sessionSnap.exists() ? sessionSnap.data() : null;
+  if (session && session.is_active) {
+    const lesson = await getDoc_('lessons', session.lesson_id);
+    const level = session.current_level_id ? await getDoc_('levels', session.current_level_id) : null;
+    const step = level?.content?.steps?.[0];
+    wrap.innerHTML = `
+      <div style="max-width:680px">
+        <div style="background:rgba(46,204,138,0.08);border:1px solid rgba(46,204,138,0.2);border-radius:var(--r);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:10px">
+          <span style="color:var(--green);font-size:18px">●</span>
+          <span style="color:var(--green);font-weight:600;font-size:13px">Live session in progress</span>
+          <span style="color:var(--text3);font-size:12px;margin-left:auto">Code: ${session.code}</span>
+        </div>
+        <div class="step-card">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:12px">${lesson?.icon||'📘'} ${lesson?.title}</div>
+          <div class="step-title" style="font-size:22px">${level?.title||'—'}</div>
+          <div style="height:1px;background:var(--border);margin:16px 0"></div>
+          <div class="step-type-badge">Current step</div>
+          <div class="step-title" style="font-size:17px">${step?.title||''}</div>
+          <div class="step-body">${step?.body||step?.prompt||step?.question||''}</div>
+          ${step?.image ? `<div class="step-image">${step.image}</div>` : ''}
+        </div>
+        <button class="btn btn-secondary" onclick="renderLiveStudent()" style="margin-top:12px">🔄 Refresh</button>
+      </div>`;
+  } else {
+    wrap.innerHTML = `
+      <div style="max-width:400px">
+        <div class="session-join-box">
+          <h3>Join a Live Session</h3>
+          <p>Enter the session code shown by your instructor.</p>
+          <div class="form-group"><label>Session Code</label><input type="text" id="join-code-input" placeholder="ABC123" maxlength="8" style="text-transform:uppercase;font-size:18px;letter-spacing:0.2em;text-align:center"/></div>
+          <button class="btn btn-primary btn-full" onclick="joinSession()">Join Session</button>
+        </div>
+      </div>`;
+  }
+}
+
+window.joinSession = async () => {
+  const code = document.getElementById('join-code-input')?.value.trim().toUpperCase();
+  const sessionSnap = await getDoc(doc(db, 'settings', 'live_session'));
+  const session = sessionSnap.exists() ? sessionSnap.data() : null;
+  if (session && session.is_active && session.code === code) {
+    await renderLiveStudent(); toast('Joined live session!', 'success');
+  } else {
+    toast('Invalid or expired session code', 'error');
+  }
+};
+
+// ════════════════════════════════════════════════
+//  MODALS & CONFIRM
+// ════════════════════════════════════════════════
+window.openModal = (id) => document.getElementById(id).classList.add('show');
+window.closeModal = (id) => document.getElementById(id).classList.remove('show');
+document.addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('show'); });
+
+window.showConfirm = (icon, title, msg, callback, okLabel='Confirm', okClass='btn-danger') => {
+  pendingConfirm = callback;
+  document.getElementById('confirm-icon').textContent = icon;
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  const btn = document.getElementById('confirm-ok-btn');
+  btn.textContent = okLabel; btn.className = `btn ${okClass}`;
+  document.getElementById('confirm-overlay').classList.add('show');
+};
+window.closeConfirm = () => { document.getElementById('confirm-overlay').classList.remove('show'); pendingConfirm = null; };
+window.confirmAction = () => { if (pendingConfirm) pendingConfirm(); closeConfirm(); };
+
+// ════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════
+window.toast = (msg, type='success') => {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${{success:'✓',error:'✗',info:'ℹ'}[type]||'•'}</span>${msg}`;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(8px)'; t.style.transition='all 0.2s'; setTimeout(()=>t.remove(),200); }, 2800);
+};
+
+// Keyboard
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.show').forEach(m => m.classList.remove('show'));
+    closeConfirm();
+  }
+  if (e.key === 'Enter' && document.getElementById('login-page').classList.contains('active')) submitAuth();
+});
+</script>
+
+<!--
+════════════════════════════════════════════════════════════
+FIRESTORE SECURITY RULES
+————————————————————————————————————————————————————————————
+Copy these into Firebase Console → Firestore → Rules tab
+————————————————————————————————————————————————————————————
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: check if calling user is an admin
+    function isAdmin() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users: admins read all; users read/update own doc
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow delete: if request.auth != null && isAdmin();
+    }
+
+    // Lessons: admins full control; students read released only
+    match /lessons/{lessonId} {
+      allow read: if request.auth != null && (isAdmin() || resource.data.is_released == true);
+      allow create, update, delete: if request.auth != null && isAdmin();
+    }
+
+    // Levels: admins full control; students read levels of released lessons
+    match /levels/{levelId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && isAdmin();
+    }
+
+    // Progress: admins read all; students read/write own only
+    match /progress/{progressId} {
+      allow read: if request.auth != null && (isAdmin() || resource.data.user_id == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.user_id == request.auth.uid;
+      allow update: if request.auth != null && (isAdmin() || resource.data.user_id == request.auth.uid);
+      allow delete: if request.auth != null && isAdmin();
+    }
+
+    // Settings (live session): admins write; all auth users read
+    match /settings/{doc} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && isAdmin();
+    }
+  }
+}
+
+════════════════════════════════════════════════════════════
+FIRESTORE DATA STRUCTURE (Collections)
+————————————————————————————————————————————————————————————
+
+users/{uid}
+  name: string
+  email: string
+  role: "admin" | "student"
+  created_at: timestamp
+  updated_at: timestamp
+
+lessons/{auto-id}
+  title: string
+  description: string
+  icon: string (emoji)
+  status: "draft" | "published"
+  is_released: boolean
+  release_order: number | null
+  created_by: uid
+  created_at: timestamp
+  updated_at: timestamp
+
+levels/{auto-id}
+  lesson_id: string (ref to lesson)
+  title: string
+  order_num: number
+  difficulty: "intro"|"easy"|"medium"|"hard"
+  pass_score: number (0-100)
+  content: { steps: [...] }
+  created_at: timestamp
+
+progress/{auto-id}
+  user_id: string
+  level_id: string
+  lesson_id: string
+  status: "completed" | "in_progress"
+  score: number
+  attempts: number
+  started_at: timestamp
+  completed_at: timestamp
+
+settings/live_session
+  lesson_id: string
+  admin_id: string
+  current_level_id: string
+  is_active: boolean
+  code: string
+  started_at: timestamp
+
+════════════════════════════════════════════════════════════
+-->
+</body>
+</html>
