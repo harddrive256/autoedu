@@ -403,6 +403,10 @@ input,textarea,select{font-family:var(--font-body)}
       <p style="font-size:11px;color:var(--text3);margin-top:16px;text-align:center">
         Account access is provided by your instructor.
       </p>
+      <div style="margin-top:12px;padding:10px 12px;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.15);border-radius:6px;font-size:11px;line-height:1.7">
+        <strong style="color:var(--accent)">Admin login:</strong> admin@autoedu.com / admin123<br>
+        <span style="color:var(--text3)">Students must be created fresh by the admin in this app version. Old accounts from a previous version will not work.</span>
+      </div>
     </div>
   </div>
 </div>
@@ -1661,59 +1665,97 @@ function hideLoginPage() {
 // ================================================================
 //  ADMIN: LESSON PREVIEW
 // ================================================================
+
+
+// ── Admin: Preview lesson content ──────────────────────────────────────
 window.previewLesson = (lessonId) => {
-  const lesson  = DB.getLessons().find(l => l.id === lessonId);
-  const levels  = DB.getLevels().filter(lv => lv.lesson_id === lessonId).sort((a,b)=>a.order_num-b.order_num);
-  if (!lesson) return;
+  try {
+    const lesson = LS.getLessons().find(l => l.id === lessonId);
+    if (!lesson) { toast('Lesson not found', 'error'); return; }
+    const levels = LS.getLevels().filter(lv => lv.lesson_id === lessonId).sort((a,b) => a.order_num - b.order_num);
 
-  const stepTypeLabel = t => ({info:'Info',interactive:'Interactive',assessment:'Assessment',circuit:'Circuit Lab'}[t]||t);
-  const stepTypeColor = t => ({info:'var(--blue)',interactive:'var(--accent)',assessment:'var(--purple)',circuit:'var(--green)'}[t]||'var(--text3)');
+    const typeColor = {info:'var(--blue)',interactive:'var(--accent)',assessment:'var(--purple)',circuit:'var(--green)'};
+    const typeLabel = {info:'Info',interactive:'Interactive',assessment:'Assessment',circuit:'Circuit Lab'};
 
-  let html = `
-    <div style="margin-bottom:20px">
-      <div style="font-size:26px;margin-bottom:6px">${lesson.icon||'📘'}</div>
-      <h3 style="font-size:18px;font-weight:700;color:#fff;margin-bottom:6px">${lesson.title}</h3>
-      <p style="font-size:13px;color:var(--text2);line-height:1.6">${lesson.description||''}</p>
-      <div style="margin-top:10px;font-size:12px;color:var(--text3)">${levels.length} level${levels.length!==1?'s':''} &nbsp;•&nbsp; ${lesson.is_released?'<span style="color:var(--green)">Released</span>':'<span style="color:var(--text3)">Not released</span>'}</div>
-    </div>
-    <div style="border-top:1px solid var(--border);padding-top:16px">`;
-
-  if (!levels.length) {
-    html += `<div class="empty-state" style="padding:30px 0"><div class="empty-state-icon">📋</div><p>No levels yet.</p></div>`;
-  }
-
-  levels.forEach((lv,li) => {
-    const steps = lv.content?.steps || [];
-    html += `
-      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:12px;overflow:hidden">
-        <div style="padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
-          <div style="width:22px;height:22px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0">${lv.order_num}</div>
-          <div style="font-size:13px;font-weight:600;color:var(--text);flex:1">${lv.title}</div>
-          <span class="badge badge-${lv.difficulty}">${lv.difficulty}</span>
-          <span style="font-size:11px;color:var(--text3)">${steps.length} steps</span>
-        </div>
-        <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
-          ${steps.map((s,si) => `
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
-              <div style="font-size:10px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${stepTypeColor(s.type)};margin-bottom:4px">
-                Step ${si+1} — ${stepTypeLabel(s.type)}
-              </div>
-              <div style="font-size:12px;color:var(--text2);line-height:1.5">
-                <strong style="color:var(--text)">${s.title||s.question||s.prompt||'Circuit Lab'}</strong>
-                ${s.body ? `<br>${s.body.substring(0,120)}${s.body.length>120?'...':''}` : ''}
-                ${s.options ? `<br><span style="color:var(--text3)">${s.options.length} options • Answer: ${String.fromCharCode(65+(s.correct||0))}</span>` : ''}
-                ${s.circuit_id ? `<br><span style="color:var(--green)">Circuit: ${s.circuit_id.replace(/_/g,' ')}</span>` : ''}
-              </div>
-            </div>`).join('')}
+    let html = `
+      <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:40px;line-height:1">${lesson.icon||'📘'}</div>
+        <div>
+          <h3 style="font-size:17px;font-weight:700;color:#fff;margin-bottom:6px">${lesson.title}</h3>
+          <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:10px">${lesson.description||''}</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="badge ${lesson.is_released?'badge-released':'badge-draft'}">${lesson.is_released?'Released':'Not Released'}</span>
+            <span class="badge badge-published">${levels.length} level${levels.length!==1?'s':''}</span>
+          </div>
         </div>
       </div>`;
-  });
 
-  html += `</div>`;
-  document.getElementById('preview-modal-title').textContent = `Preview: ${lesson.icon||''} ${lesson.title}`;
-  document.getElementById('preview-modal-body').innerHTML = html;
-  openModal('modal-preview');
+    if (!levels.length) {
+      html += '<div class="empty-state" style="padding:30px 0"><div class="empty-state-icon">📋</div><p>No levels in this lesson yet.</p></div>';
+    }
+
+    levels.forEach((lv, li) => {
+      const steps = lv.content?.steps || [];
+      html += `
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:12px;overflow:hidden">
+          <div style="background:var(--surface);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+            <div style="width:22px;height:22px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#000;flex-shrink:0">${lv.order_num}</div>
+            <span style="font-size:13px;font-weight:600;color:var(--text);flex:1">${lv.title}</span>
+            <span class="badge badge-${lv.difficulty}">${lv.difficulty}</span>
+            <span style="font-size:11px;color:var(--text3)">${steps.length} steps</span>
+            <button class="btn btn-green btn-sm" onclick="adminPlayLevel('${lv.id}','${lessonId}');closeModal('modal-preview')">▶ Try Level</button>
+          </div>
+          <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+            ${steps.map((s,si) => `
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                  <span style="font-size:10px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${typeColor[s.type]||'var(--text3)'}">Step ${si+1} — ${typeLabel[s.type]||s.type}</span>
+                  ${s.type==='assessment'||s.type==='interactive'?`<span style="font-size:10px;color:var(--text3);margin-left:auto">Answer: ${String.fromCharCode(65+(s.correct||0))}</span>`:''}
+                </div>
+                <div style="font-size:12px;color:var(--text2);line-height:1.5">
+                  <strong style="color:var(--text)">${s.title||s.question||s.prompt||'Circuit Lab'}</strong>
+                  ${s.body?`<br><span style="color:var(--text3)">${s.body.substring(0,100)}${s.body.length>100?'...':''}</span>`:''}
+                  ${s.options?`<br>${s.options.map((o,oi)=>`<span style="color:${oi===s.correct?'var(--green)':'var(--text3)'};font-size:11px">${String.fromCharCode(65+oi)}: ${o}</span>`).join(' &nbsp; ')}` :''}
+                  ${s.circuit_id?`<br><span style="color:var(--green);font-size:11px">🔌 Circuit: ${s.circuit_id.replace(/_/g,' ')}</span>`:''}
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>`;
+    });
+
+    document.getElementById('preview-modal-title').textContent = lesson.icon + ' ' + lesson.title;
+    document.getElementById('preview-modal-sub').textContent = levels.length + ' levels · Click "Try Level" to play as a student would';
+    document.getElementById('preview-modal-body').innerHTML = html;
+    document.getElementById('preview-modal-footer').innerHTML = `
+      <button class="btn btn-ghost" onclick="closeModal('modal-preview')">Close</button>
+      <button class="btn btn-primary" onclick="adminTryLesson('${lessonId}');closeModal('modal-preview')">▶ Try Whole Lesson</button>`;
+    openModal('modal-preview');
+  } catch(err) {
+    toast('Preview error: ' + err.message, 'error');
+    console.error('previewLesson error:', err);
+  }
 };
+
+// Admin plays through a level exactly like a student
+window.adminPlayLevel = (levelId, lessonId) => {
+  const level  = LS.getLevels().find(lv => lv.id === levelId);
+  const lesson = LS.getLessons().find(l  => l.id  === lessonId);
+  if (!level || !lesson) { toast('Level not found', 'error'); return; }
+  playerSteps      = level.content?.steps || [];
+  playerStepIndex  = 0;
+  playerScore      = 0;
+  playerAnswered   = false;
+  currentLevelId   = levelId;
+  currentLessonId  = lessonId;
+  renderPlayerStep(level, lesson);
+  showView('view-level-player');
+};
+
+// Admin tries a whole lesson (sees the level list like a student)
+window.adminTryLesson = (lessonId) => {
+  openLessonPlayer(lessonId);
+};
+
 window.doLogout = () => {
   currentUserData = null;
   lsSet('session', null);
@@ -1749,7 +1791,7 @@ function renderNav() {
   const nav = document.getElementById('sidebar-nav');
   const adminItems = [
     {section:'Overview'},{id:'view-dashboard',icon:'⊞',label:'Dashboard'},
-    {section:'Content'},{id:'view-lessons',icon:'📚',label:'Lessons'},{id:'view-release',icon:'🚀',label:'Release Control'},
+    {section:'Content'},{id:'view-lessons',icon:'📚',label:'Lessons'},{id:'view-release',icon:'🚀',label:'Release Control'},{id:'view-student-home',icon:'▶',label:'Try Lessons'},
     {section:'Students'},{id:'view-students',icon:'👥',label:'Students'},{id:'view-progress-admin',icon:'📊',label:'Progress Monitor'},
     {section:'Account'},{id:'view-profile',icon:'⚙️',label:'Profile'},
   ];
@@ -1850,6 +1892,7 @@ function renderAdminLessons() {
         <div class="lesson-meta"><span>📋 ${lvls.length} level${lvls.length !== 1 ? 's' : ''}</span><span>📅 ${ts(l.created_at)}</span></div>
         <div class="lesson-actions">
           <button class="btn btn-purple btn-sm" onclick="previewLesson('${l.id}')">👁 Preview</button>
+          <button class="btn btn-green btn-sm" onclick="adminTryLesson('${l.id}')">▶ Try</button>
           <button class="btn btn-secondary btn-sm" onclick="openLevelEditor('${l.id}')">Edit Levels</button>
           <button class="btn btn-ghost btn-sm" onclick="openLessonModal('${l.id}')">Edit</button>
           ${l.status === 'draft' ? `<button class="btn btn-blue btn-sm" onclick="publishLesson('${l.id}')">Publish</button>` : ''}
@@ -2863,4 +2906,21 @@ autoedu_admin_init → boolean — prevents re-creating admin account
   Change the password in Profile after first login!
 ════════════════════════════════════════════════════════════
 -->
+
+<!-- MODAL: Lesson Preview / Try -->
+<div class="modal-overlay" id="modal-preview">
+  <div class="modal" style="max-width:760px;width:100%">
+    <div class="modal-header">
+      <div>
+        <h3 id="preview-modal-title" style="margin-bottom:4px">Lesson Preview</h3>
+        <p id="preview-modal-sub" style="font-size:12px;color:var(--text3);margin:0"></p>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-preview')">&#x2715;</button>
+    </div>
+    <div class="modal-body" id="preview-modal-body" style="max-height:72vh;overflow-y:auto;padding:20px 24px"></div>
+    <div class="modal-footer" id="preview-modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-preview')">Close</button>
+    </div>
+  </div>
+</div>
 </html>
