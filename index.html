@@ -703,8 +703,22 @@ const DEFAULT_LESSONS = [
         ]}
       },
       {
-        id: 'seed-l1-lv4',
+        id: 'seed-l1-lv4b',
         order_num: 4,
+        title: 'Circuit Lab: Find the Fault',
+        difficulty: 'medium',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔌', title:'Circuit Fault-Finding',
+            body:'Time to apply what you have learned! In this level you will use a virtual circuit and a simulated multimeter probe to diagnose a real fault.\n\nRemember the approach:\n1. Start from the power source (battery)\n2. Test each point in order\n3. Find where voltage is present and where it disappears\n4. The fault is in the component BETWEEN the last good reading and the first bad reading.' },
+          { id:'s2', type:'circuit', circuit_id:'series_tail_light', title:'Tail Light Circuit: Find the Fault',
+            question:'Which component is the fault?',
+            explanation:'The switch was faulty.' }
+        ]}
+      },
+      {
+        id: 'seed-l1-lv4',
+        order_num: 5,
         title: 'Scenario: Headlights Not Working',
         difficulty: 'medium',
         pass_score: 75,
@@ -790,6 +804,20 @@ const DEFAULT_LESSONS = [
             options:['W21W because it\'s brighter','W5W — always match the exact type','Either one — they\'re interchangeable','None, ask the shop to do it for you'],
             correct:1,
             explanation:'Always match the exact bulb type. The W21W is a different size and wattage — it may not fit, and even if it does, it could overload the circuit or not fit the lens correctly.' }
+        ]}
+      }
+      ,{
+        id: 'seed-l2-lv4',
+        order_num: 4,
+        title: 'Circuit Lab: Headlight Relay',
+        difficulty: 'medium',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'⚡', title:'Relay Fault-Finding',
+            body:'Time to diagnose a relay circuit fault. A relay-controlled headlight circuit is the most common real-world scenario for this technique.\n\nProbe each test point in order. The relay has two separate circuits:\n• Control circuit (low current) — energises the coil\n• Main circuit (high current) — switches the headlights\n\nRemember: finding power at TP3 (coil feed) but not at TP5 (contacts output) = relay fault.' },
+          { id:'s2', type:'circuit', circuit_id:'relay_headlight', title:'Relay-Controlled Headlight: Find the Fault',
+            question:'Which component is faulty?',
+            explanation:'The relay contacts were faulty.' }
         ]}
       }
     ]
@@ -1395,8 +1423,8 @@ const DEFAULT_LESSONS = [
 // ════════════════════════════════════════════════════════════════
 
 // --- localStorage helpers ---
-function lsGet(key) { try { return JSON.parse(localStorage.getItem('autoedu_' + key)); } catch { return null; } }
-function lsSet(key, val) { localStorage.setItem('autoedu_' + key, JSON.stringify(val)); }
+function lsGet(key) { try { return JSON.parse(localStorage.getItem('autoeduv3_' + key)); } catch { return null; } }
+function lsSet(key, val) { localStorage.setItem('autoeduv3_' + key, JSON.stringify(val)); }
 function genId() { return 'ls_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
 
 // ── Seed default lessons if not already done ──
@@ -1408,12 +1436,12 @@ function seedDefaultLessons() {
     const { levels: lvls, ...lessonData } = l;
     lessonData.created_at = new Date().toISOString();
     lessonData.updated_at = new Date().toISOString();
-    // Auto-release first 3 lessons so students can see them immediately
-    if (idx < 3) {
+    // Auto-release first 5 lessons so students see content immediately after login
+    if (idx < 5) {
       lessonData.is_released = true;
       lessonData.release_order = idx + 1;
-      lessonData.status = 'published';
     }
+    lessonData.status = 'published'; // All seeded lessons published
     lessons.push(lessonData);
     lvls.forEach(lv => {
       levels.push({ ...lv, lesson_id: l.id, created_at: new Date().toISOString() });
@@ -1468,10 +1496,12 @@ const LS = {
   saveProgress: (p) => lsSet('progress', p),
 
   findUser(email, password) {
-    const e = (email || '').trim().toLowerCase();
-    const p = (password || '').trim();
+    const e = String(email    || '').trim().toLowerCase();
+    const p = String(password || '').trim();
+    if (!e || !p) return null;
     return this.getUsers().find(u =>
-      (u.email || '').trim().toLowerCase() === e && (u.password || '') === p
+      String(u.email    || '').trim().toLowerCase() === e &&
+      String(u.password || '').trim() === p
     );
   },
   addUser(data) {
@@ -1593,8 +1623,8 @@ function showLoginPage() {
 //  AUTH
 // ════════════════════════════════════════════════════════════════
 window.submitAuth = () => {
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value.trim();
+  const email    = String(document.getElementById('auth-email').value    || '').trim();
+  const password = String(document.getElementById('auth-password').value || '').trim();
   const btn = document.getElementById('auth-submit-btn');
   if (!email || !password) { showAuthError('Please enter your email and password.'); return; }
 
@@ -1627,6 +1657,63 @@ function hideLoginPage() {
   document.getElementById('login-page').classList.remove('active');
 }
 
+
+// ================================================================
+//  ADMIN: LESSON PREVIEW
+// ================================================================
+window.previewLesson = (lessonId) => {
+  const lesson  = DB.getLessons().find(l => l.id === lessonId);
+  const levels  = DB.getLevels().filter(lv => lv.lesson_id === lessonId).sort((a,b)=>a.order_num-b.order_num);
+  if (!lesson) return;
+
+  const stepTypeLabel = t => ({info:'Info',interactive:'Interactive',assessment:'Assessment',circuit:'Circuit Lab'}[t]||t);
+  const stepTypeColor = t => ({info:'var(--blue)',interactive:'var(--accent)',assessment:'var(--purple)',circuit:'var(--green)'}[t]||'var(--text3)');
+
+  let html = `
+    <div style="margin-bottom:20px">
+      <div style="font-size:26px;margin-bottom:6px">${lesson.icon||'📘'}</div>
+      <h3 style="font-size:18px;font-weight:700;color:#fff;margin-bottom:6px">${lesson.title}</h3>
+      <p style="font-size:13px;color:var(--text2);line-height:1.6">${lesson.description||''}</p>
+      <div style="margin-top:10px;font-size:12px;color:var(--text3)">${levels.length} level${levels.length!==1?'s':''} &nbsp;•&nbsp; ${lesson.is_released?'<span style="color:var(--green)">Released</span>':'<span style="color:var(--text3)">Not released</span>'}</div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:16px">`;
+
+  if (!levels.length) {
+    html += `<div class="empty-state" style="padding:30px 0"><div class="empty-state-icon">📋</div><p>No levels yet.</p></div>`;
+  }
+
+  levels.forEach((lv,li) => {
+    const steps = lv.content?.steps || [];
+    html += `
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:12px;overflow:hidden">
+        <div style="padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+          <div style="width:22px;height:22px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text2);flex-shrink:0">${lv.order_num}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);flex:1">${lv.title}</div>
+          <span class="badge badge-${lv.difficulty}">${lv.difficulty}</span>
+          <span style="font-size:11px;color:var(--text3)">${steps.length} steps</span>
+        </div>
+        <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+          ${steps.map((s,si) => `
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 12px">
+              <div style="font-size:10px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${stepTypeColor(s.type)};margin-bottom:4px">
+                Step ${si+1} — ${stepTypeLabel(s.type)}
+              </div>
+              <div style="font-size:12px;color:var(--text2);line-height:1.5">
+                <strong style="color:var(--text)">${s.title||s.question||s.prompt||'Circuit Lab'}</strong>
+                ${s.body ? `<br>${s.body.substring(0,120)}${s.body.length>120?'...':''}` : ''}
+                ${s.options ? `<br><span style="color:var(--text3)">${s.options.length} options • Answer: ${String.fromCharCode(65+(s.correct||0))}</span>` : ''}
+                ${s.circuit_id ? `<br><span style="color:var(--green)">Circuit: ${s.circuit_id.replace(/_/g,' ')}</span>` : ''}
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  });
+
+  html += `</div>`;
+  document.getElementById('preview-modal-title').textContent = `Preview: ${lesson.icon||''} ${lesson.title}`;
+  document.getElementById('preview-modal-body').innerHTML = html;
+  openModal('modal-preview');
+};
 window.doLogout = () => {
   currentUserData = null;
   lsSet('session', null);
@@ -1762,6 +1849,7 @@ function renderAdminLessons() {
       <div class="lesson-card-body">
         <div class="lesson-meta"><span>📋 ${lvls.length} level${lvls.length !== 1 ? 's' : ''}</span><span>📅 ${ts(l.created_at)}</span></div>
         <div class="lesson-actions">
+          <button class="btn btn-purple btn-sm" onclick="previewLesson('${l.id}')">👁 Preview</button>
           <button class="btn btn-secondary btn-sm" onclick="openLevelEditor('${l.id}')">Edit Levels</button>
           <button class="btn btn-ghost btn-sm" onclick="openLessonModal('${l.id}')">Edit</button>
           ${l.status === 'draft' ? `<button class="btn btn-blue btn-sm" onclick="publishLesson('${l.id}')">Publish</button>` : ''}
@@ -2409,7 +2497,28 @@ function renderPlayerStep(level, lesson) {
   const dotsHtml = playerSteps.map((_, i) => `<div class="step-dot ${i < playerStepIndex ? 'done' : i === playerStepIndex ? 'current' : ''}"></div>`).join('');
 
   let stepHtml = '';
-  if (step.type === 'info') {
+  if (step.type === 'circuit') {
+    // Electude-style circuit fault-finding simulator
+    stepHtml = `
+      <div class="step-type-badge" style="background:rgba(46,204,138,0.1);color:var(--green);border:1px solid rgba(46,204,138,0.2)">🔌 Circuit Lab</div>
+      <div class="step-title" style="margin-bottom:4px">${step.title||'Circuit Fault-Finding'}</div>
+      <div id="circuit-embed-${step.id||playerStepIndex}" style="margin-top:0"></div>`;
+
+    // Circuit complete handler
+    const _levelId = level.id, _lessonId = lesson.id;
+    const _onCircuitDone = (e) => {
+      document.removeEventListener('circuitDone', _onCircuitDone);
+      if(e.detail.correct) playerScore++;
+      nextStep(_levelId, _lessonId);
+    };
+    document.addEventListener('circuitDone', _onCircuitDone);
+
+    // Render circuit after HTML is set
+    setTimeout(() => {
+      const el = document.getElementById('circuit-embed-' + (step.id||playerStepIndex));
+      if(el && window.renderCircuitStep) renderCircuitStep(step, el);
+    }, 50);
+  } else if (step.type === 'info') {
     stepHtml = `
       <div class="step-type-badge">📄 Reading</div>
       <span class="step-emoji">${step.image||'📋'}</span>
@@ -2575,6 +2684,136 @@ window.toast = (msg, type='success') => {
   t.innerHTML = `<span>${{success:'✓',error:'✗',info:'ℹ'}[type]||'•'}</span>${msg}`;
   c.appendChild(t);
   setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(8px)'; t.style.transition='all 0.2s'; setTimeout(()=>t.remove(),200); }, 2800);
+};
+
+
+// ================================================================
+//  CIRCUIT DEFINITIONS & RENDERER (Electude-style)
+// ================================================================
+const CIRCUITS = {
+  series_tail_light:{
+    name:'Tail Light Circuit',
+    description:'A customer reports the left rear tail light is not working. The fuse box shows all fuses intact visually. Use the virtual probe — click each test point — to find where power is lost.',
+    fault:'Switch',
+    faultLabel:'Light Switch (open circuit / faulty contacts)',
+    options:['Battery','Fuse','Light Switch','Tail Light Bulb','Earth Wire'],
+    correct:2,
+    readings:{tp1:12.0,tp2:12.0,tp3:0.0,tp4:0.0},
+    analysis:'TP1 (12V) and TP2 (12V) confirm the battery and fuse are fine. TP3 shows 0V — power is lost at the switch. The switch contacts are open (faulty). Replacing the switch restores the circuit.',
+    tpLabels:{tp1:'Before fuse — battery supply',tp2:'After fuse — fuse is OK',tp3:'After switch — switch output',tp4:'Bulb positive terminal'}
+  },
+  relay_headlight:{
+    name:'Relay-Controlled Headlight',
+    description:'Both front headlights are completely dead. The fuses appear intact. This circuit uses a relay to switch the headlight power. Test systematically — start from the power source.',
+    fault:'Relay',
+    faultLabel:'Headlight Relay (faulty — contacts not closing)',
+    options:['Battery','Control Fuse (5A)','Headlight Switch','Relay','Main Fuse (20A)','Headlight Bulb'],
+    correct:3,
+    readings:{tp1:12.0,tp2:12.0,tp3:12.0,tp4:12.0,tp5:0.0},
+    analysis:'TP1–TP4 all show 12V confirming supply is reaching the relay coil and main contacts input. TP5 (relay contacts output) shows 0V — the relay is receiving its signal but the contacts are not closing. The relay has failed.',
+    tpLabels:{tp1:'Battery positive',tp2:'After control fuse',tp3:'Relay coil feed (relay energised)',tp4:'Main power before relay contacts',tp5:'After relay contacts (headlight feed)'}
+  },
+  battery_charging:{
+    name:'Battery & Charging Check',
+    description:'Battery warning light is on. The battery keeps going flat overnight despite being replaced. Test the charging system to find the root cause.',
+    fault:'Alternator',
+    faultLabel:'Alternator (not generating — worn brushes or broken belt)',
+    options:['Battery (faulty)','Charge Wire (broken)','Alternator (not generating)','Battery Terminal Corrosion','Voltage Regulator'],
+    correct:2,
+    readings:{tp1:12.1,tp2:12.1,tp3:11.8,tp4:11.8},
+    analysis:'All readings hover around 12V with the engine running. A healthy system shows 13.8–14.4V when the alternator is charging. The near-flat readings confirm the alternator is not generating — check the drive belt first, then the alternator output with a load test.',
+    tpLabels:{tp1:'Battery voltage (engine off)',tp2:'Cable junction',tp3:'Alternator output terminal',tp4:'Battery voltage (engine running)'}
+  },
+  parallel_brakelights:{
+    name:'Parallel Brake Light Circuit',
+    description:'The high-level (centre) brake light works, but BOTH outer brake lights are dead simultaneously. Since both died at once, suspect a common supply fault.',
+    fault:'Fuse',
+    faultLabel:'Brake Light Fuse (blown)',
+    options:['Battery','Brake Fuse (blown)','Brake Switch','Left Brake Bulb','Right Brake Bulb','Earth Connections'],
+    correct:1,
+    readings:{tp1:12.0,tp2:0.0,tp3:0.0,tp4:0.0,tp5:0.0},
+    analysis:'TP1 shows 12V — battery supply is present. TP2 immediately after the fuse shows 0V. The fuse has blown, cutting supply to both outer brake lights simultaneously. The centre light works because it is on a separate circuit with its own fuse.',
+    tpLabels:{tp1:'Battery supply to brake circuit',tp2:'After brake fuse',tp3:'After brake switch (both lights feed)',tp4:'Left brake bulb positive',tp5:'Right brake bulb positive'}
+  }
+};
+
+window.renderCircuitStep = function(step, container) {
+  const def = CIRCUITS[step.circuit_id];
+  if(!def) { container.innerHTML='<p style="color:var(--text3);padding:20px">Circuit not found.</p>'; return; }
+
+  const tpIds = Object.keys(def.readings);
+  let answered = false;
+
+  container.innerHTML = `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:16px">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);background:rgba(79,142,247,0.05)">
+        <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--blue);margin-bottom:4px">Circuit Fault-Finding Lab</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.6">${def.description}</div>
+      </div>
+
+      <div style="padding:16px;border-bottom:1px solid var(--border)">
+        <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px">Test Points — click to probe</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
+          ${tpIds.map((tp,i)=>`
+            <div id="tp-card-${tp}" onclick="probeTP(this,'${def.readings[tp]}','${tp}','${(def.tpLabels[tp]||'').replace(/'/g,"\'")}','${step.circuit_id}')"
+              style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:10px 12px;cursor:pointer;transition:all 0.15s;user-select:none">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                <div style="width:28px;height:28px;border-radius:50%;background:rgba(79,142,247,0.1);border:1px solid rgba(79,142,247,0.2);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--blue);flex-shrink:0">${tp.toUpperCase()}</div>
+                <span style="font-size:11px;font-weight:600;color:var(--text2)">Test Point ${i+1}</span>
+              </div>
+              <div style="font-size:10px;color:var(--text3)">${def.tpLabels[tp]||'Click to probe'}</div>
+              <div id="tp-reading-${tp}-${step.circuit_id}" style="display:none;margin-top:8px;padding:6px;background:var(--bg3);border-radius:4px;font-family:monospace;font-size:16px;font-weight:700;text-align:center"></div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <div style="padding:16px">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">Based on your measurements, which component is faulty?</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px" id="fault-opts-${step.circuit_id}">
+          ${def.options.map((o,i)=>`<button onclick="selectCircuitFault(this,'${step.circuit_id}',${i},${def.correct},'${def.analysis.replace(/'/g,"\'")}')" style="padding:8px 14px;border-radius:6px;font-size:13px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);cursor:pointer;transition:all 0.15s" onmouseover="if(!this.classList.contains('done'))this.style.borderColor='var(--accent)'" onmouseout="if(!this.classList.contains('done'))this.style.borderColor=''">${o}</button>`).join('')}
+        </div>
+        <div id="circuit-feedback-${step.circuit_id}" style="display:none;margin-top:14px"></div>
+      </div>
+    </div>`;
+};
+
+window.probeTP = function(card, voltage, tpId, label, circuitId) {
+  const v = parseFloat(voltage);
+  const color = v >= 11 ? '#4ADE80' : v <= 0.5 ? '#EF4444' : '#F59E0B';
+  card.style.borderColor = color;
+  card.style.background = `rgba(${v>=11?'46,204,138':v<=0.5?'224,84,84':'245,166,35'},0.06)`;
+  const rd = document.getElementById(`tp-reading-${tpId}-${circuitId}`);
+  if(rd){
+    rd.style.display='block';
+    rd.style.color=color;
+    rd.textContent = v.toFixed(1) + ' V';
+  }
+};
+
+window.selectCircuitFault = function(btn, circuitId, idx, correct, analysis) {
+  const opts = document.querySelectorAll(`#fault-opts-${circuitId} button`);
+  opts.forEach(b=>b.classList.add('done'));
+  opts.forEach(b=>{b.style.cursor='default';b.onmouseover=null;b.onmouseout=null;});
+  const isCorrect = idx === correct;
+  btn.style.borderColor = isCorrect ? 'var(--green)' : 'var(--red)';
+  btn.style.background  = isCorrect ? 'rgba(46,204,138,0.1)' : 'rgba(224,84,84,0.1)';
+  btn.style.color       = isCorrect ? 'var(--green)' : 'var(--red)';
+  if(!isCorrect){
+    const correctBtn = opts[correct];
+    if(correctBtn){
+      correctBtn.style.borderColor='var(--green)';
+      correctBtn.style.background='rgba(46,204,138,0.06)';
+      correctBtn.style.color='var(--green)';
+    }
+  }
+  const fb = document.getElementById(`circuit-feedback-${circuitId}`);
+  if(fb){
+    fb.style.display='block';
+    fb.innerHTML=`
+      <div class="step-feedback ${isCorrect?'correct':'incorrect'}" style="margin:0 0 12px">${isCorrect?'\u2713 Correct diagnosis! Well done.':'\u2717 Not quite. See the correct answer highlighted above.'}</div>
+      <div style="padding:12px 14px;background:var(--bg3);border-radius:var(--r2);font-size:13px;color:var(--text2);line-height:1.7"><strong style="color:var(--text)">Analysis:</strong> ${analysis}</div>
+      <div style="margin-top:12px"><button class="btn btn-primary btn-sm" onclick="document.dispatchEvent(new CustomEvent('circuitDone',{detail:{correct:${isCorrect}}}))">Continue \u2192</button></div>`;
+  }
 };
 
 // Keyboard shortcuts
