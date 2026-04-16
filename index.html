@@ -140,6 +140,9 @@ input,textarea,select{font-family:var(--font-body)}
     <div class="fg"><label>Admin Email</label><input id="fr-email" type="email" placeholder="admin@school.com" autocomplete="off"/></div>
     <div class="fg"><label>Password</label><input id="fr-pass" type="password" placeholder="Choose a strong password"/></div>
     <button class="btn btn-primary btn-full" id="fr-btn" onclick="createFirstAdmin()">Create Account →</button>
+    <div style="margin-top:14px;text-align:center">
+      <button onclick="backToLogin()" style="background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline;font-family:var(--font-body)">← Back to login</button>
+    </div>
   </div>
 </div>
 
@@ -165,6 +168,10 @@ input,textarea,select{font-family:var(--font-body)}
       <div class="fg"><label>Email Address</label><input type="email" id="ae" placeholder="you@example.com" autocomplete="email"/></div>
       <div class="fg"><label>Password</label><input type="password" id="ap" placeholder="••••••••" autocomplete="current-password"/></div>
       <button class="btn btn-primary btn-full" id="sign-in-btn" onclick="submitAuth()">Sign In →</button>
+      <div style="margin-top:16px;padding:12px 16px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:var(--r2);text-align:center">
+        <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Setting up for the first time?</p>
+        <button onclick="showFirstRun()" style="background:var(--accent);color:#000;border:none;padding:8px 18px;border-radius:var(--r2);font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font-body)">Create Admin Account →</button>
+      </div>
     </div>
   </div>
 </div>
@@ -466,10 +473,16 @@ window.submitAuth = () => {
   signInWithEmailAndPassword(auth, email, password).then(() => {
     if($('auth-err')) $('auth-err').style.display='none';
   }).catch(e => {
-    let msg = 'Incorrect email or password.';
-    if (e.code==='auth/too-many-requests') msg = 'Too many attempts. Please wait and try again.';
-    if (e.code==='auth/invalid-email') msg = 'Please enter a valid email address.';
-    showAuthErr(msg);
+    if (e.code==='auth/user-not-found' || e.code==='auth/invalid-credential' || e.code==='auth/invalid-login-credentials') {
+      // No users exist yet — offer first-run setup
+      showAuthErr('No account found. If this is your first time, click "Create Admin Account" below.');
+    } else if (e.code==='auth/too-many-requests') {
+      showAuthErr('Too many attempts. Please wait a moment and try again.');
+    } else if (e.code==='auth/invalid-email') {
+      showAuthErr('Please enter a valid email address.');
+    } else {
+      showAuthErr('Incorrect email or password.');
+    }
     if(btn) { btn.disabled=false; btn.textContent='Sign In →'; }
   });
 };
@@ -1554,6 +1567,16 @@ document.addEventListener('keydown', e => {
 });
 
 window._appBooted = true;
+
+window.showFirstRun = () => {
+  $('login').style.display = 'none';
+  $('first-run').style.display = 'flex';
+};
+window.backToLogin = () => {
+  $('first-run').style.display = 'none';
+  $('login').style.display = 'flex';
+};
+
 (async function boot() {
   try {
     $('ls-msg').textContent = 'Connecting...';
@@ -1571,22 +1594,9 @@ window._appBooted = true;
           CUD = {id:user.uid, email:user.email, ...snap.data()};
           await initShell();
         } else {
-          try {
-            const admins = await getDocs(query(collection(db,'users'),where('role','==','admin')));
-            if (admins.empty) { $('first-run').style.display='flex'; }
-            else              { $('login').style.display='flex'; }
-          } catch(fsErr) {
-            const em = (fsErr.message||'').toLowerCase();
-            const ec = (fsErr.code||'').toLowerCase();
-            if (ec.includes('unauthorized') || em.includes('unauthorized') || em.includes('blocked') || ec.includes('auth/')) {
-              showDomainError();
-            } else if (em.includes('permission') || ec.includes('permission-denied') || em.includes('missing permissions')) {
-              showFirestoreError();
-            } else {
-              // Show both possible fixes on an unknown error
-              showDomainOrFirestoreError(fsErr.message);
-            }
-          }
+          // No unauthenticated Firestore read needed — just show login.
+          // First-time admin setup is handled via the link below the login form.
+          $('login').style.display='flex';
         }
       } catch(innerErr) {
         const msg = innerErr.code||innerErr.message||'';
