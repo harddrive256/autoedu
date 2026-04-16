@@ -440,9 +440,12 @@ input,textarea,select{font-family:var(--font-body)}
     <div class="content-view" id="view-lessons">
       <div class="page-header-row">
         <div><h2>Lessons</h2><p style="color:var(--text2);font-size:13px;margin-top:4px">Create and manage your lesson library</p></div>
-        <button class="btn btn-primary" onclick="openLessonModal()">+ New Lesson</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="reseedLessons()">↺ Restore Defaults</button>
+          <button class="btn btn-primary" onclick="openLessonModal()">+ New Lesson</button>
+        </div>
       </div>
-      <div class="info-box"><span class="info-box-icon">💡</span>Lessons marked <strong>Seeded</strong> are the built-in default lessons. You can edit them or add your own. Use <strong>Release Control</strong> to make lessons visible to students.</div>
+      <div class="info-box"><span class="info-box-icon">💡</span>Lessons marked <strong>Seeded</strong> are built-in defaults. The first 3 are auto-released for students. Use <strong>Release Control</strong> to make more lessons visible to students. Students only see released lessons.</div>
       <div class="lessons-grid" id="admin-lessons-grid"></div>
     </div>
 
@@ -464,7 +467,7 @@ input,textarea,select{font-family:var(--font-body)}
         <div><h2>Students</h2><p style="color:var(--text2);font-size:13px;margin-top:4px">Manage student accounts and progress</p></div>
         <button class="btn btn-primary" onclick="openAddStudentModal()">+ Add Student</button>
       </div>
-      <div class="info-box"><span class="info-box-icon">ℹ️</span>Students cannot register themselves. Only the admin can create student accounts.</div>
+      <div class="info-box"><span class="info-box-icon">ℹ️</span>Students cannot register themselves. Only the admin can create student accounts. <strong>After adding a student, share their email and password with them so they can log in.</strong></div>
       <div class="table-wrap"><table class="data-table" id="students-table"></table></div>
     </div>
 
@@ -1020,6 +1023,370 @@ const DEFAULT_LESSONS = [
         ]}
       }
     ]
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // LESSON 6 — Basic Electricity & Ohm's Law
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: 'seed-lesson-6',
+    title: "Basic Electricity & Ohm's Law",
+    description: "Understand voltage, current and resistance — the three fundamentals of all car electrical systems. Master Ohm's Law and you can understand any circuit.",
+    icon: '📐',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l6-lv1',
+        order_num: 1,
+        title: 'Voltage, Current & Resistance',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔋', title:'Three Things in Every Circuit',
+            body:'Every electrical circuit in a car involves three things:\n\n⚡ VOLTAGE (V) — The electrical pressure that pushes current. Think of it like water pressure. A car battery provides ~12 volts.\n\n🔁 CURRENT (A) — The flow of electricity through the circuit. Measured in Amps (A).\n\n🛑 RESISTANCE (Ω) — Anything that slows the current. Measured in Ohms (Ω). Like a narrow pipe.' },
+          { id:'s2', type:'interactive', prompt:"A car battery provides 12 volts. What does 'voltage' represent?",
+            options:['The amount of current flowing','The electrical pressure that pushes current','The resistance in the wire','The speed of the electrons'],
+            correct:1,
+            feedback:{ correct:"Correct! Voltage is the electrical pressure — it drives current around the circuit.", incorrect:"Voltage is like pressure in a water pipe — it pushes the current around." } },
+          { id:'s3', type:'assessment', question:'What unit is electrical current measured in?',
+            options:['Volts (V)','Ohms (Ω)','Amps (A)','Watts (W)'],
+            correct:2,
+            explanation:"Current is measured in Amps (A). Voltage in Volts (V). Resistance in Ohms (Ω). These three are connected by Ohm's Law." }
+        ]}
+      },
+      {
+        id: 'seed-l6-lv2',
+        order_num: 2,
+        title: "Ohm's Law Explained",
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'📐', title:"Ohm's Law — The Golden Rule",
+            body:"Ohm's Law: V = I × R\n\nWhere V = Voltage (Volts), I = Current (Amps), R = Resistance (Ohms)\n\nRearranged:\n• Current:    I = V ÷ R\n• Resistance: R = V ÷ I\n\nExample: A 12V circuit with 4Ω resistance → I = 12 ÷ 4 = 3 Amps" },
+          { id:'s2', type:'interactive', prompt:"A 12V circuit has 4 Ohms resistance. Using I = V ÷ R, what is the current?",
+            options:['48 Amps','3 Amps','0.33 Amps','16 Amps'],
+            correct:1,
+            feedback:{ correct:"Correct! I = 12 ÷ 4 = 3 Amps.", incorrect:"Use I = V ÷ R. So 12 ÷ 4 = 3 Amps." } },
+          { id:'s3', type:'assessment', question:"A 12V circuit should have 3 Ohms resistance. What current should flow?",
+            options:['4 Amps','36 Amps','0.25 Amps','2 Amps'],
+            correct:0,
+            explanation:"I = V ÷ R = 12 ÷ 3 = 4 Amps. If you measure less than 4 Amps, resistance has increased — a sign of corrosion or a bad connection." }
+        ]}
+      },
+      {
+        id: 'seed-l6-lv3',
+        order_num: 3,
+        title: 'Series vs Parallel Circuits',
+        difficulty: 'medium',
+        pass_score: 75,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔗', title:'Series Circuits',
+            body:'In a SERIES circuit, all components share one loop — current has only ONE path.\n\nIf one component fails, the entire circuit stops.\n\nExample: Some instrument lights wired in series — one blown bulb kills them all.' },
+          { id:'s2', type:'interactive', prompt:'In a series circuit, one component breaks. What happens to the others?',
+            options:['Only the failed component stops','The others work harder','Everything stops','The fuse blows'],
+            correct:2,
+            feedback:{ correct:'Correct! Break the series loop anywhere and all current stops.', incorrect:'One break kills the whole series circuit — there is only one path for current.' } },
+          { id:'s3', type:'info', image:'⚡', title:'Parallel Circuits',
+            body:'In a PARALLEL circuit, components connect across the same two points — current has MULTIPLE paths.\n\nIf one branch fails, others still work.\n\nAlmost all car systems (lights, radio, horn) are wired in parallel — this is why a dead headlight does not kill your radio.' },
+          { id:'s4', type:'assessment', question:'Why are most car systems wired in parallel?',
+            options:['Cheaper to install','If one device fails, others still work','Uses less power','Series is too complex'],
+            correct:1,
+            explanation:'Parallel wiring gives each device its own independent path. A blown headlight does not affect the radio or any other system.' }
+        ]}
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // LESSON 7 — Car Battery & Charging System
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: 'seed-lesson-7',
+    title: 'Battery & Charging System',
+    description: 'Learn how the 12V battery works, what a healthy voltage looks like, how the alternator keeps it charged, and how to diagnose common faults.',
+    icon: '🔋',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l7-lv1',
+        order_num: 1,
+        title: 'How the 12V Battery Works',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔋', title:'The Car Battery',
+            body:"A car battery stores chemical energy and converts it to electrical energy.\n\nKey facts:\n• A FULLY CHARGED battery reads 12.6–12.8V (not exactly 12)\n• Has 6 cells, each ~2.1V\n• Main jobs: Start the engine, power electrics when off, stabilise the system while running\n• Capacity measured in Ah (Amp-hours)" },
+          { id:'s2', type:'interactive', prompt:'A fully charged 12V car battery should measure approximately what voltage?',
+            options:['Exactly 12.0V','12.6 to 12.8V','14.4V','11.5V'],
+            correct:1,
+            feedback:{ correct:"Correct! 12.6–12.8V = healthy fully charged battery. Exactly 12.0V means only ~50% charge.", incorrect:"12.0V = only half charge. A healthy battery reads 12.6–12.8V." } },
+          { id:'s3', type:'assessment', question:'You measure a battery at 11.8V with engine off. What does this tell you?',
+            options:['Fully charged','Discharged — needs charging or replacing','Overcharged','Perfectly normal'],
+            correct:1,
+            explanation:"Below 12.4V = low battery. Below 12.0V = flat. At 11.8V this battery needs charging and testing." }
+        ]}
+      },
+      {
+        id: 'seed-l7-lv2',
+        order_num: 2,
+        title: 'The Alternator',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'⚙️', title:'What Does the Alternator Do?',
+            body:"The alternator is a generator driven by the engine belt. It:\n\n1. CHARGES the battery while the engine runs\n2. POWERS all car electrics during normal driving\n\nHealthy alternator output: 13.8V to 14.4V\n\nThis is HIGHER than battery voltage (12.6V) — the difference drives charging current into the battery." },
+          { id:'s2', type:'interactive', prompt:'Engine running, you measure 14.1V at the battery. What does this mean?',
+            options:['Overcharged — dangerous','Alternator working normally','Alternator has failed','Battery is flat'],
+            correct:1,
+            feedback:{ correct:'Correct! 13.8–14.4V with engine running = alternator charging normally.', incorrect:'With engine running, alternator raises voltage to 13.8–14.4V. 14.1V is perfectly normal.' } },
+          { id:'s3', type:'assessment', question:'Battery keeps going flat. Alternator measures only 12.3V with engine running. What is the diagnosis?',
+            options:['Wrong battery type','Alternator not charging — faulty or belt broken','Short in headlights','Voltage is normal'],
+            correct:1,
+            explanation:"12.3V with engine running = alternator barely working. Should be 13.8–14.4V. Check the drive belt first, then test the alternator output under load." }
+        ]}
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // LESSON 8 — Using a Multimeter
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: 'seed-lesson-8',
+    title: 'Using a Multimeter',
+    description: 'A multimeter is the most important tool for a car electrician. Learn to measure voltage, resistance and continuity to diagnose faults confidently.',
+    icon: '🔬',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l8-lv1',
+        order_num: 1,
+        title: 'Getting to Know Your Multimeter',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔬', title:'What Is a Multimeter?',
+            body:"A multimeter combines several measurement tools:\n\n• DC Voltage (V—) — Battery and circuit voltage\n• AC Voltage (V~) — Mains power (rarely needed in cars)\n• Resistance (Ω) — Component or wire resistance\n• Continuity (🔊) — Beeps when circuit is unbroken\n• Current (A) — Measures amps\n\nFor car diagnostics: mostly DC voltage and continuity.\n\nRed lead → V/Ω socket. Black lead → COM (negative)." },
+          { id:'s2', type:'interactive', prompt:'You want to check if a wire is broken inside its insulation. Which function should you use?',
+            options:['DC Voltage','AC Voltage','Continuity (beep)','Temperature'],
+            correct:2,
+            feedback:{ correct:'Correct! Continuity mode beeps if the wire is unbroken. No beep = broken wire.', incorrect:'Continuity mode beeps when the circuit is complete. No beep = break in the wire.' } },
+          { id:'s3', type:'assessment', question:'Where does the RED probe plug into on a standard multimeter?',
+            options:['COM socket','Negative terminal','V/Ω/mA socket','Any socket'],
+            correct:2,
+            explanation:"Red → V/Ω socket. Black → COM (common/negative). Wrong connections can damage the meter." }
+        ]}
+      },
+      {
+        id: 'seed-l8-lv2',
+        order_num: 2,
+        title: 'Measuring Voltage',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'📏', title:'How to Measure Voltage',
+            body:"Steps:\n1. Dial to DC Voltage (V—). Choose a range higher than expected (20V for 12V circuits)\n2. RED probe → V socket, BLACK probe → COM\n3. RED probe → positive (+) terminal\n4. BLACK probe → ground (earth/negative)\n5. Read the display\n\n⚠️ Never short probes on voltage setting\n⚠️ Always set correct function before touching circuit" },
+          { id:'s2', type:'interactive', prompt:'You set to 20V DC and get 000.0V on a battery. Most likely cause?',
+            options:['Battery is completely dead','Probes reversed or not in correct sockets','Meter is broken','Normal reading'],
+            correct:1,
+            feedback:{ correct:'Correct! 000.0V usually means a probe or connection problem, not a dead battery.', incorrect:'A perfectly flat 0.0V battery is nearly impossible. Check your probe connections first.' } },
+          { id:'s3', type:'assessment', question:'You measure: 12.4V at start of wire, 11.7V at end of same wire. What is the voltage drop and what does it mean?',
+            options:['0.7V drop — normal','0.7V drop — high resistance (bad connection or damaged wire)','12V drop — wire is broken','No drop — they are the same'],
+            correct:1,
+            explanation:"0.7V drop is significant (good cables should drop less than 0.1V). High drop means resistance in the wire — corroded connector, loose terminal, or damaged wire." }
+        ]}
+      },
+      {
+        id: 'seed-l8-lv3',
+        order_num: 3,
+        title: 'Continuity & Resistance Testing',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔊', title:'Continuity Testing',
+            body:"How to use:\n1. Dial to continuity (🔊 or diode symbol)\n2. Touch probes together — should BEEP\n3. Touch across wire or component\n4. BEEP = circuit is complete\n5. SILENCE = circuit is broken\n\n⚠️ ALWAYS power off the circuit before testing continuity or resistance. Live circuits damage the meter and give false readings.\n\nUse for: fuses, switches, broken wires." },
+          { id:'s2', type:'interactive', prompt:'You test a fuse with continuity (power off). Meter shows OL and stays silent. What does this mean?',
+            options:['Fuse is good','Fuse is blown — internal element is broken','Meter is broken','Need to test with power on'],
+            correct:1,
+            feedback:{ correct:'Correct! Silence = no connection = fuse element has melted (blown fuse).', incorrect:'Continuity beeps when path is complete. Silence = broken path = blown fuse.' } },
+          { id:'s3', type:'assessment', question:'Why must you NEVER do resistance/continuity tests on a live circuit?',
+            options:['False reading AND can damage the meter','It takes longer','Wrong units','No problem at all'],
+            correct:0,
+            explanation:"Resistance/continuity modes send their own measuring current. Adding that to a live voltage confuses the reading AND can permanently damage the meter's internal circuits." }
+        ]}
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // LESSON 9 — Reading Wiring Diagrams
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: 'seed-lesson-9',
+    title: 'Reading Wiring Diagrams',
+    description: "Wiring diagrams are maps of a car's electrical system. Learn the symbols, trace circuits, and use diagrams to diagnose faults like a professional.",
+    icon: '🗺️',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l9-lv1',
+        order_num: 1,
+        title: 'Common Wiring Symbols',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'📄', title:'Wiring Diagram Symbols',
+            body:"Standard symbols used in automotive wiring diagrams:\n\n⬛ Battery — two parallel lines (longer = positive)\n💡 Bulb — circle with X inside\n🔌 Switch (open) — line with gap and angled end\n🔌 Switch (closed) — line, no gap\n▶ Diode — triangle with line at tip (allows current one way)\n🔺 Earth/Ground — triangle or horizontal lines at bottom of wire\n⚙️ Motor — letter M in a circle\n📦 Relay — box with coil symbol inside\n🔴 Resistor — zigzag line" },
+          { id:'s2', type:'interactive', prompt:'In a wiring diagram, a circle with X inside represents:',
+            options:['Battery','Fuse','Light bulb','Diode'],
+            correct:2,
+            feedback:{ correct:'Correct! Circle with X = light bulb/lamp.', incorrect:'Circle with X = light bulb. One of the most common symbols in automotive wiring.' } },
+          { id:'s3', type:'assessment', question:'What does the earth/ground symbol at the bottom of a wire mean?',
+            options:['Wire goes underground','Connects to vehicle body or battery negative','Wire is disconnected','Circuit has no return path'],
+            correct:1,
+            explanation:"Earth/ground symbol = the wire connects to the vehicle chassis or battery negative. The car body acts as a return path for all earths." }
+        ]}
+      },
+      {
+        id: 'seed-l9-lv2',
+        order_num: 2,
+        title: 'Tracing a Circuit',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🗺️', title:'How to Trace a Circuit',
+            body:"Steps:\n1. IDENTIFY the component (e.g. left front indicator)\n2. FIND it in the diagram (use the index)\n3. TRACE from battery (+) → fuse → switch → component\n4. TRACE return path: component → earth (−)\n5. NOTE every connector number along the way\n6. MEASURE at each point — find where power stops\n\nAlways trace in the direction current flows: + to −." },
+          { id:'s2', type:'interactive', prompt:'You measure: 12V at the fuse, but 0V at the relay. What does this tell you?',
+            options:['Fault between battery and fuse','Fault between fuse and relay — broken wire or bad connector','Relay is fine','Headlight bulb is blown'],
+            correct:1,
+            feedback:{ correct:'Excellent! Power stops between fuse and relay — the fault must be in that section.', incorrect:'Voltage is present at fuse but missing at relay. The fault is between those two points.' } },
+          { id:'s3', type:'assessment', question:'What is the correct order to trace a circuit?',
+            options:['Earth → component → battery','Battery (+) → fuse → switch → component → earth (−)','Component → fuse → earth → battery','Switch → battery → component → fuse'],
+            correct:1,
+            explanation:"Always trace from battery positive, through protection (fuse), control (switch), to load (component), then back to earth negative. This is the direction current flows." }
+        ]}
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // LESSON 10 — Sensors & Actuators
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: 'seed-lesson-10',
+    title: 'Sensors & Actuators',
+    description: "Modern cars have dozens of sensors feeding data to the ECU and actuators carrying out commands. Essential knowledge for modern diagnostics.",
+    icon: '📡',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l10-lv1',
+        order_num: 1,
+        title: 'What Are Sensors?',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'📡', title:'Sensors — The Eyes & Ears of the ECU',
+            body:"A sensor converts a physical quantity into an electrical signal the ECU can read.\n\nCommon sensors:\n🌡️ Coolant temperature sensor — resistance changes with temperature\n🌀 Crankshaft/camshaft speed sensors — count rotations with magnetic field\n💨 MAF sensor — measures airflow into engine\n⛽ Oxygen (Lambda) sensor — measures oxygen in exhaust\n💥 Knock sensor — detects engine knock/detonation" },
+          { id:'s2', type:'interactive', prompt:'A coolant temperature sensor (NTC type) shows very HIGH resistance when engine is HOT. What does this indicate?',
+            options:['Sensor is normal','Sensor has failed — it should show LOW resistance when hot','Engine is overheating','ECU is faulty'],
+            correct:1,
+            feedback:{ correct:'Correct! NTC = Negative Temperature Coefficient. Resistance FALLS as temperature RISES. High when hot = faulty sensor.', incorrect:'NTC sensors reduce resistance as temperature increases. High resistance when hot = sensor failure.' } },
+          { id:'s3', type:'assessment', question:'What is the ECU\'s role in relation to sensors?',
+            options:['ECU powers the sensors','ECU reads sensor signals and controls the engine','ECU replaces faulty sensors','ECU only works when there is a fault'],
+            correct:1,
+            explanation:"The ECU constantly reads sensor data to calculate fuel injection timing, ignition timing, and more. Bad sensor data = poor or no engine operation." }
+        ]}
+      },
+      {
+        id: 'seed-l10-lv2',
+        order_num: 2,
+        title: 'What Are Actuators?',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'⚙️', title:'Actuators — The Hands of the ECU',
+            body:"An actuator receives an electrical command from the ECU and does something physical.\n\nCommon actuators:\n⛽ Fuel injector — Opens to spray precise fuel amount\n🔌 Idle Air Control valve — Controls idle air\n❄️ EGR valve — Recirculates exhaust gases\n💨 VVT solenoids — Control camshaft timing\n🔊 Cooling fan relay — Switches fan on/off" },
+          { id:'s2', type:'interactive', prompt:'ECU signals the fuel injector to open. What happens?',
+            options:['Injector sends a signal back','Injector valve opens and sprays fuel','Injector measures fuel pressure','Injector closes'],
+            correct:1,
+            feedback:{ correct:'Correct! The injector is an actuator — it responds to ECU commands by opening to spray fuel.', incorrect:'Actuators take physical action. A fuel injector opens to spray fuel when commanded by the ECU.' } },
+          { id:'s3', type:'assessment', question:'What is the key difference between a sensor and an actuator?',
+            options:['Sensors are more expensive','Sensor = collects data for ECU; Actuator = receives commands from ECU and acts','Sensors only work at high temperature','No difference'],
+            correct:1,
+            explanation:"Sensors are inputs (report data to ECU). Actuators are outputs (receive commands and take action). Together they form the ECU's control loop." }
+        ]}
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // LESSON 11 — Reading OBD Fault Codes
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: 'seed-lesson-11',
+    title: 'Reading OBD Fault Codes',
+    description: "OBD gives you a window into the car's computer. Learn to connect a scanner, read fault codes, understand what they mean, and use them correctly.",
+    icon: '🔍',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l11-lv1',
+        order_num: 1,
+        title: 'What Is OBD-II?',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔌', title:'The OBD Port',
+            body:"OBD = On-Board Diagnostics. Every car made after 2001 (EU) or 1996 (USA) has a standard 16-pin OBD-II connector — usually under the dashboard, driver's side.\n\nWhen a fault occurs, the ECU logs a DTC (Diagnostic Trouble Code) and may turn on the Check Engine Light.\n\nWith a scanner you can:\n• Read fault codes\n• See live sensor data\n• Clear codes after repair\n• Check emissions readiness" },
+          { id:'s2', type:'interactive', prompt:'Where is the OBD-II port typically located?',
+            options:['Under the bonnet near battery','In the boot','Under dashboard, driver\'s side','Behind the rear seat'],
+            correct:2,
+            feedback:{ correct:'Correct! Always inside the car, under the dashboard, within reach of the steering wheel.', incorrect:'OBD-II is always inside the car — under the dashboard near the driver.' } },
+          { id:'s3', type:'assessment', question:'A car has a stored fault code but the Check Engine Light is NOT on. What does this mean?',
+            options:['No faults — light must be on','A past fault that may have resolved — stored/historic code','OBD is broken','Light bulb is blown'],
+            correct:1,
+            explanation:"Historic stored codes exist even after a fault clears. They tell you what the car experienced. Always check stored codes — they are as valuable as active ones." }
+        ]}
+      },
+      {
+        id: 'seed-l11-lv2',
+        order_num: 2,
+        title: 'Understanding DTC Codes',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'📋', title:'How to Read a DTC',
+            body:"DTC format example: P0301\n\nFirst letter = System:\nP = Powertrain (engine/gearbox)\nB = Body (airbags, windows)\nC = Chassis (ABS, suspension)\nU = Network communication\n\nSecond digit:\n0 = Generic (all cars)\n1/2/3 = Manufacturer-specific\n\nLast 3 digits = specific fault number\n\nP0301 = Powertrain, generic, Cylinder 1 misfire\nP0171 = Powertrain, generic, System too lean Bank 1" },
+          { id:'s2', type:'interactive', prompt:"Fault code P0171. The 'P' tells you the fault is in the:",
+            options:['Body (windows, sunroof)','Chassis (ABS, suspension)','Powertrain (engine/transmission)','Network communication'],
+            correct:2,
+            feedback:{ correct:"Correct! P = Powertrain. P0171 means the engine is running lean (too much air, not enough fuel).", incorrect:"P = Powertrain, B = Body, C = Chassis, U = Network." } },
+          { id:'s3', type:'assessment', question:'You clear a fault code. The Check Engine Light returns after 5 minutes. What does this indicate?',
+            options:['Scanner was faulty','The fault still exists — clearing codes never fixes the problem','Battery needs disconnecting','Car needs software update'],
+            correct:1,
+            explanation:"Clearing a code NEVER fixes the fault. If the fault condition still exists, the ECU re-logs it. The underlying cause must be repaired." }
+        ]}
+      }
+    ]
   }
 ];
 
@@ -1037,10 +1404,16 @@ function seedDefaultLessons() {
   if (lsGet('seeded')) return;
   const lessons = [];
   const levels = [];
-  DEFAULT_LESSONS.forEach(l => {
+  DEFAULT_LESSONS.forEach((l, idx) => {
     const { levels: lvls, ...lessonData } = l;
     lessonData.created_at = new Date().toISOString();
     lessonData.updated_at = new Date().toISOString();
+    // Auto-release first 3 lessons so students can see them immediately
+    if (idx < 3) {
+      lessonData.is_released = true;
+      lessonData.release_order = idx + 1;
+      lessonData.status = 'published';
+    }
     lessons.push(lessonData);
     lvls.forEach(lv => {
       levels.push({ ...lv, lesson_id: l.id, created_at: new Date().toISOString() });
@@ -1050,6 +1423,20 @@ function seedDefaultLessons() {
   lsSet('levels', levels);
   lsSet('seeded', true);
 }
+
+// ── Admin: force re-seed (clear and reseed) ──
+window.reseedLessons = () => {
+  showConfirm('🔄','Reset Lesson Data?','This will restore all default lessons. Your custom lessons and student progress will be kept.',()=>{
+    lsSet('seeded', null);
+    const customLessons = LS.getLessons().filter(l => !l.seeded);
+    const customLevels = LS.getLevels().filter(lv => !DEFAULT_LESSONS.some(dl => dl.id === lv.lesson_id));
+    lsSet('lessons', customLessons);
+    lsSet('levels', customLevels);
+    seedDefaultLessons();
+    renderAdminLessons();
+    toast('Default lessons restored and released','success');
+  },'Restore','btn-blue');
+};
 
 // ── Initialize admin account if not present ──
 function initAdminAccount() {
@@ -1081,7 +1468,11 @@ const LS = {
   saveProgress: (p) => lsSet('progress', p),
 
   findUser(email, password) {
-    return this.getUsers().find(u => u.email === email.toLowerCase() && u.password === password);
+    const e = (email || '').trim().toLowerCase();
+    const p = (password || '').trim();
+    return this.getUsers().find(u =>
+      (u.email || '').trim().toLowerCase() === e && (u.password || '') === p
+    );
   },
   addUser(data) {
     const users = this.getUsers();
@@ -1203,9 +1594,9 @@ function showLoginPage() {
 // ════════════════════════════════════════════════════════════════
 window.submitAuth = () => {
   const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
+  const password = document.getElementById('auth-password').value.trim();
   const btn = document.getElementById('auth-submit-btn');
-  if (!email || !password) { showAuthError('Please enter email and password.'); return; }
+  if (!email || !password) { showAuthError('Please enter your email and password.'); return; }
 
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Signing in...';
@@ -1219,7 +1610,7 @@ window.submitAuth = () => {
       hideLoginPage();
       initShell();
     } else {
-      showAuthError('Invalid email or password. Please try again.');
+      showAuthError('Incorrect email or password. Your account is set up by your instructor — please confirm your credentials with them.');
       btn.disabled = false;
       btn.textContent = 'Sign In →';
     }
@@ -1669,7 +2060,7 @@ window.saveStudent = () => {
       const pw = document.getElementById('student-modal-pass').value;
       if (!pw || pw.length < 6) { toast('Password must be at least 6 characters', 'error'); btn.disabled=false; return; }
       LS.addUser({ name, email, password: pw, role: 'student' });
-      toast('Student added — they can now sign in', 'success');
+      toast(`Student added! Share login: ${email} / ${pw}`, 'success');
     }
     closeModal('modal-student');
     renderStudents();
