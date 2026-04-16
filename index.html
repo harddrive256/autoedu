@@ -1,1 +1,2627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AutoEdu — Car Electronics Learning Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
 
+<!--
+  ════════════════════════════════════════════════════════════════
+  AUTOEDU — ENHANCED EDITION
+  ════════════════════════════════════════════════════════════════
+  This version works in TWO modes:
+  
+  MODE A — STANDALONE (no Firebase needed):
+    Leave FIREBASE_CONFIG as-is (with placeholder values).
+    The app will use localStorage for all data.
+    Default admin login: admin@autoedu.com / admin123
+    
+  MODE B — FIREBASE (persistent, multi-device):
+    1. Go to https://console.firebase.google.com
+    2. Create project → Web app → copy firebaseConfig
+    3. Enable Email/Password Authentication
+    4. Create Firestore Database (test mode)
+    5. Paste your config in the FIREBASE_CONFIG block below
+    6. See FIRESTORE SECURITY RULES at the bottom of this file
+  
+  KEY CHANGES FROM ORIGINAL:
+    ✓ No student self-registration — admin creates all accounts
+    ✓ 5 preloaded default lessons (auto-seeded on first load)
+    ✓ Admin can release/unrelease lessons to students
+    ✓ Students only see released lessons
+    ✓ Full student CRUD (add/edit/remove/reset progress/reset password)
+    ✓ Per-lesson, per-level progress tracking
+    ✓ Guided level player with info → interactive → assessment steps
+  ════════════════════════════════════════════════════════════════
+-->
+
+<style>
+:root{
+  --bg:#0d0f14;--bg2:#141720;--bg3:#1a1e2b;--surface:#1f2433;--surface2:#252a3a;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --text:#e8eaf2;--text2:#8b90a8;--text3:#555a6e;
+  --accent:#f5a623;--accent2:#e8891a;--blue:#4f8ef7;--blue2:#3a6fd8;
+  --green:#2ecc8a;--green2:#239c6a;--red:#e05454;--purple:#9b6dff;
+  --r:10px;--r2:6px;
+  --font-display:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;
+  --shadow:0 4px 24px rgba(0,0,0,0.4);--glow:0 0 30px rgba(245,166,35,0.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.6;min-height:100vh;overflow-x:hidden}
+h1,h2,h3,h4{font-family:var(--font-display);letter-spacing:-0.02em}
+button{cursor:pointer;font-family:var(--font-body)}
+input,textarea,select{font-family:var(--font-body)}
+.hidden{display:none!important}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:3px}
+
+/* ── PAGES ── */
+.page{display:none}
+.page.active{display:block}
+
+/* ── LOADING SCREEN ── */
+#loading-screen{
+  position:fixed;inset:0;background:var(--bg);z-index:9999;
+  display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;
+  transition:opacity 0.3s;
+}
+#loading-screen.hide{opacity:0;pointer-events:none}
+.loader-logo{font-family:var(--font-display);font-size:28px;font-weight:800;color:#fff}
+.loader-logo span{color:var(--accent)}
+.loader-bar{width:160px;height:2px;background:var(--surface2);border-radius:1px;overflow:hidden}
+.loader-bar-fill{height:100%;background:var(--accent);border-radius:1px;animation:loadProg 1.5s ease-in-out infinite}
+@keyframes loadProg{0%{width:0;margin-left:0}50%{width:100%}100%{width:0;margin-left:100%}}
+
+/* ── LOGIN ── */
+#login-page{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);position:relative;overflow:hidden;
+}
+#login-page::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(245,166,35,0.08) 0%,transparent 70%),
+             radial-gradient(ellipse 50% 40% at 80% 80%,rgba(79,142,247,0.06) 0%,transparent 60%);
+  pointer-events:none;
+}
+.login-grid{
+  display:grid;grid-template-columns:1fr 1fr;max-width:900px;width:100%;
+  background:var(--bg2);border:1px solid var(--border2);border-radius:16px;
+  overflow:hidden;box-shadow:var(--shadow),var(--glow);margin:20px;
+}
+.login-hero{
+  background:linear-gradient(135deg,#1a1e2b 0%,#0d1117 100%);
+  padding:60px 48px;display:flex;flex-direction:column;justify-content:center;
+  border-right:1px solid var(--border);position:relative;overflow:hidden;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.2);
+  color:var(--accent);font-size:12px;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;
+  padding:5px 12px;border-radius:20px;margin-bottom:28px;width:fit-content;
+}
+.login-hero h1{font-size:36px;font-weight:800;line-height:1.1;margin-bottom:16px;color:#fff}
+.login-hero h1 span{color:var(--accent)}
+.login-hero p{color:var(--text2);font-size:14px;line-height:1.7;margin-bottom:32px}
+.hero-features{list-style:none;display:flex;flex-direction:column;gap:10px}
+.hero-features li{display:flex;align-items:center;gap:10px;color:var(--text2);font-size:13px}
+.hero-features li::before{content:'✓';color:var(--green);font-weight:700;font-size:12px}
+.login-form-wrap{padding:48px 40px;display:flex;flex-direction:column;justify-content:center}
+.login-form-wrap h2{font-size:22px;font-weight:700;margin-bottom:6px}
+.login-form-wrap p{color:var(--text2);font-size:13px;margin-bottom:24px}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:12px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);margin-bottom:7px}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;background:var(--surface);border:1px solid var(--border2);
+  color:var(--text);padding:11px 14px;border-radius:var(--r2);font-size:14px;
+  transition:border-color 0.2s;outline:none;
+}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,166,35,0.08)}
+.form-group select option{background:var(--surface)}
+.form-group textarea{resize:vertical;min-height:80px}
+.btn{padding:11px 20px;border-radius:var(--r2);font-size:14px;font-weight:500;border:none;transition:all 0.2s;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#000;font-weight:600}
+.btn-primary:hover{background:var(--accent2);transform:translateY(-1px)}
+.btn-primary:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border2)}
+.btn-secondary:hover{background:var(--surface)}
+.btn-danger{background:rgba(224,84,84,0.1);color:var(--red);border:1px solid rgba(224,84,84,0.2)}
+.btn-danger:hover{background:rgba(224,84,84,0.2)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--surface);color:var(--text)}
+.btn-full{width:100%;justify-content:center}
+.btn-sm{padding:7px 14px;font-size:12px}
+.btn-green{background:rgba(46,204,138,0.1);color:var(--green);border:1px solid rgba(46,204,138,0.2)}
+.btn-green:hover{background:rgba(46,204,138,0.18)}
+.btn-blue{background:rgba(79,142,247,0.1);color:var(--blue);border:1px solid rgba(79,142,247,0.2)}
+.btn-blue:hover{background:rgba(79,142,247,0.18)}
+.alert{padding:10px 14px;border-radius:var(--r2);font-size:13px;margin-bottom:14px;display:none}
+.alert.show{display:flex;align-items:center;gap:8px}
+.alert-error{background:rgba(224,84,84,0.08);border:1px solid rgba(224,84,84,0.2);color:var(--red)}
+.alert-success{background:rgba(46,204,138,0.08);border:1px solid rgba(46,204,138,0.2);color:var(--green)}
+.spinner{width:14px;height:14px;border:2px solid rgba(0,0,0,0.2);border-top-color:#000;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── SHELL ── */
+#shell{display:none;min-height:100vh;flex-direction:row}
+#shell.active{display:flex}
+.sidebar{width:240px;min-width:240px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;overflow:hidden}
+.sidebar-logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+.sidebar-logo span{font-family:var(--font-display);font-size:18px;font-weight:800;color:#fff}
+.sidebar-logo span em{color:var(--accent);font-style:normal}
+.sidebar-role{font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent);background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.15);padding:2px 8px;border-radius:10px;margin-top:4px;display:inline-block}
+.sidebar-role.student{color:var(--blue);background:rgba(79,142,247,0.08);border-color:rgba(79,142,247,0.15)}
+.sidebar-nav{flex:1;overflow-y:auto;padding:12px 0}
+.nav-section{padding:6px 16px 4px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-top:8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;margin:1px 8px;border-radius:var(--r2);color:var(--text2);font-size:13px;cursor:pointer;transition:all 0.15s}
+.nav-item:hover{background:var(--surface);color:var(--text)}
+.nav-item.active{background:rgba(245,166,35,0.1);color:var(--accent)}
+.nav-icon{font-size:15px;width:18px;text-align:center;opacity:0.6}
+.nav-item.active .nav-icon{opacity:1}
+.sidebar-footer{padding:16px;border-top:1px solid var(--border)}
+.user-pill{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--r2);background:var(--surface);cursor:default}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#000;flex-shrink:0}
+.avatar.blue{background:var(--blue);color:#fff}
+.user-info-text{flex:1;overflow:hidden}
+.user-name{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-email{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logout-btn{background:none;border:none;color:var(--text3);font-size:16px;padding:4px;cursor:pointer;flex-shrink:0}
+.logout-btn:hover{color:var(--red)}
+.main-content{flex:1;overflow-y:auto;height:100vh;background:var(--bg)}
+.content-view{display:none;padding:32px 36px;max-width:1200px}
+.content-view.active{display:block}
+.page-header{margin-bottom:32px}
+.page-header h2{font-size:26px;font-weight:800;color:#fff;margin-bottom:6px}
+.page-header p{color:var(--text2);font-size:14px}
+.page-header-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;gap:16px;flex-wrap:wrap}
+.page-header-row h2{font-size:24px;font-weight:800;color:#fff;margin:0}
+
+/* ── STATS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat-card.amber::before{background:linear-gradient(90deg,var(--accent),transparent)}
+.stat-card.blue::before{background:linear-gradient(90deg,var(--blue),transparent)}
+.stat-card.green::before{background:linear-gradient(90deg,var(--green),transparent)}
+.stat-card.purple::before{background:linear-gradient(90deg,var(--purple),transparent)}
+.stat-value{font-family:var(--font-display);font-size:30px;font-weight:800;color:#fff;line-height:1}
+.stat-label{font-size:12px;color:var(--text2);margin-top:4px}
+.stat-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:24px;opacity:0.15}
+
+/* ── TABLE ── */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;overflow-x:auto}
+.data-table{width:100%;border-collapse:collapse;min-width:500px}
+.data-table th{text-align:left;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);padding:10px 14px;border-bottom:1px solid var(--border)}
+.data-table td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2)}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:rgba(255,255,255,0.02)}
+.data-table td:first-child{color:var(--text)}
+
+/* ── BADGES ── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:500}
+.badge-draft{background:rgba(139,144,168,0.1);color:var(--text2);border:1px solid var(--border)}
+.badge-published{background:rgba(79,142,247,0.1);color:var(--blue);border:1px solid rgba(79,142,247,0.2)}
+.badge-released{background:rgba(46,204,138,0.1);color:var(--green);border:1px solid rgba(46,204,138,0.2)}
+.badge-not-started{background:rgba(139,144,168,0.08);color:var(--text3);border:1px solid var(--border)}
+.badge-in-progress{background:rgba(245,166,35,0.1);color:var(--accent);border:1px solid rgba(245,166,35,0.2)}
+.badge-completed{background:rgba(46,204,138,0.1);color:var(--green);border:1px solid rgba(46,204,138,0.2)}
+.badge-intro{background:rgba(46,204,138,0.08);color:var(--green);border:1px solid rgba(46,204,138,0.15);font-size:10px}
+.badge-easy{background:rgba(79,142,247,0.08);color:var(--blue);border:1px solid rgba(79,142,247,0.15);font-size:10px}
+.badge-medium{background:rgba(245,166,35,0.08);color:var(--accent);border:1px solid rgba(245,166,35,0.15);font-size:10px}
+.badge-hard{background:rgba(224,84,84,0.08);color:var(--red);border:1px solid rgba(224,84,84,0.15);font-size:10px}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;width:100%;max-width:520px;box-shadow:var(--shadow);max-height:90vh;overflow-y:auto}
+.modal-header{padding:22px 24px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-header h3{font-size:16px;font-weight:700;color:#fff}
+.modal-close{background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;padding:2px 6px;border-radius:4px}
+.modal-close:hover{background:var(--surface);color:var(--text)}
+.modal-body{padding:24px}
+.modal-footer{padding:18px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.divider{height:1px;background:var(--border);margin:20px 0}
+
+/* ── LESSON CARDS ── */
+.lessons-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.lesson-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:all 0.2s}
+.lesson-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.lesson-card-header{padding:18px 18px 14px;background:linear-gradient(135deg,var(--bg3) 0%,var(--surface) 100%);border-bottom:1px solid var(--border)}
+.lesson-card-badges{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.lesson-card-title{font-family:var(--font-display);font-size:15px;font-weight:700;color:#fff;margin-bottom:4px}
+.lesson-card-desc{font-size:12px;color:var(--text2);line-height:1.5}
+.lesson-card-body{padding:14px 18px}
+.lesson-meta{display:flex;align-items:center;gap:14px;font-size:11px;color:var(--text3);margin-bottom:12px}
+.lesson-actions{display:flex;gap:6px;flex-wrap:wrap}
+
+/* ── LEVELS ── */
+.levels-list{display:flex;flex-direction:column;gap:10px}
+.level-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:14px}
+.level-order{width:28px;height:28px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--text2);flex-shrink:0}
+.level-info{flex:1}
+.level-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
+.level-meta{font-size:11px;color:var(--text3)}
+
+/* ── STUDENT HOME ── */
+.student-greeting{margin-bottom:36px}
+.student-greeting h2{font-size:32px;font-weight:800;color:#fff;margin-bottom:6px}
+.student-greeting h2 span{color:var(--accent)}
+.student-greeting p{color:var(--text2);font-size:15px}
+.lesson-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+.lesson-tile{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:all 0.25s}
+.lesson-tile:hover{border-color:rgba(245,166,35,0.3);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,0.35),0 0 30px rgba(245,166,35,0.06)}
+.lesson-tile.completed{border-color:rgba(46,204,138,0.2)}
+.lesson-tile-accent{height:4px;background:linear-gradient(90deg,var(--accent),var(--blue))}
+.lesson-tile.completed .lesson-tile-accent{background:linear-gradient(90deg,var(--green),var(--blue))}
+.lesson-tile-body{padding:20px}
+.tile-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.tile-icon{font-size:28px;line-height:1}
+.tile-title{font-family:var(--font-display);font-size:16px;font-weight:700;color:#fff;margin-bottom:6px;line-height:1.3}
+.tile-desc{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:14px}
+.tile-progress-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-bottom:8px}
+.tile-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--blue));border-radius:2px;transition:width 0.4s}
+.tile-progress-fill.complete{background:linear-gradient(90deg,var(--green),var(--blue))}
+.tile-stats{display:flex;justify-content:space-between;font-size:11px;color:var(--text3)}
+
+/* ── LEVEL PLAYER ── */
+.level-player{max-width:760px;margin:0 auto}
+.level-header{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px}
+.level-back{background:none;border:1px solid var(--border);color:var(--text2);padding:6px 14px;border-radius:var(--r2);font-size:13px;cursor:pointer}
+.level-back:hover{background:var(--surface2);color:var(--text)}
+.level-header-info h3{font-size:18px;font-weight:700;color:#fff;margin-bottom:2px}
+.level-header-info p{font-size:12px;color:var(--text2)}
+.step-progress{display:flex;align-items:center;gap:6px;margin-bottom:20px}
+.step-dot{width:8px;height:8px;border-radius:50%;background:var(--surface2);transition:all 0.2s}
+.step-dot.done{background:var(--green)}
+.step-dot.current{background:var(--accent);transform:scale(1.3)}
+.step-counter{font-size:12px;color:var(--text3);margin-left:6px}
+.step-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px;margin-bottom:16px;animation:fadeUp 0.3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.step-type-badge{font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.step-type-badge::before{content:'';width:16px;height:1px;background:var(--border2)}
+.step-emoji{font-size:40px;margin-bottom:16px;display:block}
+.step-title{font-size:20px;font-weight:700;color:#fff;margin-bottom:12px}
+.step-body{font-size:14px;color:var(--text2);line-height:1.8}
+.step-options{display:flex;flex-direction:column;gap:10px;margin-top:18px}
+.step-option{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r2);padding:12px 16px;cursor:pointer;transition:all 0.2s;font-size:14px;color:var(--text);text-align:left}
+.step-option:hover{border-color:rgba(245,166,35,0.3);background:rgba(245,166,35,0.04)}
+.step-option.correct{border-color:var(--green);background:rgba(46,204,138,0.08);color:var(--green)}
+.step-option.incorrect{border-color:var(--red);background:rgba(224,84,84,0.08);color:var(--red)}
+.step-option.disabled{pointer-events:none;opacity:0.7}
+.step-feedback{margin-top:14px;padding:12px 16px;border-radius:var(--r2);font-size:13px}
+.step-feedback.correct{background:rgba(46,204,138,0.08);border:1px solid rgba(46,204,138,0.2);color:var(--green)}
+.step-feedback.incorrect{background:rgba(224,84,84,0.08);border:1px solid rgba(224,84,84,0.2);color:var(--red)}
+.step-nav{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
+.complete-banner{background:linear-gradient(135deg,rgba(46,204,138,0.1),rgba(79,142,247,0.08));border:1px solid rgba(46,204,138,0.2);border-radius:var(--r);padding:32px;text-align:center;margin-bottom:20px}
+.complete-banner h3{font-size:24px;font-weight:800;color:var(--green);margin-bottom:8px}
+.complete-banner p{color:var(--text2);font-size:14px}
+
+/* ── PROFILE ── */
+.profile-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:24px;margin-bottom:20px;max-width:520px}
+.profile-card h3{font-size:15px;font-weight:700;color:#fff;margin-bottom:18px}
+.profile-avatar-row{display:flex;align-items:center;gap:14px;margin-bottom:22px;padding:14px;background:var(--bg3);border-radius:var(--r2)}
+.profile-avatar-lg{width:48px;height:48px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#000;flex-shrink:0}
+.profile-avatar-lg.blue{background:var(--blue);color:#fff}
+
+/* ── PROGRESS MATRIX ── */
+.prog-matrix{overflow-x:auto}
+.prog-matrix table{border-collapse:collapse;width:100%}
+.prog-matrix th,.prog-matrix td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;text-align:center}
+.prog-matrix th{font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3)}
+.prog-matrix td:first-child{text-align:left;color:var(--text)}
+.prog-cell-done{color:var(--green);font-weight:600}
+.prog-cell-prog{color:var(--accent)}
+.prog-cell-none{color:var(--text3)}
+
+/* ── RELEASE CONTROL ── */
+.release-section{margin-bottom:28px}
+.release-section h3{font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.release-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.release-item-info{flex:1}
+.release-item-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
+.release-item-meta{font-size:11px;color:var(--text3)}
+
+/* ── EMPTY STATES ── */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-state-icon{font-size:40px;margin-bottom:12px}
+.empty-state p{font-size:14px}
+
+/* ── CONFIRM ── */
+.confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:1100;align-items:center;justify-content:center}
+.confirm-overlay.show{display:flex}
+.confirm-box{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:32px;max-width:380px;width:100%;text-align:center;box-shadow:var(--shadow)}
+.confirm-icon{font-size:36px;margin-bottom:14px}
+.confirm-box h3{font-size:18px;font-weight:700;color:#fff;margin-bottom:8px}
+.confirm-box p{font-size:13px;color:var(--text2);margin-bottom:22px;line-height:1.6}
+.confirm-actions{display:flex;gap:10px;justify-content:center}
+
+/* ── TOAST ── */
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:9000;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r2);padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:8px;box-shadow:var(--shadow);animation:slideIn 0.2s ease;max-width:320px}
+@keyframes slideIn{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+.toast.success{border-color:rgba(46,204,138,0.3);color:var(--green)}
+.toast.error{border-color:rgba(224,84,84,0.3);color:var(--red)}
+.toast.info{border-color:rgba(79,142,247,0.3);color:var(--blue)}
+
+/* ── PROGRESS BAR (my progress) ── */
+.my-progress-lesson{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.my-progress-lesson h3{font-size:15px;font-weight:700;color:#fff;margin-bottom:14px}
+.progress-level-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.progress-level-name{font-size:13px;color:var(--text2);flex:1}
+.progress-bar-outer{flex:2;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.progress-bar-inner{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--blue));transition:width 0.4s}
+.progress-bar-inner.complete{background:linear-gradient(90deg,var(--green),var(--blue))}
+
+/* ── INFO BOX ── */
+.info-box{background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.15);border-radius:var(--r2);padding:12px 16px;font-size:12px;color:var(--text2);margin-bottom:20px;display:flex;align-items:flex-start;gap:8px}
+.info-box-icon{font-size:14px;flex-shrink:0;margin-top:1px}
+
+/* ── DEFAULT LESSON SEED BADGE ── */
+.badge-seeded{background:rgba(155,109,255,0.1);color:var(--purple);border:1px solid rgba(155,109,255,0.2);font-size:10px}
+
+/* Responsive */
+@media(max-width:760px){
+  .login-grid{grid-template-columns:1fr}
+  .login-hero{display:none}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .sidebar{width:200px;min-width:200px}
+  .content-view{padding:20px 16px}
+}
+</style>
+
+<!-- Loading Screen -->
+<div id="loading-screen">
+  <div class="loader-logo"><span>Auto<em style="color:var(--accent);font-style:normal">Edu</em></span></div>
+  <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+</div>
+
+<!-- Login Page — NO Register tab, sign-in only -->
+<div id="login-page" class="page">
+  <div class="login-grid">
+    <div class="login-hero">
+      <div class="hero-badge">⚡ AutoEdu Platform</div>
+      <h1>Master <span>Car Electronics</span> Diagnostics</h1>
+      <p>A structured, interactive learning environment for beginner engineers. Learn to troubleshoot lights, fuses, relays, and more — step by step.</p>
+      <ul class="hero-features">
+        <li>Beginner-friendly guided lessons</li>
+        <li>Progressive difficulty levels</li>
+        <li>Fuses, relays &amp; battery basics</li>
+        <li>Crank no-start troubleshooting</li>
+        <li>Real-time progress tracking</li>
+      </ul>
+    </div>
+    <div class="login-form-wrap">
+      <h2>Sign In</h2>
+      <p>Enter your credentials to access your lessons.</p>
+      <div id="auth-alert" class="alert alert-error"><span>⚠</span><span id="auth-alert-msg"></span></div>
+      <div class="form-group"><label>Email Address</label><input type="email" id="auth-email" placeholder="you@example.com"/></div>
+      <div class="form-group"><label>Password</label><input type="password" id="auth-password" placeholder="••••••••"/></div>
+      <button class="btn btn-primary btn-full" id="auth-submit-btn" onclick="submitAuth()">Sign In →</button>
+      <p style="font-size:11px;color:var(--text3);margin-top:16px;text-align:center">
+        Account access is provided by your instructor.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- App Shell -->
+<div id="shell">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div><span>Auto<em>Edu</em></span></div>
+      <div id="sidebar-role-badge" class="sidebar-role">Admin</div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    <div class="sidebar-footer">
+      <div class="user-pill">
+        <div class="avatar" id="sidebar-avatar">A</div>
+        <div class="user-info-text">
+          <div class="user-name" id="sidebar-name">User</div>
+          <div class="user-email" id="sidebar-email">admin@autoedu.com</div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="Sign out">⏻</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <!-- Admin: Dashboard -->
+    <div class="content-view" id="view-dashboard">
+      <div class="page-header"><h2>Dashboard</h2><p>Overview of your platform activity</p></div>
+      <div class="stats-grid" id="dash-stats"></div>
+      <div class="page-header-row" style="margin-bottom:16px"><h2 style="font-size:16px;font-weight:700;color:#fff">Recent Students</h2></div>
+      <div class="table-wrap"><table class="data-table" id="dash-students-table"></table></div>
+    </div>
+
+    <!-- Admin: Lesson Manager -->
+    <div class="content-view" id="view-lessons">
+      <div class="page-header-row">
+        <div><h2>Lessons</h2><p style="color:var(--text2);font-size:13px;margin-top:4px">Create and manage your lesson library</p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="reseedLessons()">↺ Restore Defaults</button>
+          <button class="btn btn-primary" onclick="openLessonModal()">+ New Lesson</button>
+        </div>
+      </div>
+      <div class="info-box"><span class="info-box-icon">💡</span>Lessons marked <strong>Seeded</strong> are built-in defaults. The first 3 are auto-released for students. Use <strong>Release Control</strong> to make more lessons visible to students. Students only see released lessons.</div>
+      <div class="lessons-grid" id="admin-lessons-grid"></div>
+    </div>
+
+    <!-- Admin: Level Editor -->
+    <div class="content-view" id="view-level-editor">
+      <div class="page-header-row">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button class="btn btn-ghost btn-sm" onclick="navClick('view-lessons')">← Back</button>
+          <div><h2 id="level-editor-title">Lesson</h2><p style="color:var(--text2);font-size:12px;margin-top:2px" id="level-editor-sub">Manage levels</p></div>
+        </div>
+        <button class="btn btn-primary" onclick="openLevelModal()">+ Add Level</button>
+      </div>
+      <div class="levels-list" id="levels-list"></div>
+    </div>
+
+    <!-- Admin: Students -->
+    <div class="content-view" id="view-students">
+      <div class="page-header-row">
+        <div><h2>Students</h2><p style="color:var(--text2);font-size:13px;margin-top:4px">Manage student accounts and progress</p></div>
+        <button class="btn btn-primary" onclick="openAddStudentModal()">+ Add Student</button>
+      </div>
+      <div class="info-box"><span class="info-box-icon">ℹ️</span>Students cannot register themselves. Only the admin can create student accounts. <strong>After adding a student, share their email and password with them so they can log in.</strong></div>
+      <div class="table-wrap"><table class="data-table" id="students-table"></table></div>
+    </div>
+
+    <!-- Admin: Progress Monitor -->
+    <div class="content-view" id="view-progress-admin">
+      <div class="page-header"><h2>Progress Monitor</h2><p>Detailed view of student progress across all lessons and levels</p></div>
+      <div id="progress-admin-content"></div>
+    </div>
+
+    <!-- Admin: Release Control -->
+    <div class="content-view" id="view-release">
+      <div class="page-header"><h2>Release Control</h2><p>Control which lessons are visible to students. Only released lessons appear on the student dashboard.</p></div>
+      <div id="release-list-wrap"></div>
+    </div>
+
+    <!-- Shared: Profile -->
+    <div class="content-view" id="view-profile">
+      <div class="page-header"><h2>Profile Settings</h2><p>Update your account details and password</p></div>
+      <div id="profile-content"></div>
+    </div>
+
+    <!-- Student: Home -->
+    <div class="content-view" id="view-student-home">
+      <div class="student-greeting">
+        <h2>Welcome, <span id="student-greeting-name">Student</span> 👋</h2>
+        <p>Pick a lesson below to continue your automotive electronics journey.</p>
+      </div>
+      <div id="student-no-lessons" class="empty-state hidden">
+        <div class="empty-state-icon">📚</div>
+        <p>No lessons have been released yet. Check back soon!</p>
+      </div>
+      <div class="lesson-tiles" id="student-lesson-tiles"></div>
+    </div>
+
+    <!-- Student: Level Player -->
+    <div class="content-view" id="view-level-player">
+      <div class="level-player" id="level-player-wrap"></div>
+    </div>
+
+    <!-- Student: My Progress -->
+    <div class="content-view" id="view-my-progress">
+      <div class="page-header"><h2>My Progress</h2><p>Track your journey across all lessons</p></div>
+      <div id="my-progress-content"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal: Lesson -->
+<div class="modal-overlay" id="modal-lesson">
+  <div class="modal">
+    <div class="modal-header"><h3 id="lesson-modal-title">New Lesson</h3><button class="modal-close" onclick="closeModal('modal-lesson')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="lesson-modal-id"/>
+      <div class="form-group"><label>Lesson Title</label><input type="text" id="lesson-modal-name" placeholder="e.g. Diagnosing a Dead Battery"/></div>
+      <div class="form-group"><label>Description (shown to students)</label><textarea id="lesson-modal-desc" placeholder="What will students learn?"></textarea></div>
+      <div class="form-group"><label>Icon (emoji)</label><input type="text" id="lesson-modal-icon" placeholder="🔋" maxlength="4"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-lesson')">Cancel</button>
+      <button class="btn btn-primary" id="save-lesson-btn" onclick="saveLesson()">Save Lesson</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Level -->
+<div class="modal-overlay" id="modal-level">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header"><h3 id="level-modal-title">New Level</h3><button class="modal-close" onclick="closeModal('modal-level')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="level-modal-id"/>
+      <div class="form-row">
+        <div class="form-group"><label>Level Title</label><input type="text" id="level-modal-name" placeholder="e.g. Checking Battery Voltage"/></div>
+        <div class="form-group"><label>Difficulty</label>
+          <select id="level-modal-difficulty">
+            <option value="intro">Intro</option><option value="easy">Easy</option>
+            <option value="medium">Medium</option><option value="hard">Hard</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Pass Score (%)</label><input type="number" id="level-modal-pass" value="70" min="0" max="100"/></div>
+      <div class="divider"></div>
+      <p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px">📝 Steps</p>
+      <div id="steps-builder"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addStep()" style="margin-top:10px">+ Add Step</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-level')">Cancel</button>
+      <button class="btn btn-primary" id="save-level-btn" onclick="saveLevel()">Save Level</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Student -->
+<div class="modal-overlay" id="modal-student">
+  <div class="modal">
+    <div class="modal-header"><h3 id="student-modal-title">Add Student</h3><button class="modal-close" onclick="closeModal('modal-student')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="student-modal-id"/>
+      <div class="form-group"><label>Full Name</label><input type="text" id="student-modal-name" placeholder="Student Name"/></div>
+      <div class="form-group"><label>Email Address</label><input type="email" id="student-modal-email" placeholder="student@example.com"/></div>
+      <div class="form-group" id="student-modal-pass-group"><label>Password</label><input type="password" id="student-modal-pass" placeholder="Set a password (min 6 chars)"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-student')">Cancel</button>
+      <button class="btn btn-primary" id="save-student-btn" onclick="saveStudent()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Reset Password -->
+<div class="modal-overlay" id="modal-reset-pw">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><h3>Reset Student Password</h3><button class="modal-close" onclick="closeModal('modal-reset-pw')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="reset-pw-student-id"/>
+      <div class="info-box"><span class="info-box-icon">🔑</span>Set a new temporary password for this student. Share it with them securely.</div>
+      <div class="form-group"><label>New Password</label><input type="password" id="reset-pw-new" placeholder="Min 6 characters"/></div>
+      <div class="form-group"><label>Confirm Password</label><input type="password" id="reset-pw-confirm" placeholder="Repeat password"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-reset-pw')">Cancel</button>
+      <button class="btn btn-primary" onclick="doResetStudentPassword()">Set Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Dialog -->
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confirm-icon">⚠️</div>
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-msg">This action cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn" onclick="confirmAction()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//  FIREBASE CONFIG — leave as-is for localStorage mode,
+//  or paste your real config to use Firebase backend
+// ════════════════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+const USE_FIREBASE = FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
+
+// ════════════════════════════════════════════════════════════════
+//  DEFAULT LESSONS — Preloaded on first run
+// ════════════════════════════════════════════════════════════════
+const DEFAULT_LESSONS = [
+  {
+    id: 'seed-lesson-1',
+    title: 'Checking a Blown Fuse',
+    description: 'Learn how to identify and safely replace a blown fuse in a car. This is one of the most common electrical faults.',
+    icon: '🔌',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l1-lv1',
+        order_num: 1,
+        title: 'What is a Fuse?',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔌', title:'What is a Fuse?',
+            body:'A fuse is a small safety device in a car\'s electrical system. It is designed to break (blow) if too much electricity flows through a wire.\n\nThis protects wires from overheating and catching fire. Every car has a fuse box — usually near the dashboard or under the bonnet.' },
+          { id:'s2', type:'info', image:'📦', title:'The Fuse Box',
+            body:'The fuse box holds many fuses, each protecting a different circuit:\n• Headlights fuse\n• Radio fuse\n• Horn fuse\n• Window motors fuse\n\nIf one electrical part stops working, a blown fuse in the box is often the first thing to check.' },
+          { id:'s3', type:'interactive', prompt:'Which of these best describes what a fuse does?',
+            options:['It stores electrical energy','It breaks the circuit if too much current flows','It converts AC to DC power','It charges the battery'],
+            correct:1,
+            feedback:{ correct:'Correct! A fuse protects the circuit by breaking when current gets too high.', incorrect:'Not quite. A fuse is a safety device — it breaks the circuit to prevent overheating.' } },
+          { id:'s4', type:'assessment', question:'A car\'s radio suddenly stops working. What is the FIRST thing a beginner should check?',
+            options:['Replace the entire radio','Check the fuse for the radio circuit','Replace the car battery','Rewire the dashboard'],
+            correct:1,
+            explanation:'Always check the relevant fuse first. It\'s the easiest and cheapest thing to check, and it\'s often the cause of a single device stopping work.' }
+        ]}
+      },
+      {
+        id: 'seed-l1-lv2',
+        order_num: 2,
+        title: 'Spotting a Blown Fuse',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'👁️', title:'How to Spot a Blown Fuse',
+            body:'A blown fuse has a broken metal strip inside. Here\'s how to check:\n\n1. Find the fuse box (check your car\'s manual for the location)\n2. Open the fuse box cover — it usually pops off\n3. Look at the fuse diagram on the cover to find the right fuse\n4. Pull out the suspect fuse using fuse pliers or your fingers\n5. Hold it up to a light — if the metal strip inside is broken, the fuse is blown' },
+          { id:'s2', type:'info', image:'🔍', title:'Visual Check vs Multimeter',
+            body:'Two ways to check a fuse:\n\n✅ Visual Check — Look through the clear plastic body. A broken metal bridge means it\'s blown. Easy and quick.\n\n✅ Multimeter Check — Set to continuity or resistance mode. Touch probes to each end of the fuse. If it beeps / reads 0 ohms, the fuse is good. No reading means it\'s blown.\n\nFor beginners, the visual check is usually enough.' },
+          { id:'s3', type:'interactive', prompt:'You pull out a fuse and see the metal strip inside is broken in two pieces. What does this mean?',
+            options:['The fuse is fine, replace it anyway','The fuse is blown and needs replacing','The car needs a new battery','The fuse box is broken'],
+            correct:1,
+            feedback:{ correct:'Correct! A broken metal strip means the fuse has blown and needs to be replaced with the same rating.', incorrect:'Think about it — the metal strip is what carries electricity. If it\'s broken, the circuit is open.' } },
+          { id:'s4', type:'assessment', question:'A fuse is rated "10A". What does the 10A mean and why does it matter when replacing?',
+            options:['It means the fuse is 10cm long — use any fuse that fits','It means it carries 10 Amps max — always replace with the same rating','It means it\'s 10 years old','The A stands for AutoEdu, the brand name'],
+            correct:1,
+            explanation:'The ampere (A) rating is critical. Always replace with the EXACT same rating. A higher-rated fuse won\'t protect the circuit; a lower-rated one will keep blowing.' }
+        ]}
+      },
+      {
+        id: 'seed-l1-lv3',
+        order_num: 3,
+        title: 'Replacing a Fuse Safely',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'⚠️', title:'Safety First',
+            body:'Before replacing a fuse:\n\n❌ Never replace a fuse with the ignition ON\n❌ Never use tinfoil or wire as a fuse — this is dangerous!\n❌ Never use a higher-rated fuse than required\n\n✅ Turn the ignition OFF\n✅ Use the correct ampere rating\n✅ Find and fix the root cause if fuses keep blowing' },
+          { id:'s2', type:'info', image:'🛠️', title:'Steps to Replace',
+            body:'1. Turn OFF the ignition\n2. Find the blown fuse in the fuse box\n3. Use fuse pliers (or fingers) to pull it out\n4. Find a new fuse with the SAME ampere rating (e.g. 10A → 10A)\n5. Push the new fuse firmly into the slot\n6. Turn the ignition ON and test the device\n\nIf the new fuse blows immediately, there is an underlying fault — do not keep replacing fuses.' },
+          { id:'s3', type:'interactive', prompt:'You replace a fuse and it blows again within seconds. What should you do?',
+            options:['Put in a bigger fuse so it doesn\'t blow','Keep replacing fuses until it stops blowing','Stop and investigate the root cause — a wire may be shorted','Leave the car and call a mechanic immediately'],
+            correct:2,
+            feedback:{ correct:'Exactly right! A fuse that keeps blowing signals a deeper fault like a short circuit. Replacing fuses repeatedly is not the fix.', incorrect:'Putting in bigger fuses or ignoring the problem can cause wires to overheat and start a fire.' } },
+          { id:'s4', type:'assessment', question:'What is the CORRECT replacement for a blown 15A fuse?',
+            options:['A 20A fuse because it\'s stronger','A 10A fuse because smaller is safer','A 15A fuse — same rating always','Any fuse that fits in the slot'],
+            correct:2,
+            explanation:'Always replace with the exact same ampere rating. The 15A rating was chosen by the car manufacturer for that specific circuit. Changing it can cause damage or fire.' }
+        ]}
+      },
+      {
+        id: 'seed-l1-lv4',
+        order_num: 4,
+        title: 'Scenario: Headlights Not Working',
+        difficulty: 'medium',
+        pass_score: 75,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🚗', title:'Scenario: Both Headlights Dead',
+            body:'A student turns on their car\'s headlights and neither one works. The dashboard light for headlights comes on, but the actual headlights are off.\n\nPossible causes (in order of likelihood for a beginner):\n1. Blown headlight fuse\n2. Faulty relay\n3. Damaged wiring\n4. Both bulbs blown (unlikely at same time)' },
+          { id:'s2', type:'interactive', prompt:'As a beginner, what is the FIRST and EASIEST thing to check when both headlights don\'t work?',
+            options:['Replace both bulbs immediately','Check the headlight fuse in the fuse box','Call a professional','Check all 50 fuses in the box one by one'],
+            correct:1,
+            feedback:{ correct:'Great thinking! The headlight fuse is the first and easiest thing to check. Look at the fuse diagram on the fuse box cover.', incorrect:'Start simple — always check the fuse first before anything else.' } },
+          { id:'s3', type:'info', image:'✅', title:'What You Found',
+            body:'You open the fuse box. You find the headlight fuse (let\'s say Fuse #14, 20A). You pull it out and hold it up to the light.\n\nThe metal strip inside is intact — the fuse is NOT blown.\n\nSo what next? The problem might be:\n• A bad relay (controls the headlight circuit)\n• A wiring fault\n• A faulty switch\n\nAs a beginner, this is when you record your finding and escalate to someone with more experience.' },
+          { id:'s4', type:'assessment', question:'You\'ve checked the headlight fuse and it\'s fine. Both headlights are still dead. What is the most logical NEXT step?',
+            options:['Replace both headlight bulbs immediately','Check the headlight relay','Give up and buy a new car','Disconnect the battery'],
+            correct:1,
+            explanation:'After confirming the fuse is good, the relay is the next thing to check. Relays are switches controlled by electricity. A dead relay can kill a whole circuit even if the fuse is fine.' }
+        ]}
+      }
+    ]
+  },
+  {
+    id: 'seed-lesson-2',
+    title: 'Diagnosing a Faulty Light Bulb',
+    description: 'Learn to tell the difference between a dead bulb, a blown fuse, and a wiring problem. A key skill for any car electrician.',
+    icon: '💡',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l2-lv1',
+        order_num: 1,
+        title: 'How Bulbs Work',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'💡', title:'How a Car Bulb Works',
+            body:'A car bulb has a thin wire called a filament inside. When electricity flows through it, the filament glows and produces light.\n\nOver time, the filament breaks — this is when we say the bulb has "blown."\n\nModern cars also use LEDs (no filament), but the concept of checking and replacing them is similar.' },
+          { id:'s2', type:'interactive', prompt:'What part of a traditional bulb breaks when it "blows"?',
+            options:['The glass cover','The metal base','The filament inside','The plastic holder'],
+            correct:2,
+            feedback:{ correct:'Correct! The filament is the thin wire that heats up and glows. When it breaks, no current flows and the bulb goes dark.', incorrect:'Think about what carries the electricity inside the bulb — it\'s the thin wire called the filament.' } },
+          { id:'s3', type:'assessment', question:'A student replaces a blown headlight bulb but the light still doesn\'t work. What should they check next?',
+            options:['Replace the bulb again with the same one','Check the fuse and wiring for that light','Replace the entire headlight assembly','The car needs a software update'],
+            correct:1,
+            explanation:'If a new bulb doesn\'t fix it, the fault is elsewhere — usually the fuse, relay, or wiring. Always think systematically: bulb → fuse → relay → wiring.' }
+        ]}
+      },
+      {
+        id: 'seed-l2-lv2',
+        order_num: 2,
+        title: 'Bulb vs Fuse vs Wiring',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔎', title:'Is It the Bulb, Fuse, or Wiring?',
+            body:'When a light doesn\'t work, here\'s how to tell what\'s wrong:\n\n💡 Just that ONE bulb is out → likely the bulb or its socket\n🔌 Several devices stopped at once → likely a fuse (one fuse can protect multiple circuits)\n⚡ Light flickers on and off → likely a loose connection or damaged wire\n🚫 New fuse keeps blowing → likely a short circuit in the wiring' },
+          { id:'s2', type:'interactive', prompt:'Both the interior light AND the boot light stop working at the same time. What is the most likely cause?',
+            options:['Both bulbs blew at exactly the same time','A single blown fuse that powers both lights','The battery is dead','A broken alternator'],
+            correct:1,
+            feedback:{ correct:'Great reasoning! When multiple devices on the same circuit fail together, a shared fuse is the most likely suspect.', incorrect:'The chances of two separate bulbs failing at the exact same moment are very low. Think about what they share — probably a fuse.' } },
+          { id:'s3', type:'assessment', question:'A single brake light is not working. The other two brake lights work fine. What is the most likely fault?',
+            options:['Blown main brake light fuse','Faulty brake light switch','Dead bulb in that specific light','Flat battery'],
+            correct:2,
+            explanation:'If only ONE light is out while others on the same circuit work, the fault is almost always local to that light — a dead bulb or a bad socket connection.' }
+        ]}
+      },
+      {
+        id: 'seed-l2-lv3',
+        order_num: 3,
+        title: 'Replacing a Bulb Step-by-Step',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🛠️', title:'Replacing a Bulb — the Right Way',
+            body:'General steps for replacing a car bulb:\n\n1. Turn off the car and open the bonnet or access panel\n2. Locate the bulb holder (twist and pull, or press a clip)\n3. Identify the bulb type (check the car manual — e.g. H4, H7, T10)\n4. Remove the old bulb (twist or pull depending on type)\n5. For halogen bulbs — never touch the glass with bare hands! Oil from skin weakens the glass.\n6. Push in the new bulb until it clicks\n7. Test before closing everything up' },
+          { id:'s2', type:'interactive', prompt:'Why should you never touch a halogen bulb\'s glass with your bare hand?',
+            options:['It will give you an electric shock','Oils from your skin weaken the glass and cause it to fail early','It voids the warranty','The glass is too fragile to touch'],
+            correct:1,
+            feedback:{ correct:'Exactly! Always handle halogen bulbs with gloves or a clean cloth. Grease from fingers creates hot spots on the glass that can shatter it.', incorrect:'The real danger is contamination — grease from your skin creates weak points that can cause the hot glass to crack.' } },
+          { id:'s3', type:'assessment', question:'You are replacing a rear tail light bulb. The bulb type written in the manual is "W5W". You find two options at the shop: W5W and W21W. Which one do you buy?',
+            options:['W21W because it\'s brighter','W5W — always match the exact type','Either one — they\'re interchangeable','None, ask the shop to do it for you'],
+            correct:1,
+            explanation:'Always match the exact bulb type. The W21W is a different size and wattage — it may not fit, and even if it does, it could overload the circuit or not fit the lens correctly.' }
+        ]}
+      }
+    ]
+  },
+  {
+    id: 'seed-lesson-3',
+    title: 'Understanding Relays',
+    description: 'Relays are electrically-controlled switches. Understanding them helps you diagnose why devices like headlights or fuel pumps stop working.',
+    icon: '⚡',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l3-lv1',
+        order_num: 1,
+        title: 'What is a Relay?',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'⚡', title:'What is a Relay?',
+            body:'A relay is an electrically-controlled switch.\n\nImagine a light switch on the wall. You use a small amount of force to flip the switch, which controls a much heavier circuit (like a powerful light).\n\nA relay works the same way:\n• A small signal (from the ignition switch or ECU) activates an electromagnet\n• The electromagnet pulls a small lever\n• This closes a second, heavier circuit\n\nRelays are used for headlights, fuel pumps, cooling fans, horns, and starter motors.' },
+          { id:'s2', type:'info', image:'🔢', title:'The Four Pins of a Relay',
+            body:'Most car relays have 4 or 5 pins:\n\nPin 85 & 86 — Control coil (small current to activate the relay)\nPin 30 — Common (power in from battery or supply)\nPin 87 — Normally Open (output when relay is activated)\nPin 87a — Normally Closed (output when relay is NOT activated)\n\nFor most circuits, you\'ll use pins 85, 86, 30, and 87.' },
+          { id:'s3', type:'interactive', prompt:'What powers the relay\'s electromagnet coil?',
+            options:['A large current directly from the battery','A small control signal, like from the ignition switch','A mechanical spring inside the relay','The same current as the load (headlights, pump, etc.)'],
+            correct:1,
+            feedback:{ correct:'Correct! The coil uses a small control signal. This is what makes relays useful — a small switch can control a large load safely.', incorrect:'The whole point of a relay is that a small control current activates it, allowing a much heavier circuit to be switched safely.' } },
+          { id:'s4', type:'assessment', question:'Why would a car designer use a relay to control headlights instead of just running the wire directly through the headlight switch?',
+            options:['To make the car harder to repair','The headlight switch would burn out handling the high current directly — a relay keeps the switch safe','Relays are cheaper than wires','To make the headlights flash automatically'],
+            correct:1,
+            explanation:'Headlights draw a lot of current. Running that through a small dashboard switch would burn the switch out quickly. A relay lets the switch handle a tiny control signal while the relay handles the heavy current.' }
+        ]}
+      },
+      {
+        id: 'seed-l3-lv2',
+        order_num: 2,
+        title: 'Testing a Relay',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔊', title:'The Click Test',
+            body:'The fastest way to check if a relay is working:\n\n1. Find the relay (usually in the fuse/relay box)\n2. With the circuit active (e.g. headlights switched on), place your finger on the relay\n3. You should FEEL and HEAR a faint "click" when the relay energizes\n\nNo click = the coil may not be getting power, or the coil is dead\nClicks but circuit doesn\'t work = the contacts inside may be burnt or stuck' },
+          { id:'s2', type:'interactive', prompt:'You switch on the headlights and place your finger on the headlight relay. You feel a click. But the headlights still don\'t work. What does this tell you?',
+            options:['The relay is definitely fine — the fault is elsewhere','The relay coil is working, but the contacts inside may be damaged','The battery is flat','The fuse is blown'],
+            correct:1,
+            feedback:{ correct:'Good analysis! The click means the coil activated, but the internal contacts (the switch part) may be burnt or corroded and not passing current.', incorrect:'The click confirms the coil is OK, but a relay has two separate parts — the coil and the contacts. Contacts can fail while the coil still works.' } },
+          { id:'s3', type:'assessment', question:'You find a suspected faulty relay. What is the QUICKEST way to test if it\'s causing the problem?',
+            options:['Take the car to a workshop','Swap it with an identical relay from a working circuit in the same car','Measure the coil resistance with a multimeter','Replace the entire fuse box'],
+            correct:1,
+            explanation:'The quickest test is the "swap test" — find an identical relay in the car (same part number), swap it in, and see if the fault moves with the relay. This confirms whether the relay is the problem without needing special tools.' }
+        ]}
+      },
+      {
+        id: 'seed-l3-lv3',
+        order_num: 3,
+        title: 'Relay in a Real Circuit',
+        difficulty: 'medium',
+        pass_score: 75,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🗺️', title:'Tracing a Relay Circuit',
+            body:'Let\'s trace a typical headlight relay circuit:\n\n1. Battery (+) → Fuse → Pin 30 of relay\n2. Headlight switch → Pin 86 of relay (control signal)\n3. Pin 85 → Earth/Ground\n4. When switch is ON, coil activates, Pin 30 connects to Pin 87\n5. Pin 87 → Headlights → Earth\n\nIf headlights don\'t work, the fault can be at any point in this chain.' },
+          { id:'s2', type:'interactive', prompt:'In the headlight relay circuit above, the fuse is good, the switch is good, the bulbs are new — but headlights still don\'t work. What should you check?',
+            options:['Replace the battery','Check the relay — it\'s the remaining component in the chain','Check the tyres','Replace the entire wiring harness'],
+            correct:1,
+            feedback:{ correct:'Exactly right. By elimination — fuse OK, switch OK, bulbs OK — the relay is the remaining suspect. Replace or swap-test it.', incorrect:'Think about the circuit chain. You\'ve eliminated the fuse, switch, and bulbs. What\'s left in the circuit?' } },
+          { id:'s3', type:'assessment', question:'A student removes a relay and finds the pin numbers 85, 86, 30, 87 stamped on the bottom. Pins 85 and 86 are the...?',
+            options:['Power output pins to the headlights','Coil control pins (small signal circuit)','Ground connection only','Battery positive connection'],
+            correct:1,
+            explanation:'Pins 85 and 86 are always the coil pins — they carry the small control signal that activates the relay. Pins 30 and 87 carry the heavy load current (e.g., to the headlights).' }
+        ]}
+      }
+    ]
+  },
+  {
+    id: 'seed-lesson-4',
+    title: 'Battery Connection Basics',
+    description: 'A dead or poorly connected battery is behind many car electrical problems. Learn to check, clean, and connect a battery safely.',
+    icon: '🔋',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l4-lv1',
+        order_num: 1,
+        title: 'Battery Basics',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔋', title:'The Car Battery',
+            body:'The car battery has two jobs:\n\n1. Start the engine — It provides a burst of power to the starter motor\n2. Power electrics when the engine is off — Lights, alarm, radio memory\n\nOnce the engine is running, the alternator takes over and charges the battery.\n\nA typical car battery is 12 Volts. It has two terminals:\n• Positive (+) — usually red\n• Negative (–) — usually black' },
+          { id:'s2', type:'interactive', prompt:'The car battery is 12V. When you measure it and get only 11.2V, what might this indicate?',
+            options:['The battery is fully charged and healthy','The battery is low and may struggle to start the car','The voltage is perfect — 12V is the maximum','The alternator is overcharging'],
+            correct:1,
+            explanation:'A fully charged 12V battery reads around 12.6V at rest. Below 12.0V indicates a discharged or weak battery.' },
+          { id:'s3', type:'assessment', question:'Which terminal on a car battery should you ALWAYS disconnect first when removing the battery?',
+            options:['Positive (+) first','Negative (–) first','It doesn\'t matter — remove either','Both at the exact same time'],
+            correct:1,
+            explanation:'Always disconnect the negative (–) terminal first. This breaks the earth connection and prevents accidental short circuits if your spanner touches the car body while removing the positive cable.' }
+        ]}
+      },
+      {
+        id: 'seed-l4-lv2',
+        order_num: 2,
+        title: 'Checking Battery Connections',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔍', title:'Why Connections Matter',
+            body:'Even a fully charged battery won\'t work properly if the connections are:\n\n❌ Loose — terminal not tightened onto the post\n❌ Corroded — white or blue-green powder on the terminals\n❌ Broken — cable damaged near the terminal\n\nCorrosion creates resistance. Resistance means less current gets through. Result: engine cranks slowly or not at all, warning lights appear, electronics behave strangely.' },
+          { id:'s2', type:'interactive', prompt:'You see white powder building up around the battery terminals. What is this and what should you do?',
+            options:['Engine oil leak — wipe it and ignore it','Corrosion from battery acid — clean it safely with baking soda and water','Normal condensation — leave it alone','The battery is overcharging — remove it immediately'],
+            correct:1,
+            feedback:{ correct:'Correct! Corrosion is a mix of battery acid residue and oxidation. Clean it with a baking soda and water mixture (neutralises the acid), then rinse and dry.', incorrect:'That white powder is corrosion — a product of battery acid vapour reacting with the metal terminals. It needs to be cleaned off.' } },
+          { id:'s3', type:'assessment', question:'After cleaning battery terminals, what should you apply to them before reconnecting?',
+            options:['Engine oil','Petroleum jelly (Vaseline) or anti-corrosion spray','Superglue to stop corrosion','Nothing — leave them bare'],
+            correct:1,
+            explanation:'A thin coating of petroleum jelly or terminal grease slows down future corrosion by keeping air and moisture away from the metal.' }
+        ]}
+      },
+      {
+        id: 'seed-l4-lv3',
+        order_num: 3,
+        title: 'Jump-Starting Safely',
+        difficulty: 'medium',
+        pass_score: 75,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🚗', title:'Jump-Start: The Right Order',
+            body:'Jump-starting a car with flat battery — step by step:\n\n1. Park donor car next to (not touching) the flat car\n2. Connect RED (+) clamp → Flat car positive (+)\n3. Connect RED (+) clamp → Donor car positive (+)\n4. Connect BLACK (–) clamp → Donor car negative (–)\n5. Connect BLACK (–) clamp → Unpainted metal on flat car (NOT the battery!)\n6. Start the donor car and let it run 2–3 minutes\n7. Start the flat car\n8. Remove clamps in REVERSE order\n\n⚠️ Never connect negative clamp to flat battery — can ignite hydrogen gas!' },
+          { id:'s2', type:'interactive', prompt:'Why do you connect the final (4th) black clamp to an unpainted metal part of the flat car, NOT directly to the battery negative?',
+            options:['It\'s just easier to reach','Connecting near the battery can ignite hydrogen gas from the battery','The cable is too short to reach the battery','Black clamps only work on metal'],
+            correct:1,
+            feedback:{ correct:'Safety first! Batteries release small amounts of hydrogen gas. A spark near the battery terminal could ignite it. Using a remote earth point is much safer.', incorrect:'This is about safety. Batteries release hydrogen gas, and a spark from making the connection could ignite it.' } },
+          { id:'s3', type:'assessment', question:'After successfully jump-starting a car, the driver asks if they can switch off the engine straight away. What do you advise?',
+            options:['Yes, switch off immediately — it\'s fully charged','No — drive for at least 20–30 minutes to let the alternator recharge the battery','Replace the battery before driving','Yes, but only if the battery warning light is off'],
+            correct:1,
+            explanation:'Jump-starting just gives the battery enough charge to start the engine. The alternator recharges the battery while driving. Switching off immediately means the battery may still be flat next time.' }
+        ]}
+      }
+    ]
+  },
+  {
+    id: 'seed-lesson-5',
+    title: 'Basic Crank No-Start Diagnosis',
+    description: 'Learn a beginner-friendly approach to diagnosing a car that cranks (turns over) but won\'t start. Understand the key things an engine needs.',
+    icon: '🔑',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l5-lv1',
+        order_num: 1,
+        title: 'What Does an Engine Need to Start?',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔑', title:'The Three Things an Engine Needs',
+            body:'An engine needs THREE things to start:\n\n⛽ FUEL — Petrol or diesel delivered to the cylinders\n💨 AIR — Oxygen to mix with fuel for combustion\n⚡ SPARK — Ignition to ignite the fuel-air mixture (petrol engines only — diesels use compression heat)\n\nIf ANY one of these is missing or wrong, the engine will crank but not start.\n\nDiesel engines don\'t use spark plugs — they use high compression heat to ignite fuel. But they still need fuel and air.' },
+          { id:'s2', type:'interactive', prompt:'A petrol car engine cranks (starter motor turns it over) but the engine won\'t fire. Which of the following is NOT a possible cause?',
+            options:['No fuel in tank','Faulty spark plugs','A broken wing mirror','Blocked fuel filter'],
+            correct:2,
+            explanation:'A broken wing mirror has absolutely nothing to do with engine starting. The cause must be related to fuel, air, or spark.' },
+          { id:'s3', type:'assessment', question:'A diesel car cranks but won\'t start. It cannot be caused by bad spark plugs because...?',
+            options:['Diesel cars have 10 spark plugs not 4','Diesel engines don\'t use spark plugs — they ignite fuel with compression heat','Diesel spark plugs are replaced every 10 years','Diesel cars don\'t have ignition systems'],
+            correct:1,
+            explanation:'Diesel engines rely on the heat of highly compressed air to ignite fuel — no spark needed. Instead of spark plugs, they have glow plugs (for cold starting) but these are different from ignition spark plugs.' }
+        ]}
+      },
+      {
+        id: 'seed-l5-lv2',
+        order_num: 2,
+        title: 'First Checks: Fuel and Battery',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'⛽', title:'Start with the Simplest Checks',
+            body:'When a car cranks but won\'t start, always check the easiest things first:\n\n1. 🔋 Check the fuel gauge — Is there fuel? (More common than people admit!)\n2. 🔋 Check battery condition — A weak battery can crank slowly but not provide enough power for injectors and ignition\n3. ⚠️ Check for warning lights — Fuel light on? Check engine light on? Immobiliser light flashing?\n4. 📅 When was the last service? Old fuel filter or spark plugs can cause no-start.' },
+          { id:'s2', type:'interactive', prompt:'A car cranks very slowly ("wrrr...wrrr...") and won\'t start. The battery voltage reads 11.4V. What is the most likely cause of the slow crank?',
+            options:['The engine is too cold','The battery is low — not enough power to crank properly','The fuel pump is broken','The spark plugs need replacing'],
+            correct:1,
+            feedback:{ correct:'Correct! 11.4V is too low for reliable starting. A flat or weak battery can\'t provide enough current to spin the starter motor at the required speed.', incorrect:'A slow crank and low voltage (11.4V, should be 12.4V+ when charged) points directly to a battery issue.' } },
+          { id:'s3', type:'assessment', question:'A student checks a no-start car and finds the fuel gauge on empty, despite the owner saying "I filled it last week." What should the student consider?',
+            options:['The fuel gauge is definitely broken — ignore it','Either the car has used all the fuel OR the fuel gauge itself may be faulty — both need investigating','The battery is flat','The engine oil is low'],
+            correct:1,
+            explanation:'Both are possible: the car genuinely may be out of fuel, or the fuel gauge sender unit may be faulty and giving a wrong reading. A simple way to check is to add a known quantity of fuel and retry.' }
+        ]}
+      },
+      {
+        id: 'seed-l5-lv3',
+        order_num: 3,
+        title: 'Checking the Immobiliser',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔐', title:'What is an Immobiliser?',
+            body:'Most modern cars have an immobiliser — a security system that prevents the engine from starting unless the correct key is used.\n\nHow it works:\n• The car key has a tiny chip (transponder) inside\n• When you insert the key, the car reads the chip\n• If the chip is correct, the immobiliser deactivates and the engine can start\n• If the chip is missing or not recognised, the immobiliser stays active and the engine won\'t start — even if everything else is fine\n\nA flashing padlock or car symbol on the dashboard = immobiliser active' },
+          { id:'s2', type:'interactive', prompt:'A car cranks normally and has fuel, but won\'t start. You notice a small padlock symbol flashing on the dashboard. What does this suggest?',
+            options:['The fuel is contaminated','The immobiliser is active — the car hasn\'t recognised the key','The engine oil is low','A fuse has blown'],
+            correct:1,
+            feedback:{ correct:'Good eye! The flashing padlock/car symbol is the immobiliser warning light. It means the car isn\'t accepting the key signal.', incorrect:'That padlock symbol is specifically the immobiliser or security warning light — it means the key hasn\'t been recognised.' } },
+          { id:'s3', type:'assessment', question:'A student is diagnosing a crank no-start. Fuel is OK, battery is OK, no fault codes. But the key looks very worn and old. What should they try?',
+            options:['Replace the fuel pump','Try the spare key — the transponder chip in the worn key may be failing','Adjust the spark plug gap','Replace the immobiliser ECU immediately'],
+            correct:1,
+            explanation:'A worn key or one with a failing transponder chip can cause intermittent no-start. The spare key costs nothing to try and can immediately confirm or rule out the key/immobiliser as the cause.' }
+        ]}
+      },
+      {
+        id: 'seed-l5-lv4',
+        order_num: 4,
+        title: 'Systematic Diagnosis Approach',
+        difficulty: 'medium',
+        pass_score: 75,
+        content: { steps: [
+          { id:'s1', type:'info', image:'📋', title:'The Beginner\'s No-Start Checklist',
+            body:'When facing a crank no-start, work through this list in order:\n\n✅ 1. Fuel gauge / fuel level\n✅ 2. Battery voltage and connections\n✅ 3. Immobiliser light on dashboard\n✅ 4. Any warning lights or fault codes (OBD scanner)\n✅ 5. Listen to the crank speed — fast or slow?\n✅ 6. Smell — fuel smell when cranking? (Flood) No fuel smell? (No fuel delivery)\n✅ 7. When was the last service?\n\nDocument what you find at each step. A good diagnosis is a systematic one.' },
+          { id:'s2', type:'interactive', prompt:'You\'re diagnosing a crank no-start. You note: strong fuel smell, engine cranks fast, battery at 12.6V, no immobiliser light. What does the fuel smell suggest?',
+            options:['The engine has no fuel — the smell is from the exhaust','The engine may be flooded — too much fuel getting in','The catalytic converter is broken','The oil needs changing'],
+            correct:1,
+            feedback:{ correct:'A strong fuel smell during cranking suggests the engine is flooded — too much fuel has entered the cylinders, making it hard to ignite. Solution: hold the accelerator fully down while cranking to clear the flood.', incorrect:'A fuel smell means there IS fuel — in fact too much of it. The engine is likely flooded.' } },
+          { id:'s3', type:'info', image:'🎓', title:'Know Your Limits',
+            body:'As a beginner, your job is to:\n\n✅ Gather facts systematically\n✅ Check the easy things first\n✅ Report your findings clearly\n✅ Know when to escalate\n\nYou DON\'T need to fix everything yourself right now. A good diagnosis is already extremely valuable.\n\nWith experience, you\'ll learn to use an OBD scanner to read fault codes, test fuel pressure, check injector pulse, and much more.' },
+          { id:'s4', type:'assessment', question:'A beginner checks a no-start car. Fuel level OK. Battery 12.6V. No immobiliser light. Cranks fast. No fuel smell. No warning lights. What is the most professional next step?',
+            options:['Declare the car fixed and close the job','Connect an OBD scanner to check for fault codes, and escalate to a senior technician','Replace the engine','Just keep cranking until it starts'],
+            correct:1,
+            explanation:'When the basic checks pass, the next step is to read fault codes with an OBD scanner. This gives specific direction. Escalating to a more experienced technician with your documented findings is professional and smart.' }
+        ]}
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // LESSON 6 — Basic Electricity & Ohm's Law
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: 'seed-lesson-6',
+    title: "Basic Electricity & Ohm's Law",
+    description: "Understand voltage, current and resistance — the three fundamentals of all car electrical systems. Master Ohm's Law and you can understand any circuit.",
+    icon: '📐',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l6-lv1',
+        order_num: 1,
+        title: 'Voltage, Current & Resistance',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔋', title:'Three Things in Every Circuit',
+            body:'Every electrical circuit in a car involves three things:\n\n⚡ VOLTAGE (V) — The electrical pressure that pushes current. Think of it like water pressure. A car battery provides ~12 volts.\n\n🔁 CURRENT (A) — The flow of electricity through the circuit. Measured in Amps (A).\n\n🛑 RESISTANCE (Ω) — Anything that slows the current. Measured in Ohms (Ω). Like a narrow pipe.' },
+          { id:'s2', type:'interactive', prompt:"A car battery provides 12 volts. What does 'voltage' represent?",
+            options:['The amount of current flowing','The electrical pressure that pushes current','The resistance in the wire','The speed of the electrons'],
+            correct:1,
+            feedback:{ correct:"Correct! Voltage is the electrical pressure — it drives current around the circuit.", incorrect:"Voltage is like pressure in a water pipe — it pushes the current around." } },
+          { id:'s3', type:'assessment', question:'What unit is electrical current measured in?',
+            options:['Volts (V)','Ohms (Ω)','Amps (A)','Watts (W)'],
+            correct:2,
+            explanation:"Current is measured in Amps (A). Voltage in Volts (V). Resistance in Ohms (Ω). These three are connected by Ohm's Law." }
+        ]}
+      },
+      {
+        id: 'seed-l6-lv2',
+        order_num: 2,
+        title: "Ohm's Law Explained",
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'📐', title:"Ohm's Law — The Golden Rule",
+            body:"Ohm's Law: V = I × R\n\nWhere V = Voltage (Volts), I = Current (Amps), R = Resistance (Ohms)\n\nRearranged:\n• Current:    I = V ÷ R\n• Resistance: R = V ÷ I\n\nExample: A 12V circuit with 4Ω resistance → I = 12 ÷ 4 = 3 Amps" },
+          { id:'s2', type:'interactive', prompt:"A 12V circuit has 4 Ohms resistance. Using I = V ÷ R, what is the current?",
+            options:['48 Amps','3 Amps','0.33 Amps','16 Amps'],
+            correct:1,
+            feedback:{ correct:"Correct! I = 12 ÷ 4 = 3 Amps.", incorrect:"Use I = V ÷ R. So 12 ÷ 4 = 3 Amps." } },
+          { id:'s3', type:'assessment', question:"A 12V circuit should have 3 Ohms resistance. What current should flow?",
+            options:['4 Amps','36 Amps','0.25 Amps','2 Amps'],
+            correct:0,
+            explanation:"I = V ÷ R = 12 ÷ 3 = 4 Amps. If you measure less than 4 Amps, resistance has increased — a sign of corrosion or a bad connection." }
+        ]}
+      },
+      {
+        id: 'seed-l6-lv3',
+        order_num: 3,
+        title: 'Series vs Parallel Circuits',
+        difficulty: 'medium',
+        pass_score: 75,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔗', title:'Series Circuits',
+            body:'In a SERIES circuit, all components share one loop — current has only ONE path.\n\nIf one component fails, the entire circuit stops.\n\nExample: Some instrument lights wired in series — one blown bulb kills them all.' },
+          { id:'s2', type:'interactive', prompt:'In a series circuit, one component breaks. What happens to the others?',
+            options:['Only the failed component stops','The others work harder','Everything stops','The fuse blows'],
+            correct:2,
+            feedback:{ correct:'Correct! Break the series loop anywhere and all current stops.', incorrect:'One break kills the whole series circuit — there is only one path for current.' } },
+          { id:'s3', type:'info', image:'⚡', title:'Parallel Circuits',
+            body:'In a PARALLEL circuit, components connect across the same two points — current has MULTIPLE paths.\n\nIf one branch fails, others still work.\n\nAlmost all car systems (lights, radio, horn) are wired in parallel — this is why a dead headlight does not kill your radio.' },
+          { id:'s4', type:'assessment', question:'Why are most car systems wired in parallel?',
+            options:['Cheaper to install','If one device fails, others still work','Uses less power','Series is too complex'],
+            correct:1,
+            explanation:'Parallel wiring gives each device its own independent path. A blown headlight does not affect the radio or any other system.' }
+        ]}
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // LESSON 7 — Car Battery & Charging System
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: 'seed-lesson-7',
+    title: 'Battery & Charging System',
+    description: 'Learn how the 12V battery works, what a healthy voltage looks like, how the alternator keeps it charged, and how to diagnose common faults.',
+    icon: '🔋',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l7-lv1',
+        order_num: 1,
+        title: 'How the 12V Battery Works',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔋', title:'The Car Battery',
+            body:"A car battery stores chemical energy and converts it to electrical energy.\n\nKey facts:\n• A FULLY CHARGED battery reads 12.6–12.8V (not exactly 12)\n• Has 6 cells, each ~2.1V\n• Main jobs: Start the engine, power electrics when off, stabilise the system while running\n• Capacity measured in Ah (Amp-hours)" },
+          { id:'s2', type:'interactive', prompt:'A fully charged 12V car battery should measure approximately what voltage?',
+            options:['Exactly 12.0V','12.6 to 12.8V','14.4V','11.5V'],
+            correct:1,
+            feedback:{ correct:"Correct! 12.6–12.8V = healthy fully charged battery. Exactly 12.0V means only ~50% charge.", incorrect:"12.0V = only half charge. A healthy battery reads 12.6–12.8V." } },
+          { id:'s3', type:'assessment', question:'You measure a battery at 11.8V with engine off. What does this tell you?',
+            options:['Fully charged','Discharged — needs charging or replacing','Overcharged','Perfectly normal'],
+            correct:1,
+            explanation:"Below 12.4V = low battery. Below 12.0V = flat. At 11.8V this battery needs charging and testing." }
+        ]}
+      },
+      {
+        id: 'seed-l7-lv2',
+        order_num: 2,
+        title: 'The Alternator',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'⚙️', title:'What Does the Alternator Do?',
+            body:"The alternator is a generator driven by the engine belt. It:\n\n1. CHARGES the battery while the engine runs\n2. POWERS all car electrics during normal driving\n\nHealthy alternator output: 13.8V to 14.4V\n\nThis is HIGHER than battery voltage (12.6V) — the difference drives charging current into the battery." },
+          { id:'s2', type:'interactive', prompt:'Engine running, you measure 14.1V at the battery. What does this mean?',
+            options:['Overcharged — dangerous','Alternator working normally','Alternator has failed','Battery is flat'],
+            correct:1,
+            feedback:{ correct:'Correct! 13.8–14.4V with engine running = alternator charging normally.', incorrect:'With engine running, alternator raises voltage to 13.8–14.4V. 14.1V is perfectly normal.' } },
+          { id:'s3', type:'assessment', question:'Battery keeps going flat. Alternator measures only 12.3V with engine running. What is the diagnosis?',
+            options:['Wrong battery type','Alternator not charging — faulty or belt broken','Short in headlights','Voltage is normal'],
+            correct:1,
+            explanation:"12.3V with engine running = alternator barely working. Should be 13.8–14.4V. Check the drive belt first, then test the alternator output under load." }
+        ]}
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // LESSON 8 — Using a Multimeter
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: 'seed-lesson-8',
+    title: 'Using a Multimeter',
+    description: 'A multimeter is the most important tool for a car electrician. Learn to measure voltage, resistance and continuity to diagnose faults confidently.',
+    icon: '🔬',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l8-lv1',
+        order_num: 1,
+        title: 'Getting to Know Your Multimeter',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔬', title:'What Is a Multimeter?',
+            body:"A multimeter combines several measurement tools:\n\n• DC Voltage (V—) — Battery and circuit voltage\n• AC Voltage (V~) — Mains power (rarely needed in cars)\n• Resistance (Ω) — Component or wire resistance\n• Continuity (🔊) — Beeps when circuit is unbroken\n• Current (A) — Measures amps\n\nFor car diagnostics: mostly DC voltage and continuity.\n\nRed lead → V/Ω socket. Black lead → COM (negative)." },
+          { id:'s2', type:'interactive', prompt:'You want to check if a wire is broken inside its insulation. Which function should you use?',
+            options:['DC Voltage','AC Voltage','Continuity (beep)','Temperature'],
+            correct:2,
+            feedback:{ correct:'Correct! Continuity mode beeps if the wire is unbroken. No beep = broken wire.', incorrect:'Continuity mode beeps when the circuit is complete. No beep = break in the wire.' } },
+          { id:'s3', type:'assessment', question:'Where does the RED probe plug into on a standard multimeter?',
+            options:['COM socket','Negative terminal','V/Ω/mA socket','Any socket'],
+            correct:2,
+            explanation:"Red → V/Ω socket. Black → COM (common/negative). Wrong connections can damage the meter." }
+        ]}
+      },
+      {
+        id: 'seed-l8-lv2',
+        order_num: 2,
+        title: 'Measuring Voltage',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'📏', title:'How to Measure Voltage',
+            body:"Steps:\n1. Dial to DC Voltage (V—). Choose a range higher than expected (20V for 12V circuits)\n2. RED probe → V socket, BLACK probe → COM\n3. RED probe → positive (+) terminal\n4. BLACK probe → ground (earth/negative)\n5. Read the display\n\n⚠️ Never short probes on voltage setting\n⚠️ Always set correct function before touching circuit" },
+          { id:'s2', type:'interactive', prompt:'You set to 20V DC and get 000.0V on a battery. Most likely cause?',
+            options:['Battery is completely dead','Probes reversed or not in correct sockets','Meter is broken','Normal reading'],
+            correct:1,
+            feedback:{ correct:'Correct! 000.0V usually means a probe or connection problem, not a dead battery.', incorrect:'A perfectly flat 0.0V battery is nearly impossible. Check your probe connections first.' } },
+          { id:'s3', type:'assessment', question:'You measure: 12.4V at start of wire, 11.7V at end of same wire. What is the voltage drop and what does it mean?',
+            options:['0.7V drop — normal','0.7V drop — high resistance (bad connection or damaged wire)','12V drop — wire is broken','No drop — they are the same'],
+            correct:1,
+            explanation:"0.7V drop is significant (good cables should drop less than 0.1V). High drop means resistance in the wire — corroded connector, loose terminal, or damaged wire." }
+        ]}
+      },
+      {
+        id: 'seed-l8-lv3',
+        order_num: 3,
+        title: 'Continuity & Resistance Testing',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔊', title:'Continuity Testing',
+            body:"How to use:\n1. Dial to continuity (🔊 or diode symbol)\n2. Touch probes together — should BEEP\n3. Touch across wire or component\n4. BEEP = circuit is complete\n5. SILENCE = circuit is broken\n\n⚠️ ALWAYS power off the circuit before testing continuity or resistance. Live circuits damage the meter and give false readings.\n\nUse for: fuses, switches, broken wires." },
+          { id:'s2', type:'interactive', prompt:'You test a fuse with continuity (power off). Meter shows OL and stays silent. What does this mean?',
+            options:['Fuse is good','Fuse is blown — internal element is broken','Meter is broken','Need to test with power on'],
+            correct:1,
+            feedback:{ correct:'Correct! Silence = no connection = fuse element has melted (blown fuse).', incorrect:'Continuity beeps when path is complete. Silence = broken path = blown fuse.' } },
+          { id:'s3', type:'assessment', question:'Why must you NEVER do resistance/continuity tests on a live circuit?',
+            options:['False reading AND can damage the meter','It takes longer','Wrong units','No problem at all'],
+            correct:0,
+            explanation:"Resistance/continuity modes send their own measuring current. Adding that to a live voltage confuses the reading AND can permanently damage the meter's internal circuits." }
+        ]}
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // LESSON 9 — Reading Wiring Diagrams
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: 'seed-lesson-9',
+    title: 'Reading Wiring Diagrams',
+    description: "Wiring diagrams are maps of a car's electrical system. Learn the symbols, trace circuits, and use diagrams to diagnose faults like a professional.",
+    icon: '🗺️',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l9-lv1',
+        order_num: 1,
+        title: 'Common Wiring Symbols',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'📄', title:'Wiring Diagram Symbols',
+            body:"Standard symbols used in automotive wiring diagrams:\n\n⬛ Battery — two parallel lines (longer = positive)\n💡 Bulb — circle with X inside\n🔌 Switch (open) — line with gap and angled end\n🔌 Switch (closed) — line, no gap\n▶ Diode — triangle with line at tip (allows current one way)\n🔺 Earth/Ground — triangle or horizontal lines at bottom of wire\n⚙️ Motor — letter M in a circle\n📦 Relay — box with coil symbol inside\n🔴 Resistor — zigzag line" },
+          { id:'s2', type:'interactive', prompt:'In a wiring diagram, a circle with X inside represents:',
+            options:['Battery','Fuse','Light bulb','Diode'],
+            correct:2,
+            feedback:{ correct:'Correct! Circle with X = light bulb/lamp.', incorrect:'Circle with X = light bulb. One of the most common symbols in automotive wiring.' } },
+          { id:'s3', type:'assessment', question:'What does the earth/ground symbol at the bottom of a wire mean?',
+            options:['Wire goes underground','Connects to vehicle body or battery negative','Wire is disconnected','Circuit has no return path'],
+            correct:1,
+            explanation:"Earth/ground symbol = the wire connects to the vehicle chassis or battery negative. The car body acts as a return path for all earths." }
+        ]}
+      },
+      {
+        id: 'seed-l9-lv2',
+        order_num: 2,
+        title: 'Tracing a Circuit',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🗺️', title:'How to Trace a Circuit',
+            body:"Steps:\n1. IDENTIFY the component (e.g. left front indicator)\n2. FIND it in the diagram (use the index)\n3. TRACE from battery (+) → fuse → switch → component\n4. TRACE return path: component → earth (−)\n5. NOTE every connector number along the way\n6. MEASURE at each point — find where power stops\n\nAlways trace in the direction current flows: + to −." },
+          { id:'s2', type:'interactive', prompt:'You measure: 12V at the fuse, but 0V at the relay. What does this tell you?',
+            options:['Fault between battery and fuse','Fault between fuse and relay — broken wire or bad connector','Relay is fine','Headlight bulb is blown'],
+            correct:1,
+            feedback:{ correct:'Excellent! Power stops between fuse and relay — the fault must be in that section.', incorrect:'Voltage is present at fuse but missing at relay. The fault is between those two points.' } },
+          { id:'s3', type:'assessment', question:'What is the correct order to trace a circuit?',
+            options:['Earth → component → battery','Battery (+) → fuse → switch → component → earth (−)','Component → fuse → earth → battery','Switch → battery → component → fuse'],
+            correct:1,
+            explanation:"Always trace from battery positive, through protection (fuse), control (switch), to load (component), then back to earth negative. This is the direction current flows." }
+        ]}
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // LESSON 10 — Sensors & Actuators
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: 'seed-lesson-10',
+    title: 'Sensors & Actuators',
+    description: "Modern cars have dozens of sensors feeding data to the ECU and actuators carrying out commands. Essential knowledge for modern diagnostics.",
+    icon: '📡',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l10-lv1',
+        order_num: 1,
+        title: 'What Are Sensors?',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'📡', title:'Sensors — The Eyes & Ears of the ECU',
+            body:"A sensor converts a physical quantity into an electrical signal the ECU can read.\n\nCommon sensors:\n🌡️ Coolant temperature sensor — resistance changes with temperature\n🌀 Crankshaft/camshaft speed sensors — count rotations with magnetic field\n💨 MAF sensor — measures airflow into engine\n⛽ Oxygen (Lambda) sensor — measures oxygen in exhaust\n💥 Knock sensor — detects engine knock/detonation" },
+          { id:'s2', type:'interactive', prompt:'A coolant temperature sensor (NTC type) shows very HIGH resistance when engine is HOT. What does this indicate?',
+            options:['Sensor is normal','Sensor has failed — it should show LOW resistance when hot','Engine is overheating','ECU is faulty'],
+            correct:1,
+            feedback:{ correct:'Correct! NTC = Negative Temperature Coefficient. Resistance FALLS as temperature RISES. High when hot = faulty sensor.', incorrect:'NTC sensors reduce resistance as temperature increases. High resistance when hot = sensor failure.' } },
+          { id:'s3', type:'assessment', question:'What is the ECU\'s role in relation to sensors?',
+            options:['ECU powers the sensors','ECU reads sensor signals and controls the engine','ECU replaces faulty sensors','ECU only works when there is a fault'],
+            correct:1,
+            explanation:"The ECU constantly reads sensor data to calculate fuel injection timing, ignition timing, and more. Bad sensor data = poor or no engine operation." }
+        ]}
+      },
+      {
+        id: 'seed-l10-lv2',
+        order_num: 2,
+        title: 'What Are Actuators?',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'⚙️', title:'Actuators — The Hands of the ECU',
+            body:"An actuator receives an electrical command from the ECU and does something physical.\n\nCommon actuators:\n⛽ Fuel injector — Opens to spray precise fuel amount\n🔌 Idle Air Control valve — Controls idle air\n❄️ EGR valve — Recirculates exhaust gases\n💨 VVT solenoids — Control camshaft timing\n🔊 Cooling fan relay — Switches fan on/off" },
+          { id:'s2', type:'interactive', prompt:'ECU signals the fuel injector to open. What happens?',
+            options:['Injector sends a signal back','Injector valve opens and sprays fuel','Injector measures fuel pressure','Injector closes'],
+            correct:1,
+            feedback:{ correct:'Correct! The injector is an actuator — it responds to ECU commands by opening to spray fuel.', incorrect:'Actuators take physical action. A fuel injector opens to spray fuel when commanded by the ECU.' } },
+          { id:'s3', type:'assessment', question:'What is the key difference between a sensor and an actuator?',
+            options:['Sensors are more expensive','Sensor = collects data for ECU; Actuator = receives commands from ECU and acts','Sensors only work at high temperature','No difference'],
+            correct:1,
+            explanation:"Sensors are inputs (report data to ECU). Actuators are outputs (receive commands and take action). Together they form the ECU's control loop." }
+        ]}
+      }
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // LESSON 11 — Reading OBD Fault Codes
+  // ═══════════════════════════════════════════════════════════
+  {
+    id: 'seed-lesson-11',
+    title: 'Reading OBD Fault Codes',
+    description: "OBD gives you a window into the car's computer. Learn to connect a scanner, read fault codes, understand what they mean, and use them correctly.",
+    icon: '🔍',
+    status: 'published',
+    is_released: false,
+    release_order: null,
+    seeded: true,
+    levels: [
+      {
+        id: 'seed-l11-lv1',
+        order_num: 1,
+        title: 'What Is OBD-II?',
+        difficulty: 'intro',
+        pass_score: 60,
+        content: { steps: [
+          { id:'s1', type:'info', image:'🔌', title:'The OBD Port',
+            body:"OBD = On-Board Diagnostics. Every car made after 2001 (EU) or 1996 (USA) has a standard 16-pin OBD-II connector — usually under the dashboard, driver's side.\n\nWhen a fault occurs, the ECU logs a DTC (Diagnostic Trouble Code) and may turn on the Check Engine Light.\n\nWith a scanner you can:\n• Read fault codes\n• See live sensor data\n• Clear codes after repair\n• Check emissions readiness" },
+          { id:'s2', type:'interactive', prompt:'Where is the OBD-II port typically located?',
+            options:['Under the bonnet near battery','In the boot','Under dashboard, driver\'s side','Behind the rear seat'],
+            correct:2,
+            feedback:{ correct:'Correct! Always inside the car, under the dashboard, within reach of the steering wheel.', incorrect:'OBD-II is always inside the car — under the dashboard near the driver.' } },
+          { id:'s3', type:'assessment', question:'A car has a stored fault code but the Check Engine Light is NOT on. What does this mean?',
+            options:['No faults — light must be on','A past fault that may have resolved — stored/historic code','OBD is broken','Light bulb is blown'],
+            correct:1,
+            explanation:"Historic stored codes exist even after a fault clears. They tell you what the car experienced. Always check stored codes — they are as valuable as active ones." }
+        ]}
+      },
+      {
+        id: 'seed-l11-lv2',
+        order_num: 2,
+        title: 'Understanding DTC Codes',
+        difficulty: 'easy',
+        pass_score: 70,
+        content: { steps: [
+          { id:'s1', type:'info', image:'📋', title:'How to Read a DTC',
+            body:"DTC format example: P0301\n\nFirst letter = System:\nP = Powertrain (engine/gearbox)\nB = Body (airbags, windows)\nC = Chassis (ABS, suspension)\nU = Network communication\n\nSecond digit:\n0 = Generic (all cars)\n1/2/3 = Manufacturer-specific\n\nLast 3 digits = specific fault number\n\nP0301 = Powertrain, generic, Cylinder 1 misfire\nP0171 = Powertrain, generic, System too lean Bank 1" },
+          { id:'s2', type:'interactive', prompt:"Fault code P0171. The 'P' tells you the fault is in the:",
+            options:['Body (windows, sunroof)','Chassis (ABS, suspension)','Powertrain (engine/transmission)','Network communication'],
+            correct:2,
+            feedback:{ correct:"Correct! P = Powertrain. P0171 means the engine is running lean (too much air, not enough fuel).", incorrect:"P = Powertrain, B = Body, C = Chassis, U = Network." } },
+          { id:'s3', type:'assessment', question:'You clear a fault code. The Check Engine Light returns after 5 minutes. What does this indicate?',
+            options:['Scanner was faulty','The fault still exists — clearing codes never fixes the problem','Battery needs disconnecting','Car needs software update'],
+            correct:1,
+            explanation:"Clearing a code NEVER fixes the fault. If the fault condition still exists, the ECU re-logs it. The underlying cause must be repaired." }
+        ]}
+      }
+    ]
+  }
+];
+
+// ════════════════════════════════════════════════════════════════
+//  STORAGE LAYER — Works with localStorage or Firebase
+// ════════════════════════════════════════════════════════════════
+
+// --- localStorage helpers ---
+function lsGet(key) { try { return JSON.parse(localStorage.getItem('autoedu_' + key)); } catch { return null; } }
+function lsSet(key, val) { localStorage.setItem('autoedu_' + key, JSON.stringify(val)); }
+function genId() { return 'ls_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
+
+// ── Seed default lessons if not already done ──
+function seedDefaultLessons() {
+  if (lsGet('seeded')) return;
+  const lessons = [];
+  const levels = [];
+  DEFAULT_LESSONS.forEach((l, idx) => {
+    const { levels: lvls, ...lessonData } = l;
+    lessonData.created_at = new Date().toISOString();
+    lessonData.updated_at = new Date().toISOString();
+    // Auto-release first 3 lessons so students can see them immediately
+    if (idx < 3) {
+      lessonData.is_released = true;
+      lessonData.release_order = idx + 1;
+      lessonData.status = 'published';
+    }
+    lessons.push(lessonData);
+    lvls.forEach(lv => {
+      levels.push({ ...lv, lesson_id: l.id, created_at: new Date().toISOString() });
+    });
+  });
+  lsSet('lessons', lessons);
+  lsSet('levels', levels);
+  lsSet('seeded', true);
+}
+
+// ── Admin: force re-seed (clear and reseed) ──
+window.reseedLessons = () => {
+  showConfirm('🔄','Reset Lesson Data?','This will restore all default lessons. Your custom lessons and student progress will be kept.',()=>{
+    lsSet('seeded', null);
+    const customLessons = LS.getLessons().filter(l => !l.seeded);
+    const customLevels = LS.getLevels().filter(lv => !DEFAULT_LESSONS.some(dl => dl.id === lv.lesson_id));
+    lsSet('lessons', customLessons);
+    lsSet('levels', customLevels);
+    seedDefaultLessons();
+    renderAdminLessons();
+    toast('Default lessons restored and released','success');
+  },'Restore','btn-blue');
+};
+
+// ── Initialize admin account if not present ──
+function initAdminAccount() {
+  if (lsGet('admin_init')) return;
+  const users = lsGet('users') || [];
+  const adminId = 'admin_' + genId();
+  users.push({
+    id: adminId,
+    name: 'Admin',
+    email: 'admin@autoedu.com',
+    password: 'admin123',
+    role: 'admin',
+    created_at: new Date().toISOString()
+  });
+  lsSet('users', users);
+  lsSet('admin_init', true);
+}
+
+// --- localStorage CRUD ---
+const LS = {
+  getUsers: () => lsGet('users') || [],
+  getLessons: () => lsGet('lessons') || [],
+  getLevels: () => lsGet('levels') || [],
+  getProgress: () => lsGet('progress') || [],
+
+  saveUsers: (u) => lsSet('users', u),
+  saveLessons: (l) => lsSet('lessons', l),
+  saveLevels: (l) => lsSet('levels', l),
+  saveProgress: (p) => lsSet('progress', p),
+
+  findUser(email, password) {
+    const e = (email || '').trim().toLowerCase();
+    const p = (password || '').trim();
+    return this.getUsers().find(u =>
+      (u.email || '').trim().toLowerCase() === e && (u.password || '') === p
+    );
+  },
+  addUser(data) {
+    const users = this.getUsers();
+    const existing = users.find(u => u.email === data.email.toLowerCase());
+    if (existing) throw new Error('Email already registered.');
+    const user = { id: genId(), ...data, email: data.email.toLowerCase(), created_at: new Date().toISOString() };
+    users.push(user);
+    this.saveUsers(users);
+    return user;
+  },
+  updateUser(id, data) {
+    const users = this.getUsers().map(u => u.id === id ? { ...u, ...data, updated_at: new Date().toISOString() } : u);
+    this.saveUsers(users);
+    return users.find(u => u.id === id);
+  },
+  deleteUser(id) {
+    this.saveUsers(this.getUsers().filter(u => u.id !== id));
+    this.saveProgress(this.getProgress().filter(p => p.user_id !== id));
+  },
+
+  addLesson(data) {
+    const lessons = this.getLessons();
+    const lesson = { id: genId(), ...data, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    lessons.push(lesson);
+    this.saveLessons(lessons);
+    return lesson;
+  },
+  updateLesson(id, data) {
+    this.saveLessons(this.getLessons().map(l => l.id === id ? { ...l, ...data, updated_at: new Date().toISOString() } : l));
+  },
+  deleteLesson(id) {
+    this.saveLessons(this.getLessons().filter(l => l.id !== id));
+    this.saveLevels(this.getLevels().filter(lv => lv.lesson_id !== id));
+    this.saveProgress(this.getProgress().filter(p => p.lesson_id !== id));
+  },
+
+  addLevel(data) {
+    const levels = this.getLevels();
+    const level = { id: genId(), ...data, created_at: new Date().toISOString() };
+    levels.push(level);
+    this.saveLevels(levels);
+    return level;
+  },
+  updateLevel(id, data) {
+    this.saveLevels(this.getLevels().map(lv => lv.id === id ? { ...lv, ...data } : lv));
+  },
+  deleteLevel(id) {
+    this.saveLevels(this.getLevels().filter(lv => lv.id !== id));
+    this.saveProgress(this.getProgress().filter(p => p.level_id !== id));
+  },
+
+  upsertProgress(data) {
+    const progress = this.getProgress();
+    const idx = progress.findIndex(p => p.user_id === data.user_id && p.level_id === data.level_id);
+    if (idx >= 0) progress[idx] = { ...progress[idx], ...data, updated_at: new Date().toISOString() };
+    else progress.push({ id: genId(), ...data, created_at: new Date().toISOString() });
+    this.saveProgress(progress);
+  },
+  resetProgress(userId) {
+    this.saveProgress(this.getProgress().filter(p => p.user_id !== userId));
+  }
+};
+
+// ════════════════════════════════════════════════════════════════
+//  APP STATE
+// ════════════════════════════════════════════════════════════════
+let currentUserData = null;
+let currentLessonId = null;
+let currentLevelId = null;
+let editingLessonId = null;
+let editingLevelId = null;
+let editingStudentId = null;
+let pendingConfirm = null;
+let stepCount = 0;
+// Level player state
+let playerSteps = [];
+let playerStepIndex = 0;
+let playerScore = 0;
+let playerAnswered = false;
+
+// ════════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════════
+(function init() {
+  initAdminAccount();
+  seedDefaultLessons();
+
+  // Check for saved session
+  const saved = lsGet('session');
+  if (saved) {
+    const users = LS.getUsers();
+    const user = users.find(u => u.id === saved.id);
+    if (user) {
+      currentUserData = user;
+      hideLoading();
+      initShell();
+      return;
+    }
+  }
+  hideLoading();
+  showLoginPage();
+})();
+
+function hideLoading() {
+  const ls = document.getElementById('loading-screen');
+  ls.classList.add('hide');
+  setTimeout(() => ls.style.display = 'none', 350);
+}
+
+function showLoginPage() {
+  document.getElementById('shell').style.display = 'none';
+  document.getElementById('shell').classList.remove('active');
+  document.getElementById('login-page').style.display = 'flex';
+  document.getElementById('login-page').classList.add('active');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════════════════════════════
+window.submitAuth = () => {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value.trim();
+  const btn = document.getElementById('auth-submit-btn');
+  if (!email || !password) { showAuthError('Please enter your email and password.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Signing in...';
+
+  setTimeout(() => {
+    const user = LS.findUser(email, password);
+    if (user) {
+      currentUserData = user;
+      lsSet('session', { id: user.id });
+      document.getElementById('auth-alert').classList.remove('show');
+      hideLoginPage();
+      initShell();
+    } else {
+      showAuthError('Incorrect email or password. Your account is set up by your instructor — please confirm your credentials with them.');
+      btn.disabled = false;
+      btn.textContent = 'Sign In →';
+    }
+  }, 400);
+};
+
+function showAuthError(msg) {
+  document.getElementById('auth-alert-msg').textContent = msg;
+  document.getElementById('auth-alert').classList.add('show');
+}
+
+function hideLoginPage() {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('login-page').classList.remove('active');
+}
+
+window.doLogout = () => {
+  currentUserData = null;
+  lsSet('session', null);
+  document.getElementById('shell').style.display = 'none';
+  document.getElementById('shell').classList.remove('active');
+  showLoginPage();
+};
+
+// ════════════════════════════════════════════════════════════════
+//  SHELL INIT
+// ════════════════════════════════════════════════════════════════
+function initShell() {
+  hideLoginPage();
+  document.getElementById('shell').style.display = 'flex';
+  document.getElementById('shell').classList.add('active');
+
+  const u = currentUserData;
+  const badge = document.getElementById('sidebar-role-badge');
+  badge.textContent = u.role === 'admin' ? 'Admin' : 'Student';
+  badge.className = 'sidebar-role' + (u.role === 'student' ? ' student' : '');
+  document.getElementById('sidebar-name').textContent = u.name;
+  document.getElementById('sidebar-email').textContent = u.email;
+  const av = document.getElementById('sidebar-avatar');
+  av.textContent = u.name[0].toUpperCase();
+  av.className = 'avatar' + (u.role === 'student' ? ' blue' : '');
+
+  renderNav();
+  if (u.role === 'admin') { renderDashboard(); showView('view-dashboard'); }
+  else { renderStudentHome(); showView('view-student-home'); }
+}
+
+function renderNav() {
+  const nav = document.getElementById('sidebar-nav');
+  const adminItems = [
+    {section:'Overview'},{id:'view-dashboard',icon:'⊞',label:'Dashboard'},
+    {section:'Content'},{id:'view-lessons',icon:'📚',label:'Lessons'},{id:'view-release',icon:'🚀',label:'Release Control'},
+    {section:'Students'},{id:'view-students',icon:'👥',label:'Students'},{id:'view-progress-admin',icon:'📊',label:'Progress Monitor'},
+    {section:'Account'},{id:'view-profile',icon:'⚙️',label:'Profile'},
+  ];
+  const studentItems = [
+    {section:'Learning'},{id:'view-student-home',icon:'🏠',label:'My Lessons'},{id:'view-my-progress',icon:'📈',label:'My Progress'},
+    {section:'Account'},{id:'view-profile',icon:'⚙️',label:'Profile'},
+  ];
+  const items = currentUserData.role === 'admin' ? adminItems : studentItems;
+  nav.innerHTML = items.map(i => i.section
+    ? `<div class="nav-section">${i.section}</div>`
+    : `<div class="nav-item" id="nav-${i.id}" onclick="navClick('${i.id}')"><span class="nav-icon">${i.icon}</span>${i.label}</div>`
+  ).join('');
+}
+
+window.navClick = (viewId) => {
+  const handlers = {
+    'view-dashboard': renderDashboard,
+    'view-lessons': renderAdminLessons,
+    'view-students': renderStudents,
+    'view-progress-admin': renderProgressAdmin,
+    'view-release': renderRelease,
+    'view-student-home': renderStudentHome,
+    'view-my-progress': renderMyProgress,
+    'view-profile': renderProfile,
+  };
+  if (handlers[viewId]) handlers[viewId]();
+  showView(viewId);
+};
+
+function showView(id) {
+  document.querySelectorAll('.content-view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const view = document.getElementById(id);
+  if (view) view.classList.add('active');
+  const navEl = document.getElementById('nav-' + id);
+  if (navEl) navEl.classList.add('active');
+}
+
+function ts(d) {
+  if (!d) return '—';
+  try { return new Date(d).toLocaleDateString(); } catch { return '—'; }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  ADMIN: DASHBOARD
+// ════════════════════════════════════════════════════════════════
+function renderDashboard() {
+  const students = LS.getUsers().filter(u => u.role === 'student');
+  const lessons = LS.getLessons();
+  const progress = LS.getProgress();
+  const released = lessons.filter(l => l.is_released);
+  const completed = progress.filter(p => p.status === 'completed');
+
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card amber"><div class="stat-value">${students.length}</div><div class="stat-label">Total Students</div><div class="stat-icon">👥</div></div>
+    <div class="stat-card blue"><div class="stat-value">${lessons.length}</div><div class="stat-label">Total Lessons</div><div class="stat-icon">📚</div></div>
+    <div class="stat-card green"><div class="stat-value">${released.length}</div><div class="stat-label">Released Lessons</div><div class="stat-icon">🚀</div></div>
+    <div class="stat-card purple"><div class="stat-value">${completed.length}</div><div class="stat-label">Levels Completed</div><div class="stat-icon">✓</div></div>
+  `;
+
+  const tbody = students.slice(0, 8).map(s => {
+    const done = progress.filter(p => p.user_id === s.id && p.status === 'completed').length;
+    return `<tr><td>${s.name}</td><td>${s.email}</td><td><span class="badge badge-released">${done} level${done !== 1 ? 's' : ''}</span></td><td>${ts(s.created_at)}</td></tr>`;
+  }).join('');
+
+  document.getElementById('dash-students-table').innerHTML = `
+    <thead><tr><th>Name</th><th>Email</th><th>Progress</th><th>Joined</th></tr></thead>
+    <tbody>${tbody || '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px">No students yet — add them in the Students section</td></tr>'}</tbody>
+  `;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  ADMIN: LESSONS
+// ════════════════════════════════════════════════════════════════
+function renderAdminLessons() {
+  const lessons = LS.getLessons();
+  const allLevels = LS.getLevels();
+  const grid = document.getElementById('admin-lessons-grid');
+
+  if (!lessons.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📚</div><p>No lessons yet. The defaults should have loaded — try refreshing.</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = lessons.map(l => {
+    const lvls = allLevels.filter(lv => lv.lesson_id === l.id);
+    let statusBadge = `<span class="badge badge-${l.status}">${l.status}</span>`;
+    if (l.is_released) statusBadge += `<span class="badge badge-released">Released #${l.release_order}</span>`;
+    if (l.seeded) statusBadge += `<span class="badge badge-seeded">Seeded</span>`;
+    return `
+    <div class="lesson-card">
+      <div class="lesson-card-header">
+        <div class="lesson-card-badges">${statusBadge}</div>
+        <div class="lesson-card-title">${l.icon || '📘'} ${l.title}</div>
+        <div class="lesson-card-desc">${l.description || ''}</div>
+      </div>
+      <div class="lesson-card-body">
+        <div class="lesson-meta"><span>📋 ${lvls.length} level${lvls.length !== 1 ? 's' : ''}</span><span>📅 ${ts(l.created_at)}</span></div>
+        <div class="lesson-actions">
+          <button class="btn btn-secondary btn-sm" onclick="openLevelEditor('${l.id}')">Edit Levels</button>
+          <button class="btn btn-ghost btn-sm" onclick="openLessonModal('${l.id}')">Edit</button>
+          ${l.status === 'draft' ? `<button class="btn btn-blue btn-sm" onclick="publishLesson('${l.id}')">Publish</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="deleteLesson('${l.id}')">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.openLessonModal = (id) => {
+  editingLessonId = id || null;
+  document.getElementById('lesson-modal-title').textContent = id ? 'Edit Lesson' : 'New Lesson';
+  if (id) {
+    const l = LS.getLessons().find(x => x.id === id);
+    if (!l) return;
+    document.getElementById('lesson-modal-id').value = l.id;
+    document.getElementById('lesson-modal-name').value = l.title;
+    document.getElementById('lesson-modal-desc').value = l.description || '';
+    document.getElementById('lesson-modal-icon').value = l.icon || '';
+  } else {
+    ['lesson-modal-id','lesson-modal-name','lesson-modal-desc','lesson-modal-icon'].forEach(i => document.getElementById(i).value = '');
+  }
+  openModal('modal-lesson');
+};
+
+window.saveLesson = () => {
+  const title = document.getElementById('lesson-modal-name').value.trim();
+  if (!title) { toast('Title required', 'error'); return; }
+  const btn = document.getElementById('save-lesson-btn');
+  btn.disabled = true;
+  const data = {
+    title,
+    description: document.getElementById('lesson-modal-desc').value,
+    icon: document.getElementById('lesson-modal-icon').value || '📘',
+  };
+  if (editingLessonId) {
+    LS.updateLesson(editingLessonId, data);
+    toast('Lesson updated', 'success');
+  } else {
+    LS.addLesson({ ...data, status: 'draft', is_released: false, release_order: null });
+    toast('Lesson created', 'success');
+  }
+  btn.disabled = false;
+  closeModal('modal-lesson');
+  renderAdminLessons();
+};
+
+window.publishLesson = (id) => {
+  LS.updateLesson(id, { status: 'published' });
+  renderAdminLessons();
+  toast('Lesson published', 'success');
+};
+
+window.deleteLesson = (id) => {
+  showConfirm('🗑️', 'Delete Lesson?', 'This will delete the lesson, all its levels, and student progress for it.', () => {
+    LS.deleteLesson(id);
+    renderAdminLessons();
+    toast('Lesson deleted', 'info');
+  });
+};
+
+// ════════════════════════════════════════════════════════════════
+//  ADMIN: LEVEL EDITOR
+// ════════════════════════════════════════════════════════════════
+window.openLevelEditor = (lessonId) => {
+  currentLessonId = lessonId;
+  const lesson = LS.getLessons().find(l => l.id === lessonId);
+  document.getElementById('level-editor-title').textContent = lesson.title;
+  document.getElementById('level-editor-sub').textContent = `${lesson.icon || '📘'} ${lesson.status} lesson`;
+  renderLevelsList();
+  showView('view-level-editor');
+};
+
+function renderLevelsList() {
+  const levels = LS.getLevels().filter(lv => lv.lesson_id === currentLessonId).sort((a,b) => a.order_num - b.order_num);
+  const wrap = document.getElementById('levels-list');
+  if (!levels.length) { wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><p>No levels yet. Add the first one!</p></div>`; return; }
+  wrap.innerHTML = levels.map(lv => `
+    <div class="level-item">
+      <div class="level-order">${lv.order_num}</div>
+      <div class="level-info">
+        <div class="level-title">${lv.title}</div>
+        <div class="level-meta">${(lv.content?.steps || []).length} steps · Pass: ${lv.pass_score}%</div>
+      </div>
+      <span class="badge badge-${lv.difficulty}">${lv.difficulty}</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="openLevelModal('${lv.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteLevel('${lv.id}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+window.openLevelModal = (id) => {
+  editingLevelId = id || null;
+  stepCount = 0;
+  document.getElementById('level-modal-title').textContent = id ? 'Edit Level' : 'New Level';
+  document.getElementById('steps-builder').innerHTML = '';
+  if (id) {
+    const lv = LS.getLevels().find(x => x.id === id);
+    if (!lv) return;
+    document.getElementById('level-modal-id').value = lv.id;
+    document.getElementById('level-modal-name').value = lv.title;
+    document.getElementById('level-modal-difficulty').value = lv.difficulty;
+    document.getElementById('level-modal-pass').value = lv.pass_score;
+    (lv.content?.steps || []).forEach(s => addStep(s));
+  } else {
+    ['level-modal-id','level-modal-name'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('level-modal-difficulty').value = 'easy';
+    document.getElementById('level-modal-pass').value = '70';
+    addStep();
+  }
+  openModal('modal-level');
+};
+
+window.addStep = (existing) => {
+  const i = stepCount++;
+  const t = existing?.type || 'info';
+  const div = document.createElement('div');
+  div.id = `step-wrap-${i}`;
+  div.style.cssText = 'background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px';
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <span style="font-size:12px;font-weight:600;color:var(--text3)">Step ${i + 1}</span>
+      <select id="step-type-${i}" onchange="updateStepType(${i})" style="background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:4px 8px;border-radius:4px;font-size:12px">
+        <option value="info" ${t==='info'?'selected':''}>📄 Info</option>
+        <option value="interactive" ${t==='interactive'?'selected':''}>🎯 Interactive</option>
+        <option value="assessment" ${t==='assessment'?'selected':''}>📝 Assessment</option>
+      </select>
+      <button onclick="removeStep(${i})" style="margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px">×</button>
+    </div>
+    <div id="step-fields-${i}"></div>`;
+  document.getElementById('steps-builder').appendChild(div);
+  renderStepFields(i, t, existing);
+};
+
+window.renderStepFields = (i, type, existing) => {
+  const wrap = document.getElementById(`step-fields-${i}`);
+  if (!wrap) return;
+  if (type === 'info') {
+    wrap.innerHTML = `
+      <div class="form-group" style="margin-bottom:8px"><label style="font-size:11px">Title</label><input id="step-title-${i}" type="text" value="${escHtml(existing?.title||'')}"/></div>
+      <div class="form-group" style="margin-bottom:8px"><label style="font-size:11px">Body Text</label><textarea id="step-body-${i}">${escHtml(existing?.body||'')}</textarea></div>
+      <div class="form-group"><label style="font-size:11px">Icon (emoji)</label><input id="step-img-${i}" type="text" value="${escHtml(existing?.image||'📋')}" maxlength="4"/></div>`;
+  } else {
+    const isAssess = type === 'assessment';
+    const opts = existing?.options || ['','','',''];
+    const correct = existing?.correct ?? 0;
+    wrap.innerHTML = `
+      <div class="form-group" style="margin-bottom:8px"><label style="font-size:11px">${isAssess?'Question':'Prompt'}</label>
+        <input id="step-title-${i}" type="text" value="${escHtml(existing?.question||existing?.prompt||'')}"/></div>
+      ${opts.map((o, oi) => `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <input type="radio" name="correct-${i}" id="correct-${i}-${oi}" value="${oi}" ${correct===oi?'checked':''}/>
+          <label for="correct-${i}-${oi}" style="font-size:11px;color:var(--text3);min-width:12px">${String.fromCharCode(65+oi)}</label>
+          <input id="option-${i}-${oi}" type="text" value="${escHtml(o)}" placeholder="Option ${String.fromCharCode(65+oi)}"
+            style="background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:6px 10px;border-radius:4px;font-size:12px;flex:1"/>
+        </div>`).join('')}
+      ${isAssess
+        ? `<div class="form-group" style="margin-top:8px"><label style="font-size:11px">Explanation (shown after answer)</label><textarea id="step-body-${i}">${escHtml(existing?.explanation||'')}</textarea></div>`
+        : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <div class="form-group"><label style="font-size:11px">Correct Feedback</label><input id="step-fb-correct-${i}" type="text" value="${escHtml(existing?.feedback?.correct||'')}"/></div>
+            <div class="form-group"><label style="font-size:11px">Wrong Feedback</label><input id="step-fb-wrong-${i}" type="text" value="${escHtml(existing?.feedback?.incorrect||'')}"/></div>
+           </div>`}`;
+  }
+};
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+window.updateStepType = (i) => renderStepFields(i, document.getElementById(`step-type-${i}`).value, null);
+window.removeStep = (i) => { const el = document.getElementById(`step-wrap-${i}`); if (el) el.remove(); };
+
+function collectSteps() {
+  const steps = [];
+  document.querySelectorAll('[id^="step-wrap-"]').forEach(wrap => {
+    const i = wrap.id.split('-')[2];
+    const type = document.getElementById(`step-type-${i}`)?.value;
+    if (!type) return;
+    const step = { id: `s${i}`, type };
+    const title = document.getElementById(`step-title-${i}`)?.value;
+    const body = document.getElementById(`step-body-${i}`)?.value;
+    if (type === 'info') {
+      step.title = title || ''; step.body = body || '';
+      step.image = document.getElementById(`step-img-${i}`)?.value || '📋';
+    } else {
+      const opts = [0,1,2,3].map(oi => document.getElementById(`option-${i}-${oi}`)?.value || '').filter(Boolean);
+      const correctEl = document.querySelector(`input[name="correct-${i}"]:checked`);
+      const correct = correctEl ? parseInt(correctEl.value) : 0;
+      if (type === 'interactive') {
+        step.prompt = title || ''; step.options = opts; step.correct = correct;
+        step.feedback = {
+          correct: document.getElementById(`step-fb-correct-${i}`)?.value || 'Correct!',
+          incorrect: document.getElementById(`step-fb-wrong-${i}`)?.value || 'Try again.'
+        };
+      } else {
+        step.question = title || ''; step.options = opts; step.correct = correct;
+        step.explanation = body || '';
+      }
+    }
+    steps.push(step);
+  });
+  return steps;
+}
+
+window.saveLevel = () => {
+  const title = document.getElementById('level-modal-name').value.trim();
+  if (!title) { toast('Title required', 'error'); return; }
+  const btn = document.getElementById('save-level-btn');
+  btn.disabled = true;
+  const steps = collectSteps();
+  const data = {
+    lesson_id: currentLessonId, title,
+    difficulty: document.getElementById('level-modal-difficulty').value,
+    pass_score: parseInt(document.getElementById('level-modal-pass').value) || 70,
+    content: { steps }
+  };
+  if (editingLevelId) {
+    LS.updateLevel(editingLevelId, data);
+    toast('Level updated', 'success');
+  } else {
+    const existing = LS.getLevels().filter(lv => lv.lesson_id === currentLessonId);
+    LS.addLevel({ ...data, order_num: existing.length + 1 });
+    toast('Level added', 'success');
+  }
+  btn.disabled = false;
+  closeModal('modal-level');
+  renderLevelsList();
+};
+
+window.deleteLevel = (id) => {
+  showConfirm('🗑️', 'Delete Level?', 'Student progress for this level will also be removed.', () => {
+    LS.deleteLevel(id);
+    renderLevelsList();
+    toast('Level deleted', 'info');
+  });
+};
+
+// ════════════════════════════════════════════════════════════════
+//  ADMIN: STUDENTS
+// ════════════════════════════════════════════════════════════════
+function renderStudents() {
+  const students = LS.getUsers().filter(u => u.role === 'student');
+  const progress = LS.getProgress();
+
+  const tbody = students.map(s => {
+    const done = progress.filter(p => p.user_id === s.id && p.status === 'completed').length;
+    return `<tr>
+      <td>${s.name}</td><td>${s.email}</td>
+      <td><span class="badge badge-released">${done} completed</span></td>
+      <td>${ts(s.created_at)}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="openEditStudentModal('${s.id}')">Edit</button>
+        <button class="btn btn-blue btn-sm" onclick="openResetPasswordModal('${s.id}')">Reset PW</button>
+        <button class="btn btn-ghost btn-sm" onclick="adminResetProgress('${s.id}','${s.name}')">Reset Progress</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.id}','${s.name}')">Remove</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('students-table').innerHTML = `
+    <thead><tr><th>Name</th><th>Email</th><th>Progress</th><th>Joined</th><th>Actions</th></tr></thead>
+    <tbody>${tbody || '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">No students yet. Use the <strong>+ Add Student</strong> button to add one.</td></tr>'}</tbody>`;
+}
+
+window.openAddStudentModal = () => {
+  editingStudentId = null;
+  document.getElementById('student-modal-title').textContent = 'Add Student';
+  ['student-modal-id','student-modal-name','student-modal-email','student-modal-pass'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('student-modal-pass-group').style.display = 'block';
+  openModal('modal-student');
+};
+
+window.openEditStudentModal = (id) => {
+  editingStudentId = id;
+  const s = LS.getUsers().find(u => u.id === id);
+  if (!s) return;
+  document.getElementById('student-modal-title').textContent = 'Edit Student';
+  document.getElementById('student-modal-id').value = id;
+  document.getElementById('student-modal-name').value = s.name;
+  document.getElementById('student-modal-email').value = s.email;
+  document.getElementById('student-modal-pass-group').style.display = 'none';
+  openModal('modal-student');
+};
+
+window.saveStudent = () => {
+  const name = document.getElementById('student-modal-name').value.trim();
+  const email = document.getElementById('student-modal-email').value.trim();
+  if (!name || !email) { toast('Name and email required', 'error'); return; }
+  const btn = document.getElementById('save-student-btn');
+  btn.disabled = true;
+  try {
+    if (editingStudentId) {
+      LS.updateUser(editingStudentId, { name, email });
+      toast('Student updated', 'success');
+    } else {
+      const pw = document.getElementById('student-modal-pass').value;
+      if (!pw || pw.length < 6) { toast('Password must be at least 6 characters', 'error'); btn.disabled=false; return; }
+      LS.addUser({ name, email, password: pw, role: 'student' });
+      toast(`Student added! Share login: ${email} / ${pw}`, 'success');
+    }
+    closeModal('modal-student');
+    renderStudents();
+  } catch(e) {
+    toast(e.message, 'error');
+  }
+  btn.disabled = false;
+};
+
+window.openResetPasswordModal = (id) => {
+  document.getElementById('reset-pw-student-id').value = id;
+  document.getElementById('reset-pw-new').value = '';
+  document.getElementById('reset-pw-confirm').value = '';
+  openModal('modal-reset-pw');
+};
+
+window.doResetStudentPassword = () => {
+  const id = document.getElementById('reset-pw-student-id').value;
+  const pw = document.getElementById('reset-pw-new').value;
+  const conf = document.getElementById('reset-pw-confirm').value;
+  if (!pw || pw.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
+  if (pw !== conf) { toast('Passwords do not match', 'error'); return; }
+  LS.updateUser(id, { password: pw });
+  closeModal('modal-reset-pw');
+  toast('Password reset successfully', 'success');
+};
+
+window.adminResetProgress = (id, name) => {
+  showConfirm('🔄', `Reset Progress?`, `All progress for ${name} will be cleared. This cannot be undone.`, () => {
+    LS.resetProgress(id);
+    renderStudents();
+    toast('Progress reset', 'info');
+  });
+};
+
+window.deleteStudent = (id, name) => {
+  showConfirm('🗑️', 'Remove Student?', `This will permanently remove ${name} and all their progress.`, () => {
+    LS.deleteUser(id);
+    renderStudents();
+    toast('Student removed', 'info');
+  });
+};
+
+// ════════════════════════════════════════════════════════════════
+//  ADMIN: PROGRESS MONITOR
+// ════════════════════════════════════════════════════════════════
+function renderProgressAdmin() {
+  const wrap = document.getElementById('progress-admin-content');
+  const students = LS.getUsers().filter(u => u.role === 'student');
+  const allLessons = LS.getLessons().filter(l => l.is_released).sort((a,b) => (a.release_order||99)-(b.release_order||99));
+  const allLevels = LS.getLevels();
+  const allProgress = LS.getProgress();
+
+  if (!students.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👥</div><p>No students to track yet.</p></div>`;
+    return;
+  }
+  if (!allLessons.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🚀</div><p>No lessons released yet. Use Release Control to make lessons visible.</p></div>`;
+    return;
+  }
+
+  const statsHtml = `<div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-bottom:28px">
+    ${allLessons.map(l => {
+      const lvls = allLevels.filter(lv => lv.lesson_id === l.id);
+      const total = students.length * lvls.length;
+      const done = allProgress.filter(p => p.status === 'completed' && lvls.map(lv=>lv.id).includes(p.level_id)).length;
+      const pct = total > 0 ? Math.round((done/total)*100) : 0;
+      return `<div class="stat-card blue"><div class="stat-value">${pct}%</div><div class="stat-label">${l.icon||'📘'} ${l.title.substring(0,22)}</div><div class="stat-icon">📊</div></div>`;
+    }).join('')}
+  </div>`;
+
+  const matrixHtml = allLessons.map(l => {
+    const lvls = allLevels.filter(lv => lv.lesson_id === l.id).sort((a,b) => a.order_num - b.order_num);
+    if (!lvls.length) return '';
+    const header = `<tr><th style="text-align:left">Student</th>${lvls.map(lv=>`<th>Level ${lv.order_num}<br/><span style="font-weight:400;font-size:9px">${lv.title.substring(0,12)}</span></th>`).join('')}<th>Score</th></tr>`;
+    const rows = students.map(s => {
+      let total=0,count=0;
+      const cells = lvls.map(lv => {
+        const p = allProgress.find(pr => pr.user_id===s.id && pr.level_id===lv.id);
+        if (!p) return `<td class="prog-cell-none">—</td>`;
+        if (p.status==='completed') {
+          if(p.score!=null){total+=p.score;count++;}
+          return `<td class="prog-cell-done">✓ ${p.score!=null?p.score+'%':''}</td>`;
+        }
+        return `<td class="prog-cell-prog">…</td>`;
+      }).join('');
+      return `<tr><td style="font-weight:500;color:var(--text)">${s.name}</td>${cells}<td style="font-weight:600;color:var(--accent)">${count>0?Math.round(total/count)+'%':'—'}</td></tr>`;
+    }).join('');
+    return `<div style="margin-bottom:28px">
+      <h3 style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:10px">${l.icon||'📘'} ${l.title}</h3>
+      <div class="prog-matrix table-wrap"><table>${header}${rows}</table></div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML = statsHtml + (matrixHtml || '');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  ADMIN: RELEASE CONTROL
+// ════════════════════════════════════════════════════════════════
+function renderRelease() {
+  const wrap = document.getElementById('release-list-wrap');
+  const lessons = LS.getLessons().filter(l => l.status === 'published');
+  const released = lessons.filter(l => l.is_released).sort((a,b)=>(a.release_order||99)-(b.release_order||99));
+  const unreleased = lessons.filter(l => !l.is_released);
+
+  const releaseRow = (l) => `
+    <div class="release-item">
+      <div style="font-size:22px">${l.icon||'📘'}</div>
+      <div class="release-item-info">
+        <div class="release-item-title">${l.title}</div>
+        <div class="release-item-meta">${LS.getLevels().filter(lv=>lv.lesson_id===l.id).length} levels</div>
+      </div>
+      ${l.is_released
+        ? `<span class="badge badge-released">Released #${l.release_order}</span>
+           <button class="btn btn-danger btn-sm" onclick="unrelease('${l.id}')">Hide from Students</button>`
+        : `<span class="badge badge-draft">Not released</span>
+           <button class="btn btn-green btn-sm" onclick="releaseLesson('${l.id}')">Release to Students</button>`}
+    </div>`;
+
+  wrap.innerHTML = `
+    <div class="info-box"><span class="info-box-icon">🚀</span>Only <strong>released</strong> lessons appear on the student dashboard. Draft lessons are invisible to students.</div>
+    <div class="release-section">
+      <h3>✅ Released to Students (${released.length})</h3>
+      ${released.length ? released.map(releaseRow).join('') : '<p style="color:var(--text3);font-size:13px">No lessons released yet.</p>'}
+    </div>
+    <div class="release-section">
+      <h3>📋 Available to Release (${unreleased.length})</h3>
+      ${unreleased.length ? unreleased.map(releaseRow).join('') : '<p style="color:var(--text3);font-size:13px">All published lessons are released.</p>'}
+    </div>
+    ${LS.getLessons().filter(l=>l.status==='draft').length ? `<div class="info-box" style="margin-top:12px"><span class="info-box-icon">⚠️</span>${LS.getLessons().filter(l=>l.status==='draft').length} lesson(s) are still in <strong>Draft</strong>. Publish them first before releasing.</div>` : ''}
+  `;
+}
+
+window.releaseLesson = (id) => {
+  const released = LS.getLessons().filter(l => l.is_released);
+  const maxOrder = Math.max(0, ...released.map(l => l.release_order || 0));
+  LS.updateLesson(id, { is_released: true, release_order: maxOrder + 1 });
+  renderRelease();
+  toast('Lesson released to students', 'success');
+};
+
+window.unrelease = (id) => {
+  LS.updateLesson(id, { is_released: false, release_order: null });
+  renderRelease();
+  toast('Lesson hidden from students', 'info');
+};
+
+// ════════════════════════════════════════════════════════════════
+//  PROFILE
+// ════════════════════════════════════════════════════════════════
+function renderProfile() {
+  const u = currentUserData;
+  document.getElementById('profile-content').innerHTML = `
+    <div class="profile-card">
+      <h3>👤 Account Details</h3>
+      <div class="profile-avatar-row">
+        <div class="profile-avatar-lg ${u.role==='student'?'blue':''}">${u.name[0].toUpperCase()}</div>
+        <div><div style="font-size:15px;font-weight:600;color:#fff">${u.name}</div><div style="font-size:12px;color:var(--text3)">${u.email} · ${u.role}</div></div>
+      </div>
+      <div class="form-group"><label>Full Name</label><input type="text" id="profile-name" value="${u.name}"/></div>
+      <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+    </div>
+    <div class="profile-card">
+      <h3>🔑 Change Password</h3>
+      <div class="form-group"><label>Current Password</label><input type="password" id="profile-old-pw" placeholder="••••••••"/></div>
+      <div class="form-group"><label>New Password</label><input type="password" id="profile-new-pw" placeholder="Min 6 characters"/></div>
+      <div class="form-group"><label>Confirm New Password</label><input type="password" id="profile-confirm-pw" placeholder="Repeat new password"/></div>
+      <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+    </div>`;
+}
+
+window.saveProfile = () => {
+  const name = document.getElementById('profile-name').value.trim();
+  if (!name) { toast('Name required', 'error'); return; }
+  LS.updateUser(currentUserData.id, { name });
+  currentUserData.name = name;
+  document.getElementById('sidebar-name').textContent = name;
+  document.getElementById('sidebar-avatar').textContent = name[0].toUpperCase();
+  toast('Profile updated', 'success');
+  renderProfile();
+};
+
+window.changePassword = () => {
+  const oldPw = document.getElementById('profile-old-pw').value;
+  const newPw = document.getElementById('profile-new-pw').value;
+  const conf = document.getElementById('profile-confirm-pw').value;
+  if (oldPw !== currentUserData.password) { toast('Current password is incorrect', 'error'); return; }
+  if (newPw.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
+  if (newPw !== conf) { toast('Passwords do not match', 'error'); return; }
+  LS.updateUser(currentUserData.id, { password: newPw });
+  currentUserData.password = newPw;
+  ['profile-old-pw','profile-new-pw','profile-confirm-pw'].forEach(id => document.getElementById(id).value = '');
+  toast('Password changed successfully', 'success');
+};
+
+// ════════════════════════════════════════════════════════════════
+//  STUDENT: HOME
+// ════════════════════════════════════════════════════════════════
+function renderStudentHome() {
+  document.getElementById('student-greeting-name').textContent = currentUserData.name.split(' ')[0];
+  const lessons = LS.getLessons().filter(l => l.is_released).sort((a,b) => (a.release_order||99)-(b.release_order||99));
+  const allLevels = LS.getLevels();
+  const progress = LS.getProgress().filter(p => p.user_id === currentUserData.id);
+  const wrap = document.getElementById('student-lesson-tiles');
+  const noLessons = document.getElementById('student-no-lessons');
+
+  if (!lessons.length) {
+    wrap.innerHTML = '';
+    noLessons.classList.remove('hidden');
+    return;
+  }
+  noLessons.classList.add('hidden');
+
+  wrap.innerHTML = lessons.map(l => {
+    const lvls = allLevels.filter(lv => lv.lesson_id === l.id).sort((a,b)=>a.order_num-b.order_num);
+    const done = lvls.filter(lv => progress.find(p => p.level_id===lv.id && p.status==='completed')).length;
+    const inProg = lvls.filter(lv => progress.find(p => p.level_id===lv.id && p.status==='in_progress')).length;
+    const pct = lvls.length ? Math.round((done/lvls.length)*100) : 0;
+    const isComplete = done === lvls.length && lvls.length > 0;
+    let statusBadge;
+    if (isComplete) statusBadge = `<span class="badge badge-completed">✓ Completed</span>`;
+    else if (done > 0 || inProg > 0) statusBadge = `<span class="badge badge-in-progress">In Progress</span>`;
+    else statusBadge = `<span class="badge badge-not-started">Not Started</span>`;
+    return `
+    <div class="lesson-tile${isComplete?' completed':''}" onclick="openLessonPlayer('${l.id}')">
+      <div class="lesson-tile-accent"></div>
+      <div class="lesson-tile-body">
+        <div class="tile-top">
+          <div><div class="tile-icon">${l.icon||'📘'}</div></div>
+          ${statusBadge}
+        </div>
+        <div class="tile-title">${l.title}</div>
+        <div class="tile-desc">${l.description||''}</div>
+        <div class="tile-progress-bar"><div class="tile-progress-fill${isComplete?' complete':''}" style="width:${pct}%"></div></div>
+        <div class="tile-stats"><span>${done}/${lvls.length} levels</span><span>${pct}%</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  STUDENT: LESSON PLAYER
+// ════════════════════════════════════════════════════════════════
+window.openLessonPlayer = (lessonId) => {
+  currentLessonId = lessonId;
+  const lesson = LS.getLessons().find(l => l.id === lessonId);
+  const levels = LS.getLevels().filter(lv => lv.lesson_id === lessonId).sort((a,b)=>a.order_num-b.order_num);
+  const progress = LS.getProgress().filter(p => p.user_id === currentUserData.id && p.lesson_id === lessonId);
+
+  const wrap = document.getElementById('level-player-wrap');
+
+  // Find next level to play (first not completed, in order)
+  let targetLevel = null;
+  for (const lv of levels) {
+    const p = progress.find(p => p.level_id === lv.id);
+    if (!p || p.status !== 'completed') { targetLevel = lv; break; }
+  }
+  // If all completed, show level select screen
+  wrap.innerHTML = `
+    <div class="level-header">
+      <button class="level-back" onclick="navClick('view-student-home')">← My Lessons</button>
+      <div class="level-header-info">
+        <h3>${lesson.icon||'📘'} ${lesson.title}</h3>
+        <p>${lesson.description||''}</p>
+      </div>
+    </div>
+    <div class="levels-list">
+      ${levels.map((lv, i) => {
+        const p = progress.find(pr => pr.level_id === lv.id);
+        const isCompleted = p?.status === 'completed';
+        const isLocked = i > 0 && !progress.find(pr => pr.level_id === levels[i-1].id && pr.status === 'completed');
+        return `
+        <div class="level-item" style="${isLocked?'opacity:0.5;':''}">
+          <div class="level-order" style="${isCompleted?'background:var(--green);color:#fff':''}">${isCompleted?'✓':lv.order_num}</div>
+          <div class="level-info">
+            <div class="level-title">${lv.title}</div>
+            <div class="level-meta">${(lv.content?.steps||[]).length} steps · <span class="badge badge-${lv.difficulty}">${lv.difficulty}</span>${isCompleted&&p.score!=null?' · '+p.score+'%':''}</div>
+          </div>
+          ${isLocked
+            ? `<span style="color:var(--text3);font-size:12px">🔒 Complete Level ${i} first</span>`
+            : `<button class="btn btn-${isCompleted?'green':'primary'} btn-sm" onclick="playLevel('${lv.id}')">
+                ${isCompleted?'Review':'Start →'}
+              </button>`}
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  showView('view-level-player');
+};
+
+window.playLevel = (levelId) => {
+  currentLevelId = levelId;
+  const level = LS.getLevels().find(lv => lv.id === levelId);
+  const lesson = LS.getLessons().find(l => l.id === level.lesson_id);
+  playerSteps = level.content?.steps || [];
+  playerStepIndex = 0;
+  playerScore = 0;
+  playerAnswered = false;
+
+  // Mark as in progress
+  LS.upsertProgress({ user_id: currentUserData.id, lesson_id: level.lesson_id, level_id: levelId, status: 'in_progress' });
+
+  renderPlayerStep(level, lesson);
+};
+
+function renderPlayerStep(level, lesson) {
+  const wrap = document.getElementById('level-player-wrap');
+  const step = playerSteps[playerStepIndex];
+  const totalSteps = playerSteps.length;
+
+  if (!step) {
+    // End of level
+    const totalQ = playerSteps.filter(s => s.type === 'assessment').length;
+    const score = totalQ > 0 ? Math.round((playerScore / totalQ) * 100) : 100;
+    const passed = score >= level.pass_score;
+
+    LS.upsertProgress({
+      user_id: currentUserData.id,
+      lesson_id: level.lesson_id,
+      level_id: level.id,
+      status: 'completed',
+      score,
+      completed_at: new Date().toISOString()
+    });
+
+    wrap.innerHTML = `
+      <div class="level-header">
+        <button class="level-back" onclick="openLessonPlayer('${level.lesson_id}')">← Back to Levels</button>
+        <div class="level-header-info"><h3>${lesson.icon||'📘'} ${lesson.title}</h3><p>${level.title}</p></div>
+      </div>
+      <div class="complete-banner">
+        <div style="font-size:48px;margin-bottom:12px">${passed?'🎉':'📖'}</div>
+        <h3>${passed?'Level Complete!':'Good Effort!'}</h3>
+        <p style="margin-top:8px;font-size:16px;color:var(--text)">You scored <strong style="color:var(--accent)">${score}%</strong>${totalQ>0?' on the assessment questions':' — all steps reviewed'}.</p>
+        <p style="margin-top:6px;color:var(--text2);font-size:13px">${passed?'Great work! The level has been marked as complete.':'Keep practicing — you can retry this level anytime.'}</p>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:center">
+        <button class="btn btn-ghost" onclick="openLessonPlayer('${level.lesson_id}')">← Back to Levels</button>
+        <button class="btn btn-primary" onclick="navClick('view-student-home')">My Lessons</button>
+      </div>`;
+    return;
+  }
+
+  const dotsHtml = playerSteps.map((_, i) => `<div class="step-dot ${i < playerStepIndex ? 'done' : i === playerStepIndex ? 'current' : ''}"></div>`).join('');
+
+  let stepHtml = '';
+  if (step.type === 'info') {
+    stepHtml = `
+      <div class="step-type-badge">📄 Reading</div>
+      <span class="step-emoji">${step.image||'📋'}</span>
+      <div class="step-title">${step.title||''}</div>
+      <div class="step-body" style="white-space:pre-line">${step.body||''}</div>
+      <div class="step-nav"><button class="btn btn-primary" onclick="nextStep('${level.id}','${lesson.id}')">Continue →</button></div>`;
+  } else if (step.type === 'interactive') {
+    const opts = (step.options||[]).map((o,i) => `<button class="step-option" id="opt-${i}" onclick="answerInteractive(${i},${step.correct},'${level.id}','${lesson.id}')">${o}</button>`).join('');
+    stepHtml = `
+      <div class="step-type-badge">🎯 Interactive</div>
+      <div class="step-title">${step.prompt||''}</div>
+      <div class="step-options">${opts}</div>
+      <div id="step-feedback-box"></div>`;
+  } else if (step.type === 'assessment') {
+    const opts = (step.options||[]).map((o,i) => `<button class="step-option" id="opt-${i}" onclick="answerAssessment(${i},${step.correct},'${level.id}','${lesson.id}')">${o}</button>`).join('');
+    stepHtml = `
+      <div class="step-type-badge">📝 Assessment Question</div>
+      <div class="step-title">${step.question||''}</div>
+      <div class="step-options">${opts}</div>
+      <div id="step-feedback-box"></div>`;
+  }
+
+  wrap.innerHTML = `
+    <div class="level-header">
+      <button class="level-back" onclick="openLessonPlayer('${level.lesson_id}')">← Back to Levels</button>
+      <div class="level-header-info"><h3>${lesson.icon||'📘'} ${lesson.title}</h3><p>${level.title}</p></div>
+    </div>
+    <div class="step-progress">${dotsHtml}<span class="step-counter">${playerStepIndex+1} / ${totalSteps}</span></div>
+    <div class="step-card">${stepHtml}</div>`;
+}
+
+window.nextStep = (levelId, lessonId) => {
+  const level = LS.getLevels().find(lv => lv.id === levelId);
+  const lesson = LS.getLessons().find(l => l.id === lessonId);
+  playerStepIndex++;
+  playerAnswered = false;
+  renderPlayerStep(level, lesson);
+};
+
+window.answerInteractive = (chosen, correct, levelId, lessonId) => {
+  if (playerAnswered) return;
+  playerAnswered = true;
+  const step = playerSteps[playerStepIndex];
+  const isCorrect = chosen === correct;
+  // Style options
+  document.querySelectorAll('.step-option').forEach((btn, i) => {
+    btn.classList.add('disabled');
+    if (i === correct) btn.classList.add('correct');
+    else if (i === chosen && !isCorrect) btn.classList.add('incorrect');
+  });
+  const fb = document.getElementById('step-feedback-box');
+  if (fb) {
+    fb.innerHTML = `<div class="step-feedback ${isCorrect?'correct':'incorrect'}">${isCorrect ? (step.feedback?.correct||'Correct!') : (step.feedback?.incorrect||'Incorrect.')}</div>
+      <div class="step-nav" style="margin-top:12px"><button class="btn btn-primary" onclick="nextStep('${levelId}','${lessonId}')">Continue →</button></div>`;
+  }
+};
+
+window.answerAssessment = (chosen, correct, levelId, lessonId) => {
+  if (playerAnswered) return;
+  playerAnswered = true;
+  const step = playerSteps[playerStepIndex];
+  const isCorrect = chosen === correct;
+  if (isCorrect) playerScore++;
+  document.querySelectorAll('.step-option').forEach((btn, i) => {
+    btn.classList.add('disabled');
+    if (i === correct) btn.classList.add('correct');
+    else if (i === chosen && !isCorrect) btn.classList.add('incorrect');
+  });
+  const fb = document.getElementById('step-feedback-box');
+  if (fb) {
+    fb.innerHTML = `
+      <div class="step-feedback ${isCorrect?'correct':'incorrect'}">${isCorrect?'✓ Correct!':'✗ Incorrect.'}</div>
+      ${step.explanation ? `<div style="margin-top:10px;padding:12px 16px;background:var(--bg3);border-radius:var(--r2);font-size:13px;color:var(--text2)"><strong style="color:var(--text)">Explanation:</strong> ${step.explanation}</div>` : ''}
+      <div class="step-nav" style="margin-top:12px"><button class="btn btn-primary" onclick="nextStep('${levelId}','${lessonId}')">Continue →</button></div>`;
+  }
+};
+
+// ════════════════════════════════════════════════════════════════
+//  STUDENT: MY PROGRESS
+// ════════════════════════════════════════════════════════════════
+function renderMyProgress() {
+  const wrap = document.getElementById('my-progress-content');
+  const lessons = LS.getLessons().filter(l => l.is_released).sort((a,b) => (a.release_order||99)-(b.release_order||99));
+  const allLevels = LS.getLevels();
+  const progress = LS.getProgress().filter(p => p.user_id === currentUserData.id);
+
+  if (!lessons.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🚀</div><p>No lessons released yet. Check back soon!</p></div>`;
+    return;
+  }
+
+  wrap.innerHTML = lessons.map(l => {
+    const lvls = allLevels.filter(lv => lv.lesson_id === l.id).sort((a,b)=>a.order_num-b.order_num);
+    const done = lvls.filter(lv => progress.find(p => p.level_id===lv.id && p.status==='completed')).length;
+    const pct = lvls.length ? Math.round((done/lvls.length)*100) : 0;
+    const isComplete = done === lvls.length && lvls.length > 0;
+
+    const levelRows = lvls.map(lv => {
+      const p = progress.find(pr => pr.level_id === lv.id);
+      const completed = p?.status === 'completed';
+      return `
+      <div class="progress-level-row">
+        <div style="font-size:12px;color:${completed?'var(--green)':'var(--text3)'}">
+          ${completed?'✓':'○'} Level ${lv.order_num}: ${lv.title}
+        </div>
+        <div class="progress-bar-outer">
+          <div class="progress-bar-inner${completed?' complete':''}" style="width:${completed?100:0}%"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);min-width:50px;text-align:right">
+          ${completed?(p.score!=null?p.score+'%':'Done'):'—'}
+        </div>
+      </div>`;
+    }).join('');
+
+    return `
+    <div class="my-progress-lesson">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <h3>${l.icon||'📘'} ${l.title}</h3>
+        <span class="badge badge-${isComplete?'completed':done>0?'in-progress':'not-started'}">${isComplete?'✓ Complete':done>0?'In Progress':'Not Started'}</span>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:6px">
+          <span>${done}/${lvls.length} levels complete</span><span>${pct}%</span>
+        </div>
+        <div class="tile-progress-bar"><div class="tile-progress-fill${isComplete?' complete':''}" style="width:${pct}%"></div></div>
+      </div>
+      ${levelRows}
+      <div style="margin-top:14px">
+        <button class="btn btn-primary btn-sm" onclick="openLessonPlayer('${l.id}')">
+          ${isComplete?'Review Lesson':'Continue Lesson →'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  MODALS & CONFIRM
+// ════════════════════════════════════════════════════════════════
+window.openModal = (id) => document.getElementById(id).classList.add('show');
+window.closeModal = (id) => document.getElementById(id).classList.remove('show');
+document.addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('show'); });
+
+window.showConfirm = (icon, title, msg, callback, okLabel='Confirm', okClass='btn-danger') => {
+  pendingConfirm = callback;
+  document.getElementById('confirm-icon').textContent = icon;
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  const btn = document.getElementById('confirm-ok-btn');
+  btn.textContent = okLabel; btn.className = `btn ${okClass}`;
+  document.getElementById('confirm-overlay').classList.add('show');
+};
+window.closeConfirm = () => { document.getElementById('confirm-overlay').classList.remove('show'); pendingConfirm = null; };
+window.confirmAction = () => { if (pendingConfirm) pendingConfirm(); closeConfirm(); };
+
+// ════════════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════════════
+window.toast = (msg, type='success') => {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${{success:'✓',error:'✗',info:'ℹ'}[type]||'•'}</span>${msg}`;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(8px)'; t.style.transition='all 0.2s'; setTimeout(()=>t.remove(),200); }, 2800);
+};
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.show').forEach(m => m.classList.remove('show'));
+    closeConfirm();
+  }
+  if (e.key === 'Enter' && document.getElementById('login-page').classList.contains('active')) submitAuth();
+});
+</script>
+
+<!--
+════════════════════════════════════════════════════════════
+  DATA STRUCTURES (localStorage keys used by this app)
+════════════════════════════════════════════════════════════
+
+autoedu_users → Array of user objects:
+  { id, name, email, password, role: "admin"|"student", created_at }
+
+autoedu_lessons → Array of lesson objects:
+  { id, title, description, icon, status: "draft"|"published",
+    is_released: bool, release_order: number|null, seeded: bool,
+    created_at, updated_at }
+
+autoedu_levels → Array of level objects:
+  { id, lesson_id, order_num, title, difficulty: "intro"|"easy"|"medium"|"hard",
+    pass_score: number (0-100), content: { steps: [...] }, created_at }
+
+  Step types:
+    info:        { id, type:"info", image, title, body }
+    interactive: { id, type:"interactive", prompt, options:[], correct:number, feedback:{correct,incorrect} }
+    assessment:  { id, type:"assessment", question, options:[], correct:number, explanation }
+
+autoedu_progress → Array of progress objects:
+  { id, user_id, lesson_id, level_id, status: "in_progress"|"completed",
+    score: number|null, created_at, updated_at, completed_at }
+
+autoedu_session → { id: user_id } — persists login across page refreshes
+
+autoedu_seeded → boolean — prevents re-seeding default lessons
+autoedu_admin_init → boolean — prevents re-creating admin account
+
+════════════════════════════════════════════════════════════
+  DEFAULT LOGIN (localStorage mode):
+  Admin:   admin@autoedu.com / admin123
+  Change the password in Profile after first login!
+════════════════════════════════════════════════════════════
+-->
+</html>
