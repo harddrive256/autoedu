@@ -1180,7 +1180,13 @@ async function renderPlayerStep(level, lesson) {
   const dots = playerSteps.map((_,i)=>`<div style="width:7px;height:7px;border-radius:50%;background:${i<playerIdx?'var(--green)':i===playerIdx?'var(--accent)':'var(--surface2)'};transition:background 0.2s"></div>`).join('');
   let stepHtml = '';
 
-  if (step.type==='simulator') {
+  if (step.type==='multimeter') {
+    stepHtml = `<div id="emm-slot-${playerIdx}" style="padding:0"></div>`;
+  } else if (step.type==='oscilloscope') {
+    stepHtml = `<div id="eosc-slot-${playerIdx}" style="padding:0"></div>`;
+  } else if (step.type==='obd_scan') {
+    stepHtml = `<div id="eobd-slot-${playerIdx}" style="padding:0"></div>`;
+  } else if (step.type==='simulator') {
     // Full scenario-based troubleshooting simulator
     stepHtml = `<div id="sim-slot-${playerIdx}" style="padding:0"></div>`;
 
@@ -1229,7 +1235,22 @@ async function renderPlayerStep(level, lesson) {
     </div>
     <div class="step-card">${stepHtml}</div>`;
 
-  if (step.type==='simulator') {
+  if (step.type==='multimeter') {
+    const slot = $(`emm-slot-${playerIdx}`);
+    if(slot && window.renderEmbeddedMultimeter) {
+      renderEmbeddedMultimeter(step, slot, (correct)=>{ if(correct) playerScore++; advanceStep(); });
+    }
+  } else if (step.type==='oscilloscope') {
+    const slot = $(`eosc-slot-${playerIdx}`);
+    if(slot && window.renderEmbeddedOscilloscope) {
+      renderEmbeddedOscilloscope(step, slot, (correct)=>{ if(correct) playerScore++; advanceStep(); });
+    }
+  } else if (step.type==='obd_scan') {
+    const slot = $(`eobd-slot-${playerIdx}`);
+    if(slot && window.renderEmbeddedOBD) {
+      renderEmbeddedOBD(step, slot, (correct)=>{ if(correct) playerScore++; advanceStep(); });
+    }
+  } else if (step.type==='simulator') {
     const slot = $(`sim-slot-${playerIdx}`);
     if (slot && window.renderSimulatorStep) {
       renderSimulatorStep(step, slot, (correct) => {
@@ -1628,1062 +1649,589 @@ window.backToLogin = () => {
 })();
 
 
+
 // ══════════════════════════════════════════════════════════════════════════
-// SIMULATOR SUITE — Multimeter, Oscilloscope, OBD Scanner, Dashboard, Engine
+// EMBEDDED STEP TYPES — inline within lesson levels (Electude-style)
+// Types: multimeter, oscilloscope, obd_scan
+// These render inside the normal level player, not as separate pages
 // ══════════════════════════════════════════════════════════════════════════
 
-// ── Add Simulator to nav ──────────────────────────────────────────────────
-// Patch buildNav to add simulator items
-const _origBuildNav = buildNav;
-buildNav = function(isAdmin) {
-  _origBuildNav(isAdmin);
-  const nav = document.getElementById('sidebar-nav');
-  const simSection = `
-    <div style="padding:5px 15px 3px;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-top:8px">Simulators</div>
-    <div id="n-v-sim-mm"    class="nav-item" onclick="navTo('v-sim-mm')"><span style="font-size:14px;width:17px;text-align:center;flex-shrink:0">🔬</span>Multimeter</div>
-    <div id="n-v-sim-osc"   class="nav-item" onclick="navTo('v-sim-osc')"><span style="font-size:14px;width:17px;text-align:center;flex-shrink:0">📈</span>Oscilloscope</div>
-    <div id="n-v-sim-obd"   class="nav-item" onclick="navTo('v-sim-obd')"><span style="font-size:14px;width:17px;text-align:center;flex-shrink:0">🔍</span>OBD Scanner</div>
-    <div id="n-v-sim-dash"  class="nav-item" onclick="navTo('v-sim-dash')"><span style="font-size:14px;width:17px;text-align:center;flex-shrink:0">🚗</span>Dashboard</div>
-    <div id="n-v-sim-engine" class="nav-item" onclick="navTo('v-sim-engine')"><span style="font-size:14px;width:17px;text-align:center;flex-shrink:0">🔧</span>Engine Bay</div>`;
-  nav.insertAdjacentHTML('beforeend', simSection);
-};
-
-// ── Register simulator views in navTo ─────────────────────────────────────
-const _origNavTo = window.navTo;
-window.navTo = async function(id) {
-  const simMap = {
-    'v-sim-mm':     renderMultimeter,
-    'v-sim-osc':    renderOscilloscope,
-    'v-sim-obd':    renderOBD,
-    'v-sim-dash':   renderDashboard,
-    'v-sim-engine': renderEngineBay,
-  };
-  if (simMap[id]) { simMap[id](); showView(id); return; }
-  await _origNavTo(id);
-};
-
-// ── Add simulator view divs to shell ─────────────────────────────────────
-(function addSimViews() {
-  const main = document.getElementById('v-dash')?.parentElement;
-  if (!main) return;
-  ['v-sim-mm','v-sim-osc','v-sim-obd','v-sim-dash','v-sim-engine'].forEach(id => {
-    if (!document.getElementById(id)) {
-      const div = document.createElement('div');
-      div.id = id;
-      div.className = 'content-view';
-      div.style.cssText = 'display:none;padding:28px 32px;max-width:1100px';
-      main.appendChild(div);
-    }
-  });
+(function injectEmbedCSS(){
+  if(document.getElementById('embed-sim-css')) return;
+  const s = document.createElement('style');
+  s.id = 'embed-sim-css';
+  s.textContent = `
+    /* ── Shared embedded sim styles ── */
+    .esim-wrap{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:4px}
+    .esim-header{padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:10px}
+    .esim-badge{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 9px;border-radius:10px}
+    .esim-body{padding:16px}
+    /* Multimeter */
+    .emm-layout{display:grid;grid-template-columns:1fr 200px;gap:14px;align-items:start}
+    .emm-circuit{background:#080c12;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+    .emm-circuit svg{width:100%;display:block}
+    .emm-device{background:#1a1e10;border:2px solid #2a2a1a;border-radius:12px;padding:14px}
+    .emm-lcd{background:#0d1a0d;border:2px solid #1a2a1a;border-radius:7px;padding:10px 12px;margin-bottom:12px}
+    .emm-reading{font-family:'Courier New',monospace;font-size:32px;font-weight:700;color:#4ADE80;text-align:right;letter-spacing:2px;text-shadow:0 0 8px rgba(74,222,128,0.4)}
+    .emm-unit{font-size:12px;color:#4ADE80;text-align:right;margin-top:1px}
+    .emm-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px}
+    .emm-mode{padding:6px 4px;border-radius:5px;font-size:10px;font-weight:700;border:1px solid #222;background:#0a0a0a;color:#555;cursor:pointer;font-family:sans-serif;transition:all 0.15s;text-align:center}
+    .emm-mode.active{border-color:#4ADE80;background:rgba(74,222,128,0.12);color:#4ADE80}
+    .emm-tp{cursor:pointer}
+    .emm-tp circle{transition:all 0.2s}
+    .emm-tp:hover circle{stroke:#F5A623;fill:rgba(245,166,35,0.15)}
+    .emm-tp.probed circle{stroke:#F5A623;fill:rgba(245,166,35,0.2)}
+    .emm-result{margin-top:10px;padding:8px 11px;border-radius:6px;font-size:12px;font-weight:500;min-height:36px;line-height:1.5}
+    .emm-result.ok{background:rgba(46,204,138,0.08);border:1px solid rgba(46,204,138,0.2);color:var(--green)}
+    .emm-result.fault{background:rgba(224,84,84,0.08);border:1px solid rgba(224,84,84,0.2);color:var(--red)}
+    .emm-result.info{background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.15);color:var(--blue)}
+    .emm-result.idle{background:var(--bg3);border:1px solid var(--border);color:var(--text3)}
+    /* Oscilloscope */
+    .eosc-layout{display:grid;grid-template-columns:1fr 200px;gap:14px;align-items:start}
+    .eosc-screen{background:#050a05;border:2px solid #1a2a1a;border-radius:10px;overflow:hidden}
+    .eosc-controls{background:#0a0a0a;border:2px solid #1a1a1a;border-radius:10px;padding:14px}
+    .eosc-knob-row{margin-bottom:12px}
+    .eosc-knob-label{font-size:10px;color:#555;margin-bottom:4px;font-family:sans-serif}
+    .eosc-fault-btn{width:100%;padding:8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:sans-serif;transition:all 0.2s}
+    /* OBD */
+    .eobd-layout{display:flex;flex-direction:column;gap:12px}
+    .eobd-scanner{background:#0a0a0a;border:2px solid #1a1a1a;border-radius:12px;padding:14px}
+    .eobd-screen{background:#0a140a;border:2px solid #1a2a1a;border-radius:7px;padding:10px 12px;margin-bottom:12px;font-family:'Courier New',monospace;font-size:11px;color:#4ADE80;line-height:1.7}
+    .eobd-dtc-card{background:var(--surface);border:1px solid rgba(239,68,68,0.2);border-radius:var(--r2);padding:12px 14px}
+    .eobd-code{font-family:'Courier New',monospace;font-size:15px;font-weight:700;color:#EF4444;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);padding:3px 10px;border-radius:6px;display:inline-block;margin-bottom:6px}
+  `;
+  document.head.appendChild(s);
 })();
 
 // ══════════════════════════════════════════════════════════════════════════
-// 1. VIRTUAL MULTIMETER
+// EMBEDDED MULTIMETER
 // ══════════════════════════════════════════════════════════════════════════
-const MM_CIRCUITS = {
-  'tail_light': {
-    name:'Tail Light Circuit',
-    desc:'Left rear tail light not working. Test each point.',
+
+const EMM_CIRCUITS = {
+  tail_fuse: {
+    title:'Tail Light Circuit',
+    svg_w:580, svg_h:200,
     components:[
-      {id:'bat',  label:'Battery',      x:60,  y:160, type:'battery'},
-      {id:'fuse', label:'10A Fuse',      x:200, y:160, type:'fuse'},
-      {id:'sw',   label:'Light Switch',  x:340, y:160, type:'switch'},
-      {id:'bulb', label:'Tail Bulb',     x:480, y:160, type:'bulb'},
-      {id:'gnd',  label:'Earth',         x:610, y:160, type:'earth'},
+      {id:'bat',   x:50,  y:80, w:85, h:50, label:'Battery 12V',  color:'#0d1f35', stroke:'#60A5FA'},
+      {id:'fuse',  x:185, y:82, w:70, h:46, label:'Fuse F7 10A',  color:'#1f1200', stroke:'#F59E0B', faulty:true},
+      {id:'sw',    x:310, y:82, w:70, h:46, label:'Light Switch',  color:'#0d0d1f', stroke:'#9B6DFF'},
+      {id:'bulb',  x:435, y:82, w:70, h:46, label:'Tail Light',   color:'#1f0d00', stroke:'#F59E0B'},
     ],
-    wires:[{x1:100,y1:180,x2:165,y2:180},{x1:242,y1:180,x2:305,y2:180},{x1:378,y1:180,x2:443,y2:180},{x1:518,y1:180,x2:580,y2:180}],
-    testPoints:[
-      {id:'tp1',x:140,y:180,label:'TP1',tip:'Battery positive — should be 12V',    vNorm:12.0,vFault:12.0},
-      {id:'tp2',x:268,y:180,label:'TP2',tip:'After fuse — is fuse intact?',          vNorm:12.0,vFault:12.0},
-      {id:'tp3',x:408,y:180,label:'TP3',tip:'After switch — is switch working?',    vNorm:12.0,vFault:0.0},
-      {id:'tp4',x:548,y:180,label:'TP4',tip:'Bulb positive — does bulb get power?', vNorm:0.5, vFault:0.0},
+    wires:[{x1:135,y1:105,x2:185,y2:105},{x1:255,y1:105,x2:310,y2:105},{x1:380,y1:105,x2:435,y2:105},{x1:505,y1:105,x2:540,y2:105},{x1:540,y1:105,x2:540,y2:160},{x1:50,y1:160,x2:540,y2:160},{x1:50,y1:130,x2:50,y2:160}],
+    tps:[
+      {id:'tp1',x:158,y:105,label:'TP1',tip:'Battery supply'},
+      {id:'tp2',x:283,y:105,label:'TP2',tip:'After fuse'},
+      {id:'tp3',x:408,y:105,label:'TP3',tip:'After switch'},
+      {id:'tp4',x:522,y:105,label:'TP4',tip:'Bulb positive'},
     ],
-    faultedTP:'tp3',
-    faultDesc:'Switch contacts open (faulty switch)',
-    modes:['DCV','ACV','OHM','CONT','AMP'],
-    dcvReadings:{tp1:12.0,tp2:12.0,tp3:0.0,tp4:0.0},
-    ohmReadings:{tp1:'∞',tp2:'0.2',tp3:'∞',tp4:'∞'},
+    readings:{
+      DCV:   {tp1:'12.0V',tp2:'0.0V',tp3:'0.0V',tp4:'0.0V'},
+      CONT:  {tp1:'BEEP ✓',tp2:'OPEN ✗',tp3:'OPEN ✗',tp4:'OPEN ✗'},
+      OHM:   {tp1:'0.1Ω',tp2:'∞',tp3:'∞',tp4:'∞'},
+    },
+    status:{tp1:'ok',tp2:'fault',tp3:'fault',tp4:'fault'},
+    labels:{tp1:'Battery supply',tp2:'BLOWN — fuse is open circuit',tp3:'No power — switch gets no feed',tp4:'No power — bulb is dead'},
+    question:'Based on your measurements, where is the fault?',
+    options:['Battery is flat','Fuse F7 is blown','Light switch is faulty','Tail light bulb is blown'],
+    correct:1,
+    explanation:'TP1 shows 12V (battery OK). TP2 shows 0V — power stops at the fuse. The 10A fuse has blown, cutting all power to the tail light circuit.',
   },
-  'charging': {
-    name:'Charging System',
-    desc:'Battery warning light on. Check alternator output.',
+  charging: {
+    title:'Charging System Circuit',
+    svg_w:560, svg_h:200,
     components:[
-      {id:'bat', label:'Battery',     x:80,  y:160, type:'battery'},
-      {id:'alt', label:'Alternator',  x:360, y:160, type:'alternator'},
-      {id:'gnd', label:'Earth',       x:560, y:160, type:'earth'},
+      {id:'bat',  x:40,  y:78, w:85, h:52, label:'Battery',      color:'#0d1f35', stroke:'#60A5FA'},
+      {id:'alt',  x:320, y:78, w:90, h:52, label:'Alternator',   color:'#0d1f0d', stroke:'#4ADE80', faulty:true},
+      {id:'reg',  x:190, y:78, w:90, h:52, label:'Voltage Reg',  color:'#1a1a0a', stroke:'#F59E0B'},
     ],
-    wires:[{x1:120,y1:180,x2:320,y2:180},{x1:400,y1:180,x2:520,y2:180}],
-    testPoints:[
-      {id:'tp1',x:180,y:180,label:'TP1',tip:'Battery voltage — engine off',      vNorm:12.6,vFault:12.1},
-      {id:'tp2',x:290,y:180,label:'TP2',tip:'Cable junction',                     vNorm:14.1,vFault:12.1},
-      {id:'tp3',x:430,y:180,label:'TP3',tip:'Alternator output — engine running', vNorm:14.2,vFault:11.9},
+    wires:[{x1:125,y1:104,x2:190,y2:104},{x1:280,y1:104,x2:320,y2:104},{x1:410,y1:104,x2:480,y2:104},{x1:480,y1:104,x2:480,y2:160},{x1:40,y1:160,x2:480,y2:160},{x1:40,y1:130,x2:40,y2:160}],
+    tps:[
+      {id:'tp1',x:152,y:104,label:'TP1',tip:'Battery voltage'},
+      {id:'tp2',x:302,y:104,label:'TP2',tip:'After regulator'},
+      {id:'tp3',x:445,y:104,label:'TP3',tip:'Alternator output'},
     ],
-    faultedTP:'all',
-    faultDesc:'Alternator not generating — check drive belt',
-    modes:['DCV','ACV','OHM','CONT','AMP'],
-    dcvReadings:{tp1:12.1,tp2:12.1,tp3:11.9},
-    ohmReadings:{tp1:'0.05',tp2:'0.1',tp3:'∞'},
-  }
+    readings:{
+      DCV:  {tp1:'12.1V',tp2:'12.1V',tp3:'11.9V'},
+      CONT: {tp1:'BEEP ✓',tp2:'BEEP ✓',tp3:'BEEP ✓'},
+      OHM:  {tp1:'0.1Ω',tp2:'0.2Ω',tp3:'∞'},
+    },
+    status:{tp1:'fault',tp2:'fault',tp3:'fault'},
+    labels:{tp1:'12.1V — low, battery discharging',tp2:'12.1V — no charge voltage present',tp3:'11.9V — alternator NOT generating'},
+    question:'What is the fault?',
+    options:['Battery is flat','Voltage regulator faulty','Alternator not generating','Wiring is broken'],
+    correct:2,
+    explanation:'All readings stay around 12V even with engine running. A healthy alternator raises voltage to 13.8–14.4V. The alternator is not generating — check the drive belt and then alternator output.',
+  },
+  relay_hlight: {
+    title:'Headlight Relay Circuit',
+    svg_w:580, svg_h:220,
+    components:[
+      {id:'bat',  x:30,  y:60, w:80, h:50, label:'Battery',       color:'#0d1f35', stroke:'#60A5FA'},
+      {id:'cfuse',x:160, y:60, w:75, h:50, label:'Ctrl Fuse 5A',  color:'#1f1200', stroke:'#F59E0B'},
+      {id:'sw',   x:280, y:60, w:75, h:50, label:'Head Switch',   color:'#0d0d1f', stroke:'#9B6DFF'},
+      {id:'relay',x:400, y:55, w:80, h:60, label:'Relay',         color:'#2a0808', stroke:'#EF4444', faulty:true},
+      {id:'mfuse',x:160, y:148,w:75, h:50, label:'Main Fuse 20A', color:'#1f1200', stroke:'#F59E0B'},
+      {id:'hlight',x:400,y:148,w:80, h:50, label:'Headlights',    color:'#1f1000', stroke:'#F59E0B'},
+    ],
+    wires:[{x1:110,y1:85,x2:160,y2:85},{x1:235,y1:85,x2:280,y2:85},{x1:355,y1:85,x2:400,y2:85},{x1:110,y1:173,x2:160,y2:173},{x1:235,y1:173,x2:395,y2:173},{x1:480,y1:173,x2:520,y2:173},{x1:110,y1:85,x2:110,y2:173}],
+    tps:[
+      {id:'tp1',x:132,y:85, label:'TP1',tip:'Battery supply'},
+      {id:'tp2',x:257,y:85, label:'TP2',tip:'After control fuse'},
+      {id:'tp3',x:377,y:85, label:'TP3',tip:'Relay coil feed'},
+      {id:'tp4',x:132,y:173,label:'TP4',tip:'Main supply'},
+      {id:'tp5',x:365,y:173,label:'TP5',tip:'Relay contacts out'},
+    ],
+    readings:{
+      DCV:  {tp1:'12.6V',tp2:'12.6V',tp3:'12.6V',tp4:'12.6V',tp5:'0.0V'},
+      CONT: {tp1:'BEEP ✓',tp2:'BEEP ✓',tp3:'BEEP ✓',tp4:'BEEP ✓',tp5:'OPEN ✗'},
+      OHM:  {tp1:'0.1Ω',tp2:'0.1Ω',tp3:'0.1Ω',tp4:'0.1Ω',tp5:'∞'},
+    },
+    status:{tp1:'ok',tp2:'ok',tp3:'ok',tp4:'ok',tp5:'fault'},
+    labels:{tp1:'12.6V — battery healthy',tp2:'12.6V — control fuse OK',tp3:'12.6V — relay coil energised',tp4:'12.6V — main supply present',tp5:'0.0V — relay contacts FAILED'},
+    question:'Based on your probe readings, what is the fault?',
+    options:['Both headlight bulbs are blown','The control fuse is blown','The headlight relay contacts have failed','The main fuse is blown'],
+    correct:2,
+    explanation:'TP1–TP4 all show 12.6V — supply is reaching the relay coil AND the contacts input. TP5 shows 0V after the contacts — the relay is receiving its signal but the contacts will not close. Relay has failed internally.',
+  },
 };
 
-let mm = {
-  mode:'DCV',
-  range:'20V',
-  selectedCircuit:'tail_light',
-  probedTP:null,
-  redOnCOM:false,
-};
+let _emmState = {};
 
-function renderMultimeter() {
-  const v = document.getElementById('v-sim-mm');
-  v.innerHTML = `
-    <div style="margin-bottom:22px">
-      <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:#fff;margin-bottom:4px">🔬 Virtual Multimeter</h2>
-      <p style="color:var(--text2);font-size:13px">Select a circuit, choose a measurement mode, then click test points to probe.</p>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start">
-      <!-- Circuit panel -->
-      <div>
-        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-          ${Object.entries(MM_CIRCUITS).map(([k,v])=>`<button onclick="mmSelectCircuit('${k}')" id="mmcb-${k}" class="btn btn-sm" style="background:${mm.selectedCircuit===k?'var(--accent)':'var(--surface2)'};color:${mm.selectedCircuit===k?'#000':'var(--text2)'};border:1px solid var(--border2)">${v.name}</button>`).join('')}
-        </div>
-        <div id="mm-circuit-wrap" style="background:#0a0e14;border:1px solid var(--border);border-radius:var(--r);padding:16px;overflow:hidden">
-          <div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--blue);margin-bottom:8px">${MM_CIRCUITS[mm.selectedCircuit].name}</div>
-          <div style="font-size:12px;color:var(--text2);margin-bottom:14px">${MM_CIRCUITS[mm.selectedCircuit].desc}</div>
-          <div id="mm-svg-wrap">${buildMMSVG(mm.selectedCircuit)}</div>
-        </div>
-        <div id="mm-tp-info" style="margin-top:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px;font-size:13px;color:var(--text2);min-height:44px">Click a test point on the circuit to probe it.</div>
+window.renderEmbeddedMultimeter = function(step, container, onComplete) {
+  const def = EMM_CIRCUITS[step.circuit_id] || EMM_CIRCUITS.tail_fuse;
+  const sid = 'emm_'+Math.random().toString(36).substr(2,5);
+  _emmState[sid] = { mode:'DCV', probedTPs:{}, answered:false, def, onComplete };
+
+  container.innerHTML = `
+    <div class="esim-wrap">
+      <div class="esim-header">
+        <span class="esim-badge" style="background:rgba(74,222,128,0.12);color:#4ADE80;border:1px solid rgba(74,222,128,0.25)">🔬 Multimeter Lab</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">${def.title}</span>
       </div>
-      <!-- Multimeter device -->
-      <div>
-        <div style="background:#1a1e10;border:2px solid #333;border-radius:16px;padding:20px;box-shadow:0 8px 32px rgba(0,0,0,0.6)">
-          <div style="text-align:center;font-size:11px;font-weight:700;letter-spacing:0.15em;color:#666;margin-bottom:14px">AUTOEDU MULTIMETER</div>
-          <!-- LCD Display -->
-          <div style="background:#1a2a1a;border:2px solid #2a3a2a;border-radius:8px;padding:14px 16px;margin-bottom:16px;min-height:80px;display:flex;flex-direction:column;justify-content:center">
-            <div style="font-size:10px;color:#4a6a4a;letter-spacing:0.1em;margin-bottom:4px" id="mm-mode-label">DC VOLTAGE</div>
-            <div style="font-family:'Courier New',monospace;font-size:36px;font-weight:700;color:#4ADE80;text-shadow:0 0 10px rgba(74,222,128,0.4);text-align:right;letter-spacing:2px" id="mm-reading">---</div>
-            <div style="font-size:13px;color:#4ADE80;text-align:right;margin-top:2px" id="mm-unit">V DC</div>
-          </div>
-          <!-- Mode selector -->
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px">
-            ${['DCV','ACV','OHM','CONT','AMP','DIODE'].map(m=>`
-            <button onclick="mmSetMode('${m}')" id="mm-btn-${m}" style="padding:7px 4px;border-radius:6px;font-size:11px;font-weight:600;border:1px solid ${mm.mode===m?'var(--green)':'#333'};background:${mm.mode===m?'rgba(74,222,128,0.15)':'#111'};color:${mm.mode===m?'var(--green)':'#666'};cursor:pointer;font-family:sans-serif;transition:all 0.15s">${m}</button>`).join('')}
-          </div>
-          <!-- Probe sockets -->
-          <div style="display:flex;justify-content:space-around;margin-top:8px">
-            <div style="text-align:center">
-              <div style="width:20px;height:20px;border-radius:50%;background:#e05454;border:2px solid #ff6666;margin:0 auto 4px;box-shadow:0 0 8px rgba(224,84,84,0.5)"></div>
-              <div style="font-size:10px;color:#e05454;font-weight:700">VΩmA</div>
+      <div class="esim-body">
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Select a measurement mode, then click the numbered test points on the circuit to probe. Find where the fault is.</p>
+        <div class="emm-layout">
+          <div>
+            <div class="emm-circuit">
+              <svg id="${sid}-svg" viewBox="0 0 ${def.svg_w} ${def.svg_h}" style="background:#070c0a">
+                ${buildEmmSVG(def, sid)}
+              </svg>
             </div>
-            <div style="text-align:center">
-              <div style="width:20px;height:20px;border-radius:50%;background:#333;border:2px solid #555;margin:0 auto 4px"></div>
-              <div style="font-size:10px;color:#666;font-weight:700">COM</div>
-            </div>
-            <div style="text-align:center">
-              <div style="width:20px;height:20px;border-radius:50%;background:#f5a623;border:2px solid #ffcc55;margin:0 auto 4px;box-shadow:0 0 8px rgba(245,166,35,0.4)"></div>
-              <div style="font-size:10px;color:#f5a623;font-weight:700">10A</div>
-            </div>
+            <div id="${sid}-result" class="emm-result idle" style="margin-top:10px">Set a mode and click a test point to measure.</div>
           </div>
-          <div style="margin-top:14px;padding:8px;background:#111;border-radius:6px;font-size:10px;color:#555;text-align:center;line-height:1.5">
-            Range: AUTO<br>
-            <span id="mm-probe-status" style="color:#4a6a4a">No probe applied</span>
+          <div class="emm-device">
+            <div style="text-align:center;font-size:9px;font-weight:700;letter-spacing:0.15em;color:#444;margin-bottom:10px">MULTIMETER</div>
+            <div class="emm-lcd">
+              <div style="font-size:9px;color:#2a4a2a;margin-bottom:3px" id="${sid}-mode-lbl">DC VOLTAGE</div>
+              <div class="emm-reading" id="${sid}-rdg">---</div>
+              <div class="emm-unit" id="${sid}-unit">V DC</div>
+            </div>
+            <div class="emm-modes">
+              ${['DCV','ACV','OHM','CONT'].map(m=>`<div class="emm-mode${m==='DCV'?' active':''}" id="${sid}-m-${m}" onclick="_emmSetMode('${sid}','${m}')">${m}</div>`).join('')}
+            </div>
+            <div style="display:flex;justify-content:space-around;padding:6px 0">
+              <div style="text-align:center"><div style="width:14px;height:14px;border-radius:50%;background:#e05454;border:1.5px solid #ff6666;margin:0 auto 3px;box-shadow:0 0 6px rgba(224,84,84,0.5)"></div><div style="font-size:9px;color:#e05454;font-weight:700">VΩ</div></div>
+              <div style="text-align:center"><div style="width:14px;height:14px;border-radius:50%;background:#222;border:1.5px solid #444;margin:0 auto 3px"></div><div style="font-size:9px;color:#555;font-weight:700">COM</div></div>
+            </div>
           </div>
         </div>
-        <div style="margin-top:12px;background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.15);border-radius:var(--r2);padding:10px 13px;font-size:12px;color:var(--text2)">
-          <strong style="color:var(--blue)">Tip:</strong> Set mode first, then click test points. Red probe → VΩ socket. Black probe → COM socket.
+        <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px" id="${sid}-qwrap">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">${def.question}</div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            ${def.options.map((o,i)=>`<button id="${sid}-opt${i}" onclick="_emmAnswer('${sid}',${i})" style="padding:8px 12px;border-radius:var(--r2);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);transition:all 0.15s" onmouseover="if(!this.disabled)this.style.borderColor='var(--accent)'" onmouseout="if(!this.disabled)this.style.borderColor=''"><span style="width:20px;height:20px;border-radius:50%;background:var(--surface2);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-right:8px">${String.fromCharCode(65+i)}</span>${o}</button>`).join('')}
+          </div>
+          <div id="${sid}-expl" style="display:none;margin-top:12px;padding:10px 13px;background:var(--bg3);border-radius:var(--r2);font-size:12px;color:var(--text2);line-height:1.7;border:1px solid var(--border)"></div>
         </div>
       </div>
     </div>`;
-}
+};
 
-function buildMMSVG(circuitKey) {
-  const def = MM_CIRCUITS[circuitKey];
-  let svg = `<svg viewBox="0 0 700 280" style="width:100%;background:#080c12;border-radius:6px">`;
-  // wires
-  def.wires.forEach(w => svg += `<line x1="${w.x1}" y1="${w.y1}" x2="${w.x2}" y2="${w.y2}" stroke="#334155" stroke-width="2.5" stroke-linecap="round"/>`);
-  // return wire
-  svg += `<line x1="60" y1="220" x2="640" y2="220" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,3"/>`;
-  // components
-  def.components.forEach(comp => {
-    switch(comp.type) {
-      case 'battery':
-        svg += `<line x1="${comp.x-30}" y1="${comp.y}" x2="${comp.x-30}" y2="${comp.y+40}" stroke="#94A3B8" stroke-width="2"/>
-          <line x1="${comp.x-30}" y1="${comp.y+40}" x2="${comp.x+30}" y2="${comp.y+40}" stroke="#94A3B8" stroke-width="2"/>
-          <line x1="${comp.x+30}" y1="${comp.y}" x2="${comp.x+30}" y2="${comp.y+40}" stroke="#94A3B8" stroke-width="2"/>
-          <line x1="${comp.x-12}" y1="${comp.y+10}" x2="${comp.x-12}" y2="${comp.y+28}" stroke="#4ADE80" stroke-width="3"/>
-          <line x1="${comp.x-18}" y1="${comp.y+19}" x2="${comp.x-6}" y2="${comp.y+19}" stroke="#4ADE80" stroke-width="3"/>
-          <line x1="${comp.x+6}" y1="${comp.y+15}" x2="${comp.x+18}" y2="${comp.y+15}" stroke="#EF4444" stroke-width="3"/>
-          <line x1="${comp.x+6}" y1="${comp.y+23}" x2="${comp.x+18}" y2="${comp.y+23}" stroke="#EF4444" stroke-width="3"/>
-          <text x="${comp.x}" y="${comp.y+60}" text-anchor="middle" fill="#64748B" font-size="10" font-family="Arial">${comp.label}</text>`;
-        break;
-      case 'fuse':
-        svg += `<rect x="${comp.x-22}" y="${comp.y-12}" width="44" height="24" rx="4" fill="none" stroke="#F59E0B" stroke-width="1.5"/>
-          <line x1="${comp.x-35}" y1="${comp.y}" x2="${comp.x-22}" y2="${comp.y}" stroke="#94A3B8" stroke-width="2"/>
-          <line x1="${comp.x+22}" y1="${comp.y}" x2="${comp.x+35}" y2="${comp.y}" stroke="#94A3B8" stroke-width="2"/>
-          <line x1="${comp.x-14}" y1="${comp.y}" x2="${comp.x+14}" y2="${comp.y}" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="3,2"/>
-          <text x="${comp.x}" y="${comp.y+30}" text-anchor="middle" fill="#64748B" font-size="10" font-family="Arial">${comp.label}</text>`;
-        break;
-      case 'switch':
-        svg += `<line x1="${comp.x-35}" y1="${comp.y}" x2="${comp.x-12}" y2="${comp.y}" stroke="#94A3B8" stroke-width="2"/>
-          <line x1="${comp.x+12}" y1="${comp.y}" x2="${comp.x+35}" y2="${comp.y}" stroke="#94A3B8" stroke-width="2"/>
-          <circle cx="${comp.x-12}" cy="${comp.y}" r="3.5" fill="#60A5FA"/>
-          <circle cx="${comp.x+12}" cy="${comp.y}" r="3.5" fill="#60A5FA"/>
-          <line x1="${comp.x-12}" y1="${comp.y}" x2="${comp.x+10}" y2="${comp.y-16}" stroke="#60A5FA" stroke-width="2"/>
-          <text x="${comp.x}" y="${comp.y+30}" text-anchor="middle" fill="#64748B" font-size="10" font-family="Arial">${comp.label}</text>`;
-        break;
-      case 'bulb':
-        svg += `<circle cx="${comp.x}" cy="${comp.y}" r="16" fill="none" stroke="#F59E0B" stroke-width="1.5"/>
-          <line x1="${comp.x-11}" y1="${comp.y-11}" x2="${comp.x+11}" y2="${comp.y+11}" stroke="#F59E0B" stroke-width="1.5"/>
-          <line x1="${comp.x+11}" y1="${comp.y-11}" x2="${comp.x-11}" y2="${comp.y+11}" stroke="#F59E0B" stroke-width="1.5"/>
-          <line x1="${comp.x-35}" y1="${comp.y}" x2="${comp.x-16}" y2="${comp.y}" stroke="#94A3B8" stroke-width="2"/>
-          <line x1="${comp.x+16}" y1="${comp.y}" x2="${comp.x+35}" y2="${comp.y}" stroke="#94A3B8" stroke-width="2"/>
-          <text x="${comp.x}" y="${comp.y+34}" text-anchor="middle" fill="#64748B" font-size="10" font-family="Arial">${comp.label}</text>`;
-        break;
-      case 'earth':
-        svg += `<line x1="${comp.x-35}" y1="${comp.y}" x2="${comp.x}" y2="${comp.y}" stroke="#94A3B8" stroke-width="2"/>
-          <line x1="${comp.x}" y1="${comp.y-14}" x2="${comp.x}" y2="${comp.y+14}" stroke="#4ADE80" stroke-width="2.5"/>
-          <line x1="${comp.x+5}" y1="${comp.y-9}" x2="${comp.x+5}" y2="${comp.y+9}" stroke="#4ADE80" stroke-width="2"/>
-          <line x1="${comp.x+10}" y1="${comp.y-5}" x2="${comp.x+10}" y2="${comp.y+5}" stroke="#4ADE80" stroke-width="1.5"/>
-          <text x="${comp.x+5}" y="${comp.y+30}" text-anchor="middle" fill="#64748B" font-size="10" font-family="Arial">${comp.label}</text>`;
-        break;
-      case 'alternator':
-        svg += `<circle cx="${comp.x}" cy="${comp.y}" r="22" fill="none" stroke="#60A5FA" stroke-width="1.5"/>
-          <text x="${comp.x}" y="${comp.y+5}" text-anchor="middle" fill="#60A5FA" font-size="14" font-weight="bold" font-family="Arial">G</text>
-          <line x1="${comp.x-35}" y1="${comp.y}" x2="${comp.x-22}" y2="${comp.y}" stroke="#94A3B8" stroke-width="2"/>
-          <line x1="${comp.x+22}" y1="${comp.y}" x2="${comp.x+35}" y2="${comp.y}" stroke="#94A3B8" stroke-width="2"/>
-          <text x="${comp.x}" y="${comp.y+42}" text-anchor="middle" fill="#64748B" font-size="10" font-family="Arial">${comp.label}</text>`;
-        break;
-    }
+function buildEmmSVG(def, sid) {
+  let s = '';
+  // Grid lines
+  s += `<g opacity="0.15">`;
+  for(let x=0;x<def.svg_w;x+=50) s+=`<line x1="${x}" y1="0" x2="${x}" y2="${def.svg_h}" stroke="#1a3a1a" stroke-width="0.5"/>`;
+  for(let y=0;y<def.svg_h;y+=50) s+=`<line x1="0" y1="${y}" x2="${def.svg_w}" y2="${y}" stroke="#1a3a1a" stroke-width="0.5"/>`;
+  s += '</g>';
+  // Wires
+  def.wires.forEach(w=>s+=`<line x1="${w.x1}" y1="${w.y1}" x2="${w.x2}" y2="${w.y2}" stroke="#2a3a2a" stroke-width="2.5" stroke-linecap="round"/>`);
+  // Components
+  def.components.forEach(comp=>{
+    s+=`<rect x="${comp.x}" y="${comp.y}" width="${comp.w}" height="${comp.h}" rx="5" fill="${comp.color}" stroke="${comp.stroke}" stroke-width="${comp.faulty?'2':'1.5'}"/>`;
+    if(comp.faulty) s+=`<rect x="${comp.x}" y="${comp.y}" width="${comp.w}" height="${comp.h}" rx="5" fill="rgba(239,68,68,0)" stroke="rgba(239,68,68,0.4)" stroke-width="2.5"/>`;
+    // Split label
+    const words=comp.label.split(' '); let ln1=words[0], ln2=words.slice(1).join(' ');
+    s+=`<text x="${comp.x+comp.w/2}" y="${comp.y+comp.h/2-4}" text-anchor="middle" fill="${comp.stroke}" font-size="10" font-family="Arial" font-weight="bold">${ln1}</text>`;
+    if(ln2) s+=`<text x="${comp.x+comp.w/2}" y="${comp.y+comp.h/2+10}" text-anchor="middle" fill="#64748B" font-size="9" font-family="Arial">${ln2}</text>`;
   });
-  // test points
-  def.testPoints.forEach((tp,i) => {
-    svg += `<g class="mm-tp" data-tp="${tp.id}" data-circuit="${circuitKey}" onclick="mmProbe('${tp.id}','${circuitKey}')" style="cursor:pointer">
-      <circle cx="${tp.x}" cy="${tp.y}" r="12" fill="rgba(79,142,247,0.1)" stroke="#4F8EF7" stroke-width="1.5" class="mm-tp-circle"/>
+  // Test points
+  def.tps.forEach((tp,i)=>{
+    s+=`<g class="emm-tp" id="${sid}-tp-${tp.id}" onclick="_emmProbe('${sid}','${tp.id}')" title="${tp.tip}">
+      <circle cx="${tp.x}" cy="${tp.y}" r="11" fill="rgba(79,142,247,0.1)" stroke="#4F8EF7" stroke-width="1.5"/>
       <text x="${tp.x}" y="${tp.y+4}" text-anchor="middle" fill="#60A5FA" font-size="9" font-weight="bold" font-family="Arial">${tp.label}</text>
     </g>`;
   });
-  svg += '</svg>';
-  return svg;
+  return s;
 }
 
-window.mmSelectCircuit = (key) => {
-  mm.selectedCircuit = key;
-  mm.probedTP = null;
-  renderMultimeter();
-};
-
-window.mmSetMode = (mode) => {
-  mm.mode = mode;
-  const labels = {DCV:'DC VOLTAGE',ACV:'AC VOLTAGE',OHM:'RESISTANCE',CONT:'CONTINUITY',AMP:'CURRENT',DIODE:'DIODE TEST'};
-  const units   = {DCV:'V DC',ACV:'V AC',OHM:'Ω',CONT:'BEEP',AMP:'mA',DIODE:'V'};
-  document.querySelectorAll('[id^="mm-btn-"]').forEach(b => {
-    const m = b.id.replace('mm-btn-','');
-    b.style.borderColor = m===mode ? 'var(--green)' : '#333';
-    b.style.background  = m===mode ? 'rgba(74,222,128,0.15)' : '#111';
-    b.style.color       = m===mode ? 'var(--green)' : '#666';
+window._emmSetMode = function(sid, mode) {
+  const st = _emmState[sid]; if(!st) return;
+  st.mode = mode;
+  const labels={DCV:'DC VOLTAGE',ACV:'AC VOLTAGE',OHM:'RESISTANCE',CONT:'CONTINUITY'};
+  const units={DCV:'V DC',ACV:'V AC',OHM:'Ω',CONT:''};
+  const ml=document.getElementById(sid+'-mode-lbl'), ul=document.getElementById(sid+'-unit');
+  if(ml) ml.textContent=labels[mode]||mode;
+  if(ul) ul.textContent=units[mode]||'';
+  // Update mode buttons
+  ['DCV','ACV','OHM','CONT'].forEach(m=>{
+    const b=document.getElementById(sid+'-m-'+m);
+    if(b){b.className='emm-mode'+(m===mode?' active':'');}
   });
-  const lbl = document.getElementById('mm-mode-label');
-  const unt = document.getElementById('mm-unit');
-  const rdg = document.getElementById('mm-reading');
-  if (lbl) lbl.textContent = labels[mode]||mode;
-  if (unt) unt.textContent = units[mode]||'';
-  // If already probing, refresh reading
-  if (mm.probedTP) mmProbe(mm.probedTP, mm.selectedCircuit);
-  else if (rdg) rdg.textContent = '---';
+  document.getElementById(sid+'-rdg').textContent='---';
+  document.getElementById(sid+'-result').className='emm-result idle';
+  document.getElementById(sid+'-result').textContent='Set a mode and click a test point to measure.';
 };
 
-window.mmProbe = (tpId, circuitKey) => {
-  mm.probedTP = tpId;
-  const def = MM_CIRCUITS[circuitKey];
-  const tp = def.testPoints.find(t=>t.id===tpId);
-  if (!tp) return;
-  const rdg  = document.getElementById('mm-reading');
-  const unt  = document.getElementById('mm-unit');
-  const info = document.getElementById('mm-tp-info');
-  const stat = document.getElementById('mm-probe-status');
-  // Highlight this tp
-  document.querySelectorAll('.mm-tp-circle').forEach(c=>c.setAttribute('stroke','#4F8EF7'));
-  const svg = document.getElementById('mm-svg-wrap');
-  if (svg) {
-    const tpEls = svg.querySelectorAll('.mm-tp');
-    tpEls.forEach(el => {
-      if (el.dataset.tp===tpId) el.querySelector('.mm-tp-circle').setAttribute('stroke','#F5A623');
-    });
+window._emmProbe = function(sid, tpId) {
+  const st=_emmState[sid]; if(!st) return;
+  const def=st.def;
+  const modeReadings=def.readings[st.mode]||{};
+  const val=modeReadings[tpId]||'---';
+  const status=def.status[tpId]||'info';
+  const labelText=def.labels[tpId]||'';
+  st.probedTPs[tpId]=true;
+  // Update display
+  const rdg=document.getElementById(sid+'-rdg');
+  const res=document.getElementById(sid+'-result');
+  const colors={ok:'#4ADE80',fault:'#EF4444',info:'#60A5FA'};
+  if(rdg){rdg.textContent=val;rdg.style.color=colors[status]||'#4ADE80';rdg.style.textShadow=`0 0 8px ${(colors[status]||'#4ADE80')}60`;}
+  if(res){res.className='emm-result '+status;res.innerHTML=`<strong>${tpId.toUpperCase()}:</strong> ${val} — ${labelText}`;}
+  // Mark tp as probed
+  const tpEl=document.getElementById(sid+'-tp-'+tpId);
+  if(tpEl) tpEl.classList.add('probed');
+};
+
+window._emmAnswer = function(sid, idx) {
+  const st=_emmState[sid]; if(!st||st.answered) return;
+  st.answered=true;
+  const def=st.def;
+  const correct=idx===def.correct;
+  def.options.forEach((_,i)=>{
+    const b=document.getElementById(sid+'-opt'+i);
+    if(!b) return;
+    b.disabled=true;
+    if(i===def.correct){b.style.borderColor='var(--green)';b.style.background='rgba(46,204,138,0.1)';b.style.color='var(--green)';}
+    else if(i===idx&&!correct){b.style.borderColor='var(--red)';b.style.background='rgba(224,84,84,0.08)';b.style.color='var(--red)';}
+  });
+  const expl=document.getElementById(sid+'-expl');
+  if(expl){
+    expl.style.display='block';
+    expl.innerHTML=`<strong style="color:${correct?'var(--green)':'var(--red)'}">${correct?'✓ Correct!':'✗ Not quite.'}</strong><br>${def.explanation}<br>
+    <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="_emmContinue('${sid}',${correct})">Continue →</button>`;
   }
-  let reading = '---';
-  let unit = '';
-  let color = '#4ADE80';
-  switch(mm.mode) {
-    case 'DCV': {
-      const val = def.dcvReadings[tpId];
-      if (val !== undefined) {
-        reading = val.toFixed(2);
-        unit = 'V DC';
-        color = val >= 11 ? '#4ADE80' : val <= 0.5 ? '#EF4444' : '#F59E0B';
-      }
-      break;
-    }
-    case 'ACV': reading='0.00'; unit='V AC'; color='#94A3B8'; break;
-    case 'OHM': {
-      const val = def.ohmReadings?.[tpId];
-      reading = val || '∞'; unit = 'Ω'; color = reading==='∞'?'#EF4444':'#4ADE80'; break;
-    }
-    case 'CONT': {
-      const dcv = def.dcvReadings[tpId]||0;
-      reading = dcv > 1 ? 'OPEN' : 'BEEP'; unit = '';
-      color = dcv > 1 ? '#EF4444' : '#4ADE80'; break;
-    }
-    case 'AMP': reading='0.00'; unit='mA'; break;
-    case 'DIODE': reading='0.65'; unit='V'; break;
-  }
-  if (rdg) { rdg.textContent=reading; rdg.style.color=color; rdg.style.textShadow=`0 0 10px ${color}60`; }
-  if (unt) unt.textContent = unit;
-  if (stat) stat.textContent = `Probing ${tpId.toUpperCase()} → ${reading} ${unit}`;
-  if (stat) stat.style.color = color;
-  if (info) info.innerHTML = `<strong style="color:var(--text)">${tp.label}:</strong> ${tp.tip}<br><span style="color:${color};font-size:12px;font-weight:600">Reading: ${reading} ${unit}</span>`;
+};
+
+window._emmContinue = function(sid, correct) {
+  const st=_emmState[sid];
+  if(st&&st.onComplete) st.onComplete(correct);
 };
 
 // ══════════════════════════════════════════════════════════════════════════
-// 2. OSCILLOSCOPE
+// EMBEDDED OSCILLOSCOPE
 // ══════════════════════════════════════════════════════════════════════════
-const OSC_SIGNALS = {
-  injector: {
-    label:'Fuel Injector Pulse',
-    desc:'Injector on/off pattern. Each pulse = one fuel injection event. Width = injector open time (pulse width).',
-    color:'#4ADE80',
-    normal:{ type:'square', freq:25, duty:0.12, vHigh:12, vLow:0 },
-    fault:{ type:'square', freq:25, duty:0.0, vHigh:0, vLow:0 },
-    faultDesc:'No injector pulse — injector not firing (check fuse, relay, ECU output)',
-    timeDiv:'10ms', voltDiv:'5V',
+
+const EOSC_DEFS = {
+  injector_pulse: {
+    title:'Fuel Injector Signal',
+    context:'The technician connects the oscilloscope to the injector control wire. The ECU controls the injector by switching it ON and OFF very rapidly.',
+    normal:{type:'pwm',freq:25,duty:0.15,vH:12,vL:0,color:'#4ADE80'},
+    fault:{type:'flat',val:12,color:'#EF4444'},
+    normal_desc:'Clean square wave — injector switching on/off correctly. Pulse width shows how long injector stays open per cycle.',
+    fault_desc:'Flat line at 12V — injector stuck OPEN. Injector not switching. Check ECU driver circuit. DTC likely P0201-P0204.',
+    question:'The FAULT waveform shows the injector signal is flat at 12V. What does this mean?',
+    options:['Injector working correctly','Injector stuck open — not switching','Battery voltage is low','Injector pulse too fast'],
+    correct:1,
+    explanation:'A healthy injector shows a square wave switching between 0V and 12V. A flat 12V line means the injector control wire is stuck high — the injector is permanently open, causing engine flooding and rich running.',
   },
-  o2sensor: {
-    label:'Oxygen (Lambda) Sensor',
-    desc:'O2 sensor voltage toggles between ~0.1V (lean) and ~0.9V (rich) as the ECU adjusts mixture. Should switch ~1/sec.',
-    color:'#60A5FA',
-    normal:{ type:'sine_offset', freq:0.8, amplitude:0.4, offset:0.5, vHigh:0.9, vLow:0.1 },
-    fault:{ type:'flat', vVal:0.45 },
-    faultDesc:'O2 sensor stuck at mid-voltage — lazy or failed sensor (replace O2 sensor)',
-    timeDiv:'500ms', voltDiv:'0.5V',
+  o2_sensor: {
+    title:'Oxygen (Lambda) Sensor',
+    context:'The O2 sensor voltage switches between lean (~0.1V) and rich (~0.9V) as the ECU adjusts the fuel mixture. Should cycle roughly once per second at idle.',
+    normal:{type:'sine_offset',freq:0.8,amp:0.38,off:0.5,color:'#60A5FA'},
+    fault:{type:'flat',val:0.45,color:'#F59E0B'},
+    normal_desc:'Healthy toggling between 0.1V and 0.9V — O2 sensor actively monitoring mixture and ECU is correcting.',
+    fault_desc:'Flat line stuck at ~0.45V — O2 sensor has failed (lazy/dead). ECU running in open loop. DTC P0136 or P0137.',
+    question:'The FAULT waveform shows the O2 sensor is flat at 0.45V. What is the problem?',
+    options:['O2 sensor working normally','O2 sensor stuck — lazy or failed sensor','Engine running rich','Air filter is blocked'],
+    correct:1,
+    explanation:'A healthy O2 sensor continuously toggles between 0.1V (lean) and 0.9V (rich). A flat line at ~0.45V means the sensor has stopped responding — it is lazy, contaminated, or failed. The ECU can no longer correct the mixture efficiently.',
   },
-  crankshaft: {
-    label:'Crankshaft Position Sensor',
-    desc:'Magnetic sensor produces pulses as reluctor ring teeth pass. Missing pulse = TDC reference. ECU reads this to calculate RPM and ignition timing.',
-    color:'#F59E0B',
-    normal:{ type:'crank', freq:30, vHigh:5, vLow:0 },
-    fault:{ type:'crank_dropout', freq:30, vHigh:5, vLow:0 },
-    faultDesc:'Signal dropout — intermittent crank sensor fault (check wiring, sensor gap)',
-    timeDiv:'5ms', voltDiv:'2V',
+  crank_sensor: {
+    title:'Crankshaft Position Sensor',
+    context:'The crank sensor produces pulses as reluctor ring teeth pass it. Every 8 pulses there is a missing tooth — this is the TDC reference the ECU uses to calculate timing.',
+    normal:{type:'crank',freq:30,vH:5,vL:0,color:'#F59E0B'},
+    fault:{type:'crank_drop',freq:30,vH:5,vL:0,color:'#EF4444'},
+    normal_desc:'Regular pulse pattern with one missing tooth per revolution — healthy crank sensor signal.',
+    fault_desc:'Signal drops out intermittently — crank sensor or wiring fault. Causes stalling, misfires, no-start. DTC P0335.',
+    question:'The FAULT waveform shows the crank sensor signal dropping out. What will this cause?',
+    options:['Slightly higher fuel consumption','Engine will stall and may not restart — ECU loses timing reference','Battery will go flat','Lights will flicker'],
+    correct:1,
+    explanation:'The ECU needs a clean crank sensor signal to know the engine position and calculate ignition/injection timing. A dropout means the ECU loses its timing reference — the engine will misfire, stall, or fail to start. Check sensor gap (0.5–1.5mm) and wiring.',
   },
-  maf: {
-    label:'MAF Sensor (Air Flow)',
-    desc:'Mass Air Flow sensor outputs a frequency or voltage proportional to air entering engine. Higher RPM/load = higher frequency or voltage.',
-    color:'#9B6DFF',
-    normal:{ type:'maf_idle', freq:80, vHigh:3.2, vLow:2.8 },
-    fault:{ type:'flat', vVal:0.5 },
-    faultDesc:'MAF output flat at 0.5V — sensor failed or wiring open circuit (DTC P0100)',
-    timeDiv:'2ms', voltDiv:'1V',
-  }
 };
 
-let osc = { signal:'injector', showFault:false, timebase:1, voltbase:1, running:true };
-let oscAnimId = null;
+let _eoscState={};
 
-function renderOscilloscope() {
-  const v = document.getElementById('v-sim-osc');
-  v.innerHTML = `
-    <div style="margin-bottom:22px">
-      <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:#fff;margin-bottom:4px">📈 Virtual Oscilloscope</h2>
-      <p style="color:var(--text2);font-size:13px">Select a signal, observe the waveform, then inject a fault to see what it looks like on a real scope.</p>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 280px;gap:18px;align-items:start">
-      <div>
-        <!-- Signal select -->
-        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-          ${Object.entries(OSC_SIGNALS).map(([k,s])=>`<button onclick="oscSelect('${k}')" id="oscb-${k}" class="btn btn-sm" style="background:${osc.signal===k?s.color:'var(--surface2)'};color:${osc.signal===k?'#000':'var(--text2)'};border:1px solid var(--border2);transition:all 0.2s">${s.label}</button>`).join('')}
-        </div>
-        <!-- Scope screen -->
-        <div style="background:#050a05;border:2px solid #1a2a1a;border-radius:10px;padding:10px;position:relative">
-          <div style="position:absolute;top:10px;left:16px;font-size:10px;color:#2a4a2a;font-family:monospace">
-            TIME/DIV: <span id="osc-tdiv">${OSC_SIGNALS[osc.signal].timeDiv}</span> &nbsp; VOLT/DIV: <span id="osc-vdiv">${OSC_SIGNALS[osc.signal].voltDiv}</span>
-          </div>
-          <canvas id="osc-canvas" width="700" height="280" style="width:100%;display:block;border-radius:6px"></canvas>
-        </div>
-        <!-- Info bar -->
-        <div style="margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:11px 14px">
-          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px" id="osc-sig-name">${OSC_SIGNALS[osc.signal].label}</div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.6" id="osc-sig-desc">${OSC_SIGNALS[osc.signal].desc}</div>
-        </div>
+window.renderEmbeddedOscilloscope = function(step, container, onComplete) {
+  const def=EOSC_DEFS[step.signal_id]||EOSC_DEFS.injector_pulse;
+  const sid='eosc_'+Math.random().toString(36).substr(2,5);
+  _eoscState[sid]={def,showFault:false,answered:false,onComplete,animId:null};
+
+  container.innerHTML=`
+    <div class="esim-wrap">
+      <div class="esim-header">
+        <span class="esim-badge" style="background:rgba(79,142,247,0.1);color:var(--blue);border:1px solid rgba(79,142,247,0.25)">📈 Oscilloscope Lab</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">${def.title}</span>
       </div>
-      <!-- Controls -->
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <div style="background:#0a0e0a;border:2px solid #1a2a1a;border-radius:10px;padding:16px">
-          <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#4a6a4a;margin-bottom:12px">Controls</div>
-          <label style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;cursor:pointer">
-            <span style="font-size:12px;color:#aaa">▶ Running</span>
-            <input type="checkbox" id="osc-run" checked onchange="oscToggleRun()" style="width:16px;height:16px;cursor:pointer"/>
-          </label>
-          <div style="margin-bottom:12px">
-            <div style="font-size:11px;color:#666;margin-bottom:5px">Time/Div</div>
-            <input type="range" min="1" max="10" value="5" id="osc-time-range" oninput="oscAdjust()" style="width:100%;accent-color:#4ADE80"/>
+      <div class="esim-body">
+        <div style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.15);border-radius:var(--r2);padding:10px 13px;margin-bottom:14px;font-size:12px;color:var(--text2)">
+          <strong style="color:var(--accent)">Context:</strong> ${def.context}
+        </div>
+        <div class="eosc-layout">
+          <div>
+            <div class="eosc-screen"><canvas id="${sid}-canvas" width="560" height="220" style="width:100%;display:block"></canvas></div>
+            <div id="${sid}-wdesc" style="margin-top:8px;padding:8px 11px;border-radius:var(--r2);background:var(--surface);border:1px solid var(--border);font-size:12px;color:var(--text2)">${def.normal_desc}</div>
           </div>
-          <div style="margin-bottom:14px">
-            <div style="font-size:11px;color:#666;margin-bottom:5px">Volt/Div</div>
-            <input type="range" min="1" max="10" value="5" id="osc-volt-range" oninput="oscAdjust()" style="width:100%;accent-color:#4ADE80"/>
-          </div>
-          <div style="border-top:1px solid #1a2a1a;padding-top:12px">
-            <div style="font-size:11px;font-weight:600;color:#4a6a4a;margin-bottom:8px">Fault Inject</div>
-            <button onclick="oscToggleFault()" id="osc-fault-btn" style="width:100%;padding:8px;border-radius:6px;font-size:12px;font-weight:600;border:1px solid ${osc.showFault?'#EF4444':'#333'};background:${osc.showFault?'rgba(239,68,68,0.15)':'#111'};color:${osc.showFault?'#EF4444':'#666'};cursor:pointer;font-family:sans-serif">
-              ${osc.showFault?'● FAULT ACTIVE':'○ Normal Signal'}
-            </button>
+          <div class="eosc-controls">
+            <div style="font-size:9px;font-weight:700;letter-spacing:0.12em;color:#444;margin-bottom:12px;text-align:center">OSCILLOSCOPE</div>
+            <div class="eosc-knob-row">
+              <div class="eosc-knob-label">Time/Div</div>
+              <input type="range" min="1" max="10" value="5" style="width:100%;accent-color:#4ADE80" oninput="_eoscRedraw('${sid}')"/>
+            </div>
+            <div class="eosc-knob-row">
+              <div class="eosc-knob-label">Volt/Div</div>
+              <input type="range" min="1" max="10" value="5" style="width:100%;accent-color:#4ADE80" oninput="_eoscRedraw('${sid}')"/>
+            </div>
+            <div style="border-top:1px solid #1a1a1a;padding-top:12px;margin-top:4px">
+              <div style="font-size:9px;color:#444;font-weight:700;margin-bottom:8px">INJECT FAULT</div>
+              <button id="${sid}-fbtn" class="eosc-fault-btn" style="border:1px solid #333;background:#0a0a0a;color:#666" onclick="_eoscToggleFault('${sid}')">○ Normal</button>
+            </div>
           </div>
         </div>
-        <div id="osc-fault-info" style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.2);border-radius:var(--r2);padding:11px 13px;font-size:12px;color:var(--text2);display:${osc.showFault?'block':'none'}">
-          <strong style="color:#EF4444">⚠ Fault detected:</strong><br>
-          <span id="osc-fault-text">${OSC_SIGNALS[osc.signal].faultDesc}</span>
-        </div>
-        <div style="background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.15);border-radius:var(--r2);padding:10px 13px;font-size:12px;color:var(--text2)">
-          <strong style="color:var(--blue)">How to use:</strong><br>
-          Select a sensor signal, observe the normal waveform, then click Fault Inject to see what a fault looks like.
+        <div style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">${def.question}</div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            ${def.options.map((o,i)=>`<button id="${sid}-opt${i}" onclick="_eoscAnswer('${sid}',${i})" style="padding:8px 12px;border-radius:var(--r2);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);transition:all 0.15s" onmouseover="if(!this.disabled)this.style.borderColor='var(--accent)'" onmouseout="if(!this.disabled)this.style.borderColor=''"><span style="width:20px;height:20px;border-radius:50%;background:var(--surface2);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-right:8px">${String.fromCharCode(65+i)}</span>${o}</button>`).join('')}
+          </div>
+          <div id="${sid}-expl" style="display:none;margin-top:12px;padding:10px 13px;background:var(--bg3);border-radius:var(--r2);font-size:12px;color:var(--text2);line-height:1.7;border:1px solid var(--border)"></div>
         </div>
       </div>
     </div>`;
-  oscDraw();
-}
-
-window.oscSelect = (key) => {
-  osc.signal = key;
-  osc.showFault = false;
-  if (oscAnimId) { cancelAnimationFrame(oscAnimId); oscAnimId=null; }
-  renderOscilloscope();
-};
-window.oscToggleRun = () => {
-  osc.running = document.getElementById('osc-run')?.checked;
-  if (!osc.running && oscAnimId) { cancelAnimationFrame(oscAnimId); oscAnimId=null; }
-  else if (osc.running) oscDraw();
-};
-window.oscAdjust = () => { oscDraw(); };
-window.oscToggleFault = () => {
-  osc.showFault = !osc.showFault;
-  const btn = document.getElementById('osc-fault-btn');
-  const info = document.getElementById('osc-fault-info');
-  if (btn) { btn.textContent = osc.showFault ? '● FAULT ACTIVE' : '○ Normal Signal'; btn.style.borderColor = osc.showFault?'#EF4444':'#333'; btn.style.background=osc.showFault?'rgba(239,68,68,0.15)':'#111'; btn.style.color=osc.showFault?'#EF4444':'#666'; }
-  if (info) info.style.display = osc.showFault?'block':'none';
+  _eoscDraw(sid);
 };
 
-let _oscT = 0;
-function oscDraw() {
-  const canvas = document.getElementById('osc-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const W=700, H=280;
-  const sig = OSC_SIGNALS[osc.signal];
-  const waveData = osc.showFault ? sig.fault : sig.normal;
-  const timeScale = (document.getElementById('osc-time-range')?.value||5)/5;
-  const voltScale = (document.getElementById('osc-volt-range')?.value||5)/5;
-  // Clear
+let _eoscT=0;
+function _eoscDraw(sid) {
+  const st=_eoscState[sid]; if(!st) return;
+  const canvas=document.getElementById(sid+'-canvas'); if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  const W=560,H=220;
+  const wave=st.showFault?st.def.fault:st.def.normal;
   ctx.fillStyle='#050a05'; ctx.fillRect(0,0,W,H);
   // Grid
-  ctx.strokeStyle='rgba(0,80,0,0.3)'; ctx.lineWidth=0.5;
+  ctx.strokeStyle='rgba(0,80,0,0.25)'; ctx.lineWidth=0.5;
   for(let x=0;x<W;x+=W/10){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
   for(let y=0;y<H;y+=H/8){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-  // Center line
-  ctx.strokeStyle='rgba(0,120,0,0.5)'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(W/2,0); ctx.lineTo(W/2,H); ctx.stroke();
+  ctx.strokeStyle='rgba(0,100,0,0.5)'; ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
   // Waveform
-  ctx.strokeStyle = sig.color;
-  ctx.lineWidth = 2;
-  ctx.shadowColor = sig.color;
-  ctx.shadowBlur = 4;
+  ctx.strokeStyle=wave.color; ctx.lineWidth=2.5; ctx.shadowColor=wave.color; ctx.shadowBlur=5;
+  const vMax=wave.vH!==undefined?(wave.vH||12):5;
+  const tOff=_eoscT*0.04;
   ctx.beginPath();
-  const vMax = waveData.vHigh !== undefined ? (waveData.vHigh||1) : 5;
-  const vOff = _oscT * 0.05 / timeScale;
   for(let px=0;px<W;px++){
-    const t = (px/W)*10*timeScale + vOff;
+    const t=(px/W)*8+tOff;
     let y;
-    switch(waveData.type) {
-      case 'square': {
-        const period = 1/waveData.freq;
-        const phase = (t % period)/period;
-        const v = phase < waveData.duty ? waveData.vHigh : waveData.vLow;
-        y = H/2 - (v/vMax)*(H/2-20)*voltScale;
-        break;
-      }
-      case 'sine_offset': {
-        const v = waveData.offset + waveData.amplitude*Math.sin(2*Math.PI*waveData.freq*t);
-        y = H/2 - (v/vMax)*(H/2-20)*voltScale;
-        break;
-      }
-      case 'crank': {
-        const period = 1/(waveData.freq*8);
-        const phase = (t % period)/period;
-        const isMissing = Math.floor(t*waveData.freq*8) % 9 === 8;
-        const v = (!isMissing && phase < 0.4) ? waveData.vHigh : waveData.vLow;
-        y = H/2 - (v/vMax)*(H/2-20)*voltScale;
-        break;
-      }
-      case 'crank_dropout': {
-        const period = 1/(waveData.freq*8);
-        const phase = (t % period)/period;
-        const isMissing = Math.floor(t*waveData.freq*8) % 9 === 8;
-        const isDropout = t > 3 && t < 5;
-        const v = (!isMissing && phase < 0.4 && !isDropout) ? waveData.vHigh : waveData.vLow;
-        y = H/2 - (v/vMax)*(H/2-20)*voltScale;
-        break;
-      }
-      case 'maf_idle': {
-        const period = 1/waveData.freq;
-        const phase = (t % period)/period;
-        const v = phase < 0.5 ? waveData.vHigh : waveData.vLow;
-        y = H/2 - (v/vMax)*(H/2-20)*voltScale;
-        break;
-      }
-      case 'flat': {
-        y = H/2 - (waveData.vVal/vMax)*(H/2-20)*voltScale;
-        break;
-      }
-      default: y = H/2;
+    switch(wave.type){
+      case 'pwm':{const p=1/wave.freq,ph=(t%p)/p;y=H/2-((ph<wave.duty?wave.vH:wave.vL)/vMax)*(H/2-18);break;}
+      case 'sine_offset':{y=H/2-((wave.off+wave.amp*Math.sin(2*Math.PI*wave.freq*t))/vMax)*(H/2-18);break;}
+      case 'crank':{const p=1/(wave.freq*8),ph=(t%p)/p,miss=Math.floor(t*wave.freq*8)%9===8;y=H/2-(((!miss&&ph<0.4)?wave.vH:wave.vL)/vMax)*(H/2-18);break;}
+      case 'crank_drop':{const p=1/(wave.freq*8),ph=(t%p)/p,miss=Math.floor(t*wave.freq*8)%9===8,drop=(t>2&&t<3.5);y=H/2-(((!miss&&ph<0.4&&!drop)?wave.vH:wave.vL)/vMax)*(H/2-18);break;}
+      case 'flat':{y=H/2-((wave.val||0)/vMax)*(H/2-18);break;}
+      default:y=H/2;
     }
-    y = Math.max(5, Math.min(H-5, y));
-    px===0 ? ctx.moveTo(px,y) : ctx.lineTo(px,y);
+    y=Math.max(5,Math.min(H-5,y));
+    px===0?ctx.moveTo(px,y):ctx.lineTo(px,y);
   }
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-  // Labels
-  ctx.fillStyle='#4a6a4a'; ctx.font='10px monospace';
-  ctx.fillText(`${sig.color==='#4ADE80'?'CH1':'CH1'} ${sig.label}`,10,H-8);
-  if (osc.running) { _oscT++; oscAnimId=requestAnimationFrame(oscDraw); }
+  ctx.stroke(); ctx.shadowBlur=0;
+  ctx.fillStyle='#2a4a2a'; ctx.font='10px monospace';
+  ctx.fillText(wave.type==='flat'?'FAULT SIGNAL':'LIVE SIGNAL',8,H-6);
+  _eoscT++;
+  st.animId=requestAnimationFrame(()=>_eoscDraw(sid));
 }
 
+window._eoscRedraw=sid=>{};
+window._eoscToggleFault=function(sid){
+  const st=_eoscState[sid]; if(!st) return;
+  st.showFault=!st.showFault;
+  const btn=document.getElementById(sid+'-fbtn');
+  const desc=document.getElementById(sid+'-wdesc');
+  if(btn){btn.style.borderColor=st.showFault?'#EF4444':'#333';btn.style.background=st.showFault?'rgba(239,68,68,0.12)':'#0a0a0a';btn.style.color=st.showFault?'#EF4444':'#666';btn.textContent=st.showFault?'● FAULT INJECTED':'○ Normal';}
+  if(desc){desc.textContent=st.showFault?st.def.fault_desc:st.def.normal_desc;desc.style.borderColor=st.showFault?'rgba(239,68,68,0.3)':'var(--border)';desc.style.color=st.showFault?'#EF4444':'var(--text2)';}
+};
+window._eoscAnswer=function(sid,idx){
+  const st=_eoscState[sid]; if(!st||st.answered) return;
+  st.answered=true;
+  if(st.animId){cancelAnimationFrame(st.animId);st.animId=null;}
+  const def=st.def; const correct=idx===def.correct;
+  def.options.forEach((_,i)=>{
+    const b=document.getElementById(sid+'-opt'+i); if(!b) return;
+    b.disabled=true;
+    if(i===def.correct){b.style.borderColor='var(--green)';b.style.background='rgba(46,204,138,0.1)';b.style.color='var(--green)';}
+    else if(i===idx&&!correct){b.style.borderColor='var(--red)';b.style.background='rgba(224,84,84,0.08)';b.style.color='var(--red)';}
+  });
+  const expl=document.getElementById(sid+'-expl');
+  if(expl){expl.style.display='block';expl.innerHTML=`<strong style="color:${correct?'var(--green)':'var(--red)'}">${correct?'✓ Correct!':'✗ Not quite.'}</strong><br>${def.explanation}<br><button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="_eoscContinue('${sid}',${correct})">Continue →</button>`;}
+};
+window._eoscContinue=function(sid,correct){const st=_eoscState[sid];if(st&&st.onComplete)st.onComplete(correct);};
+
 // ══════════════════════════════════════════════════════════════════════════
-// 3. OBD SCANNER
+// EMBEDDED OBD SCANNER
 // ══════════════════════════════════════════════════════════════════════════
-const OBD_VEHICLES = {
-  healthy:  { name:'Toyota Corolla — No faults', year:2018, engine:'1.6 VVTi', mileage:45000, dtcs:[], live:{rpm:820,coolant:92,maf:3.2,o2:0.48,map:34,throttle:14,battery:14.1,speed:0,injPW:3.1,timing:12} },
-  engine:   { name:'Honda Fit — Engine fault', year:2015, engine:'1.3 i-VTEC', mileage:112000, dtcs:[
-    {code:'P0301',status:'Current',desc:'Cylinder 1 Misfire Detected',sys:'Powertrain',severity:'High',action:'Check spark plug, ignition coil, injector on cylinder 1. Compression test recommended.'},
-    {code:'P0171',status:'Current',desc:'System Too Lean (Bank 1)',sys:'Powertrain',severity:'Medium',action:'Check for vacuum leaks, dirty MAF sensor, low fuel pressure, faulty O2 sensor.'},
-    {code:'P0300',status:'Historical',desc:'Random/Multiple Cylinder Misfire',sys:'Powertrain',severity:'Medium',action:'Related to P0301. Fix cylinder 1 first, retest.'},
-  ], live:{rpm:1250,coolant:88,maf:2.1,o2:0.82,map:28,throttle:12,battery:13.8,speed:0,injPW:4.8,timing:8}},
-  abs:      { name:'Nissan Note — ABS fault', year:2017, engine:'1.2 DIG-S', mileage:78000, dtcs:[
-    {code:'C1101',status:'Current',desc:'Right Front Wheel Speed Sensor Circuit',sys:'Chassis',severity:'High',action:'Check right front wheel speed sensor wiring, connector, and sensor gap. Replace sensor if faulty.'},
-    {code:'C1102',status:'Historical',desc:'Left Front Wheel Speed Sensor',sys:'Chassis',severity:'Low',action:'Historical fault — monitor after fixing C1101.'},
-  ], live:{rpm:780,coolant:90,maf:3.5,o2:0.51,map:32,throttle:14,battery:14.0,speed:0,injPW:2.9,timing:14}},
+
+const EOBD_DEFS = {
+  misfire: {
+    title:'Engine Misfire — Read Fault Codes',
+    context:'The customer Check Engine light is on. Connect the OBD scanner to read the stored fault codes.',
+    vehicle:{make:'Toyota Corolla',year:2018,engine:'1.6L VVTi',odo:'82,450 km'},
+    scanning_steps:['Connecting to ECU...','Reading Protocol...','Scanning Systems...','DTCs Found!'],
+    dtcs:[
+      {code:'P0301',status:'Current',severity:'High',desc:'Cylinder 1 Misfire Detected',system:'Powertrain',action:'Check spark plug, ignition coil, and fuel injector on cylinder 1. Perform compression test.'},
+      {code:'P0300',status:'Current',severity:'Medium',desc:'Random/Multiple Misfire',system:'Powertrain',action:'Usually accompanies P0301. Fix the specific cylinder fault first, then retest.'},
+    ],
+    live_data:{rpm:'1,240',coolant:'88°C',maf:'2.3 g/s',o2:'0.82V',fuel_trim:'+18%',battery:'13.8V'},
+    question:'Which component should you inspect FIRST based on these fault codes?',
+    options:['Replace the oxygen sensor','Inspect the spark plug on cylinder 1','Replace the catalytic converter','Check the battery voltage'],
+    correct:1,
+    explanation:'P0301 = Cylinder 1 Misfire. The first step is always the cheapest and simplest check: remove and inspect the spark plug on cylinder 1. Look for fouling, cracking, or incorrect gap. If the plug looks OK, test the ignition coil next, then the injector.',
+  },
+  lean_mixture: {
+    title:'Engine Running Lean — Fault Codes',
+    context:'The customer reports poor fuel economy and occasional hesitation under acceleration. The MIL (Check Engine Light) is on.',
+    vehicle:{make:'Honda Jazz',year:2016,engine:'1.3L i-VTEC',odo:'134,000 km'},
+    scanning_steps:['Initialising...','Handshake with ECU...','Reading fault memory...','2 DTCs Found!'],
+    dtcs:[
+      {code:'P0171',status:'Current',severity:'Medium',desc:'System Too Lean (Bank 1)',system:'Powertrain',action:'Check for vacuum leaks, dirty MAF sensor, low fuel pressure, or faulty O2 sensor.'},
+      {code:'P0174',status:'Historical',severity:'Low',desc:'System Too Lean (Bank 2)',system:'Powertrain',action:'Related — both banks lean suggests a global fuel supply problem (fuel pressure or MAF sensor).'},
+    ],
+    live_data:{rpm:'820',coolant:'91°C',maf:'1.8 g/s',o2:'0.12V',fuel_trim:'+22%',battery:'14.1V'},
+    question:'The fuel trim shows +22%. What does this indicate?',
+    options:['Engine is running rich — too much fuel','Engine is running lean — ECU adding extra fuel to compensate','Fuel system is working perfectly','Battery is overcharging'],
+    correct:1,
+    explanation:'Positive fuel trim (+22%) means the ECU is adding 22% more fuel than normal to maintain the correct mixture — this means the engine is running lean. The most common causes are: vacuum leak (extra unmetered air), dirty MAF sensor (under-reading air), or low fuel pressure.',
+  },
 };
 
-let obd = { vehicle:'healthy', tab:'dtc', scanning:false, liveTimer:null };
-let _obdLiveT = 0;
+let _eobdState={};
 
-function renderOBD() {
-  const v = document.getElementById('v-sim-obd');
-  const car = OBD_VEHICLES[obd.vehicle];
-  v.innerHTML = `
-    <div style="margin-bottom:22px">
-      <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:#fff;margin-bottom:4px">🔍 OBD Diagnostic Scanner</h2>
-      <p style="color:var(--text2);font-size:13px">Simulate connecting an OBD-II scanner to read fault codes and live data.</p>
-    </div>
-    <div style="display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start">
-      <!-- Scanner device -->
-      <div>
-        <div style="background:#111;border:2px solid #222;border-radius:14px;padding:18px;box-shadow:0 8px 32px rgba(0,0,0,0.6)">
-          <div style="text-align:center;font-size:10px;font-weight:700;letter-spacing:0.15em;color:#444;margin-bottom:12px">AUTOEDU OBD-II SCANNER</div>
-          <!-- Screen -->
-          <div style="background:#0a140a;border:2px solid #1a2a1a;border-radius:8px;padding:12px;margin-bottom:14px;min-height:90px">
-            <div style="font-size:10px;color:#4a6a4a;margin-bottom:6px">CONNECTED VEHICLE</div>
-            <div style="font-family:'Courier New',monospace;font-size:11px;color:#4ADE80;line-height:1.6">
-              ${car.name}<br>
-              Year: ${car.year} &nbsp; ${car.engine}<br>
-              ODO: ${car.mileage.toLocaleString()} km<br>
-              DTCs: <span style="color:${car.dtcs.length>0?'#EF4444':'#4ADE80'}">${car.dtcs.length>0?car.dtcs.length+' FAULT(S)':'SYSTEM OK'}</span>
+window.renderEmbeddedOBD = function(step, container, onComplete) {
+  const def=EOBD_DEFS[step.scenario_id]||EOBD_DEFS.misfire;
+  const sid='eobd_'+Math.random().toString(36).substr(2,5);
+  _eobdState[sid]={def,scanned:false,answered:false,onComplete,scanStep:0};
+
+  container.innerHTML=`
+    <div class="esim-wrap">
+      <div class="esim-header">
+        <span class="esim-badge" style="background:rgba(155,109,255,0.1);color:var(--purple);border:1px solid rgba(155,109,255,0.25)">🔍 OBD Scanner</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">${def.title}</span>
+      </div>
+      <div class="esim-body">
+        <div style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.15);border-radius:var(--r2);padding:10px 13px;margin-bottom:14px;font-size:12px;color:var(--text2)">
+          <strong style="color:var(--accent)">Scenario:</strong> ${def.context}
+        </div>
+        <div class="eobd-layout">
+          <div class="eobd-scanner">
+            <div style="text-align:center;font-size:9px;font-weight:700;letter-spacing:0.15em;color:#444;margin-bottom:10px">AUTOEDU OBD-II SCANNER</div>
+            <div class="eobd-screen" id="${sid}-screen">
+              Vehicle: ${def.vehicle.make} ${def.vehicle.year}<br>
+              Engine: ${def.vehicle.engine}<br>
+              ODO: ${def.vehicle.odo}<br>
+              <span style="color:#2a4a2a">Press SCAN to read fault codes...</span>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button onclick="_eobdScan('${sid}')" id="${sid}-scan-btn" style="flex:1;padding:9px;border-radius:6px;background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);color:#4ADE80;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font-body)">▶ SCAN</button>
+              <button onclick="_eobdLive('${sid}')" style="flex:1;padding:9px;border-radius:6px;background:#0a0a0a;border:1px solid #222;color:#555;font-size:12px;cursor:pointer;font-family:var(--font-body)">LIVE DATA</button>
             </div>
           </div>
-          <!-- Vehicle select -->
-          <div style="margin-bottom:12px">
-            <div style="font-size:10px;color:#666;margin-bottom:6px">SELECT VEHICLE</div>
-            ${Object.entries(OBD_VEHICLES).map(([k,veh])=>`
-            <button onclick="obdSelect('${k}')" style="display:block;width:100%;text-align:left;padding:7px 10px;margin-bottom:5px;border-radius:6px;font-size:11px;border:1px solid ${obd.vehicle===k?'var(--accent)':'#222'};background:${obd.vehicle===k?'rgba(245,166,35,0.1)':'#0a0a0a'};color:${obd.vehicle===k?'var(--accent)':'#666'};cursor:pointer;font-family:sans-serif">${veh.name}</button>`).join('')}
-          </div>
-          <!-- OBD port -->
-          <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:6px;padding:10px;text-align:center">
-            <div style="display:inline-grid;grid-template-columns:repeat(8,8px);gap:3px;margin-bottom:6px">
-              ${Array(16).fill(0).map((_,i)=>`<div style="width:8px;height:8px;border-radius:50%;background:${[0,3,7,14,15].includes(i)?'#4ADE80':'#222'};border:1px solid #333"></div>`).join('')}
-            </div>
-            <div style="font-size:9px;color:#444">16-pin OBD-II Port</div>
+          <div id="${sid}-results" style="flex:1">
+            <div style="text-align:center;color:var(--text3);font-size:12px;padding:30px">Press SCAN to connect to the vehicle ECU.</div>
           </div>
         </div>
-      </div>
-      <!-- Data panel -->
-      <div>
-        <!-- Tabs -->
-        <div style="display:flex;gap:0;margin-bottom:0;border-bottom:1px solid var(--border)">
-          ${[['dtc','⚠ Fault Codes'],['live','📊 Live Data'],['freeze','❄ Freeze Frame'],['info','ℹ Vehicle Info']].map(([t,l])=>`
-          <button onclick="obdTab('${t}')" style="padding:9px 16px;border:none;border-bottom:2px solid ${obd.tab===t?'var(--accent)':'transparent'};background:transparent;color:${obd.tab===t?'var(--accent)':'var(--text3)'};font-size:13px;font-weight:${obd.tab===t?'600':'400'};cursor:pointer;font-family:var(--font-body)">${l}</button>`).join('')}
+        <div style="margin-top:14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:12px 14px" id="${sid}-qwrap" style="display:none">
+          <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px">${def.question}</div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            ${def.options.map((o,i)=>`<button id="${sid}-opt${i}" onclick="_eobdAnswer('${sid}',${i})" style="padding:8px 12px;border-radius:var(--r2);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);text-align:left;cursor:pointer;font-size:13px;font-family:var(--font-body);transition:all 0.15s" onmouseover="if(!this.disabled)this.style.borderColor='var(--accent)'" onmouseout="if(!this.disabled)this.style.borderColor=''"><span style="width:20px;height:20px;border-radius:50%;background:var(--surface2);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-right:8px">${String.fromCharCode(65+i)}</span>${o}</button>`).join('')}
+          </div>
+          <div id="${sid}-expl" style="display:none;margin-top:12px;padding:10px 13px;background:var(--bg3);border-radius:var(--r2);font-size:12px;color:var(--text2);line-height:1.7;border:1px solid var(--border)"></div>
         </div>
-        <div id="obd-panel" style="padding:16px 0">${obdPanel(obd.tab,car)}</div>
       </div>
     </div>`;
-  if (obd.tab==='live') obdStartLive();
-}
+};
 
-function obdPanel(tab, car) {
-  switch(tab) {
-    case 'dtc': return obdDTCPanel(car);
-    case 'live': return obdLivePanel(car);
-    case 'freeze': return obdFreezePanel(car);
-    case 'info': return obdInfoPanel(car);
-  }
-  return '';
-}
-
-function obdDTCPanel(car) {
-  if (!car.dtcs.length) return `<div style="text-align:center;padding:40px 20px"><div style="font-size:40px;margin-bottom:12px">✅</div><h3 style="font-size:16px;font-weight:700;color:#fff;margin-bottom:6px">No Fault Codes</h3><p style="color:var(--text2);font-size:13px">System passed all self-tests. No DTCs stored.</p></div>`;
-  return `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="font-size:13px;font-weight:600;color:var(--text)">${car.dtcs.length} DTC${car.dtcs.length!==1?'s':''} found</div>
-      <button onclick="obdClearDTCs()" class="btn btn-danger btn-sm">Clear All DTCs</button>
-    </div>
-    ${car.dtcs.map(d=>`
-    <div style="background:var(--surface);border:1px solid ${d.status==='Current'?'rgba(239,68,68,0.3)':'var(--border)'};border-radius:var(--r);padding:14px 16px;margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-        <code style="background:${d.status==='Current'?'rgba(239,68,68,0.1)':'rgba(139,144,168,0.1)'};color:${d.status==='Current'?'#EF4444':'var(--text2)'};border:1px solid ${d.status==='Current'?'rgba(239,68,68,0.2)':'var(--border)'};padding:3px 10px;border-radius:6px;font-size:14px;font-weight:700">${d.code}</code>
-        <span style="font-size:11px;color:${d.status==='Current'?'#EF4444':'var(--text3)'}">● ${d.status}</span>
-        <span style="margin-left:auto;font-size:11px;color:var(--text3)">${d.sys}</span>
-      </div>
-      <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">${d.desc}</div>
-      <div style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--bg3);padding:8px 10px;border-radius:4px">
-        <strong style="color:var(--text)">Diagnosis:</strong> ${d.action}
-      </div>
-    </div>`).join('')}`;
-}
-
-function obdLivePanel(car) {
-  const l = car.live;
-  const params = [
-    {label:'Engine RPM',     id:'ld-rpm',     val:l.rpm,     unit:'rpm',  normal:'600–900 idle',  color:l.rpm>1000?'#F59E0B':'#4ADE80'},
-    {label:'Coolant Temp',   id:'ld-cool',    val:l.coolant, unit:'°C',   normal:'85–95°C',       color:l.coolant<70?'#60A5FA':l.coolant>105?'#EF4444':'#4ADE80'},
-    {label:'MAF Air Flow',   id:'ld-maf',     val:l.maf,     unit:'g/s',  normal:'2–5 at idle',   color:l.maf<1?'#EF4444':'#4ADE80'},
-    {label:'O2 Sensor',      id:'ld-o2',      val:l.o2,      unit:'V',    normal:'0.1–0.9V cycling',color:l.o2>0.7||l.o2<0.2?'#F59E0B':'#4ADE80'},
-    {label:'MAP Pressure',   id:'ld-map',     val:l.map,     unit:'kPa',  normal:'20–40 at idle', color:l.map>60?'#EF4444':'#4ADE80'},
-    {label:'Throttle',       id:'ld-thr',     val:l.throttle,unit:'%',    normal:'12–18% idle',   color:'#4ADE80'},
-    {label:'Battery Voltage',id:'ld-bat',     val:l.battery, unit:'V',    normal:'13.8–14.4V running',color:l.battery<13.0?'#EF4444':'#4ADE80'},
-    {label:'Injector PW',    id:'ld-inj',     val:l.injPW,   unit:'ms',   normal:'1.5–4ms idle',  color:'#4ADE80'},
-    {label:'Ignition Timing',id:'ld-ign',     val:l.timing,  unit:'°BTDC',normal:'10–15° idle',   color:'#4ADE80'},
-    {label:'Vehicle Speed',  id:'ld-spd',     val:l.speed,   unit:'km/h', normal:'0 when stationary',color:'#4ADE80'},
-  ];
-  return `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="font-size:13px;font-weight:600;color:var(--text)">Live PIDs — engine running</div>
-      <div style="width:8px;height:8px;border-radius:50%;background:#4ADE80;box-shadow:0 0 8px #4ADE80;animation:spin 2s linear infinite"></div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:9px">
-      ${params.map(p=>`
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:11px 13px">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${p.label}</div>
-        <div id="${p.id}" style="font-family:'Courier New',monospace;font-size:18px;font-weight:700;color:${p.color}">${p.val}</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:2px">${p.unit} · ${p.normal}</div>
-      </div>`).join('')}
-    </div>`;
-}
-
-function obdFreezePanel(car) {
-  if (!car.dtcs.length) return `<p style="color:var(--text3);padding:20px">No DTCs stored — no freeze frame data available.</p>`;
-  const d=car.dtcs[0], l=car.live;
-  return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px">
-    <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:12px">Freeze Frame — captured when ${d.code} was set</div>
-    ${[['Engine Speed',l.rpm,'rpm'],['Coolant Temp',l.coolant,'°C'],['Engine Load',(l.maf*10).toFixed(0),'%'],['Short Fuel Trim',-12.5,'%'],['Long Fuel Trim',8.6,'%'],['MAP Pressure',l.map,'kPa'],['Battery',l.battery,'V']].map(([n,v,u])=>`
-    <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px">
-      <span style="color:var(--text2)">${n}</span>
-      <span style="color:var(--text);font-weight:600">${v} ${u}</span>
-    </div>`).join('')}
+window._eobdScan=function(sid){
+  const st=_eobdState[sid]; if(!st) return;
+  const def=st.def;
+  const screen=document.getElementById(sid+'-screen');
+  const btn=document.getElementById(sid+'-scan-btn');
+  if(btn) btn.disabled=true;
+  let step=0;
+  const steps=def.scanning_steps;
+  const tick=setInterval(()=>{
+    if(!screen){clearInterval(tick);return;}
+    screen.innerHTML=`Vehicle: ${def.vehicle.make} ${def.vehicle.year}<br>Engine: ${def.vehicle.engine}<br>ODO: ${def.vehicle.odo}<br><br>${steps.slice(0,step+1).map((s,i)=>`<span style="color:${i===step?'#4ADE80':'#2a4a2a'}">${i===step?'▶ ':i<step?'✓ ':''  }${s}</span>`).join('<br>')}`;
+    step++;
+    if(step>=steps.length){
+      clearInterval(tick);
+      setTimeout(()=>{
+        st.scanned=true;
+        if(screen) screen.innerHTML=`Vehicle: ${def.vehicle.make}<br>ECU: Connected<br><br><span style="color:#EF4444;font-weight:700">${def.dtcs.length} DTC${def.dtcs.length!==1?'s':''} FOUND</span>`;
+        const res=document.getElementById(sid+'-results');
+        if(res) res.innerHTML=def.dtcs.map(d=>`
+          <div class="eobd-dtc-card" style="margin-bottom:10px">
+            <div class="eobd-code">${d.code}</div>
+            <span style="font-size:11px;color:${d.status==='Current'?'#EF4444':'var(--text3)'}"> ● ${d.status}</span>
+            <div style="font-size:13px;font-weight:600;color:var(--text);margin:6px 0 4px">${d.desc}</div>
+            <div style="font-size:12px;color:var(--text2);background:var(--bg3);padding:7px 9px;border-radius:4px;line-height:1.6"><strong style="color:var(--text)">Action:</strong> ${d.action}</div>
+          </div>`).join('');
+        // Show question
+        const qw=document.getElementById(sid+'-qwrap');
+        if(qw) qw.style.display='block';
+      },400);
+    }
+  },600);
+};
+window._eobdLive=function(sid){
+  const st=_eobdState[sid]; if(!st||!st.scanned) return;
+  const def=st.def;
+  const res=document.getElementById(sid+'-results');
+  if(!res) return;
+  res.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+    ${Object.entries(def.live_data).map(([k,v])=>`<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:9px 11px"><div style="font-size:10px;color:var(--text3);margin-bottom:2px">${k.replace(/_/g,' ').toUpperCase()}</div><div style="font-family:'Courier New',monospace;font-size:15px;font-weight:700;color:${k==='o2'||k==='fuel_trim'?'#F59E0B':'#4ADE80'}">${v}</div></div>`).join('')}
   </div>`;
-}
-
-function obdInfoPanel(car) {
-  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-    ${[['Make/Model',car.name.split('—')[0]],['Year',car.year],['Engine',car.engine],['Odometer',car.mileage.toLocaleString()+' km'],['OBD Protocol','ISO 14230 (KWP2000)'],['VIN','1HGFE1F59XA000001'],['ECU Supplier','Denso / Bosch'],['Fuel System','Multi-point injection']].map(([k,v])=>`
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:11px 13px">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:3px">${k}</div>
-      <div style="font-size:13px;font-weight:600;color:var(--text)">${v}</div>
-    </div>`).join('')}
-  </div>`;
-}
-
-window.obdSelect = (key) => { obd.vehicle=key; if(obd.liveTimer){clearInterval(obd.liveTimer);obd.liveTimer=null;} renderOBD(); };
-window.obdTab    = (tab)  => { obd.tab=tab; if(obd.liveTimer){clearInterval(obd.liveTimer);obd.liveTimer=null;} const car=OBD_VEHICLES[obd.vehicle]; const p=document.getElementById('obd-panel'); if(p){p.innerHTML=obdPanel(tab,car);} if(tab==='live') obdStartLive(); };
-window.obdClearDTCs = () => { OBD_VEHICLES[obd.vehicle].dtcs=[]; const p=document.getElementById('obd-panel'); if(p) p.innerHTML=obdPanel('dtc',OBD_VEHICLES[obd.vehicle]); toast('DTCs cleared','success'); };
-
-function obdStartLive() {
-  if(obd.liveTimer) clearInterval(obd.liveTimer);
-  obd.liveTimer = setInterval(()=>{
-    const car=OBD_VEHICLES[obd.vehicle];
-    const l=car.live;
-    const wiggle=(base,range)=>(base+((Math.random()-0.5)*range)).toFixed(base>10?0:2);
-    const updates={
-      'ld-rpm':wiggle(l.rpm,80),'ld-cool':wiggle(l.coolant,2),
-      'ld-maf':wiggle(l.maf,0.4),'ld-o2':wiggle(l.o2,0.3),
-      'ld-map':wiggle(l.map,3), 'ld-bat':wiggle(l.battery,0.2),
-      'ld-inj':wiggle(l.injPW,0.3),
-    };
-    Object.entries(updates).forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.textContent=val; });
-  },800);
-}
-
-// ══════════════════════════════════════════════════════════════════════════
-// 4. DASHBOARD SIMULATOR
-// ══════════════════════════════════════════════════════════════════════════
-let dash = {
-  ignition: false,
-  engine:   false,
-  speed: 0, rpm: 0, fuel: 75, temp: 20, oil: 4.2,
-  lights: { check_engine:false, battery:false, oil_pressure:false, abs:false, airbag:false, temp:false, fuel:false, brake:false, tpms:false, seatbelt:true },
-  faultScenario: null,
 };
-
-const FAULT_SCENARIOS = {
-  none:         { name:'No faults', lights:{} },
-  alternator:   { name:'Alternator failure', lights:{battery:true,check_engine:true}, engineEffect:{rpmMax:1500} },
-  overheating:  { name:'Engine overheating', lights:{temp:true,check_engine:true}, engineEffect:{tempRise:true} },
-  abs_fault:    { name:'ABS fault', lights:{abs:true}, engineEffect:{} },
-  oil_pressure: { name:'Low oil pressure', lights:{oil_pressure:true,check_engine:true}, engineEffect:{} },
-  fuel_low:     { name:'Low fuel', lights:{fuel:true}, engineEffect:{} },
-  multiple:     { name:'Major fault (multi-warning)', lights:{check_engine:true,battery:true,oil_pressure:true,temp:true}, engineEffect:{} },
-};
-
-let dashAnimId=null, dashSpeedTarget=0, dashRpmTarget=0, dashTempVal=20, dashFuelVal=75;
-
-function renderDashboard() {
-  const v = document.getElementById('v-sim-dash');
-  v.innerHTML = `
-    <div style="margin-bottom:22px">
-      <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:#fff;margin-bottom:4px">🚗 Vehicle Dashboard</h2>
-      <p style="color:var(--text2);font-size:13px">Interactive instrument cluster. Start the engine, inject fault scenarios, and observe how warning lights behave.</p>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 280px;gap:18px;align-items:start">
-      <!-- Dashboard canvas -->
-      <div>
-        <canvas id="dash-canvas" width="700" height="320" style="width:100%;border-radius:12px;background:#0a0a0a;display:block"></canvas>
-        <!-- Controls -->
-        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
-          <button onclick="dashToggleIgnition()" id="dash-ign-btn" class="btn btn-sm" style="border:1px solid var(--border2)">${dash.ignition?'🔑 Ignition OFF':'🔑 Ignition ON'}</button>
-          <button onclick="dashToggleEngine()" id="dash-eng-btn" class="btn btn-sm" style="border:1px solid var(--border2)">${dash.engine?'🔴 Stop Engine':'▶ Start Engine'}</button>
-          <button onclick="dashAccel()" class="btn btn-green btn-sm" ${!dash.engine?'disabled':''}>⬆ Accelerate</button>
-          <button onclick="dashBrake()"  class="btn btn-danger btn-sm" ${!dash.engine?'disabled':''}>⬇ Brake</button>
-        </div>
-      </div>
-      <!-- Fault panel -->
-      <div>
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px">
-          <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text3);margin-bottom:12px">Fault Scenarios</div>
-          ${Object.entries(FAULT_SCENARIOS).map(([k,s])=>`
-          <button onclick="dashSetFault('${k}')" style="display:block;width:100%;text-align:left;padding:8px 11px;margin-bottom:6px;border-radius:6px;font-size:12px;border:1px solid ${dash.faultScenario===k?'var(--red)':'var(--border)'};background:${dash.faultScenario===k?'rgba(224,84,84,0.1)':'var(--bg3)'};color:${dash.faultScenario===k?'var(--red)':'var(--text2)'};cursor:pointer;font-family:var(--font-body);transition:all 0.15s">${s.name}</button>`).join('')}
-        </div>
-        <div style="background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.15);border-radius:var(--r2);padding:10px 13px;font-size:12px;color:var(--text2)">
-          <strong style="color:var(--blue)">Learning goal:</strong> See how a real dashboard looks during different fault conditions. Warning lights help you narrow down the system to investigate.
-        </div>
-      </div>
-    </div>`;
-  dashDraw();
-}
-
-function dashDraw() {
-  const canvas = document.getElementById('dash-canvas');
-  if (!canvas) { if(dashAnimId) cancelAnimationFrame(dashAnimId); return; }
-  const ctx = canvas.getContext('2d');
-  const W=700, H=320;
-  ctx.fillStyle='#080808'; ctx.fillRect(0,0,W,H);
-
-  // ── Speedometer (left) ────────────────────────────────────────────────
-  drawGauge(ctx,160,H/2,130,0,240,'km/h',dashSpeedTarget,[0,50,100,150,200],[0,1/4,2/4,3/4,1],'#60A5FA',12);
-  // ── RPM gauge (right) ────────────────────────────────────────────────
-  drawGauge(ctx,W-160,H/2,130,0,8,'×1000 RPM',dashRpmTarget/1000,[0,2,4,6,8],[0,2/8,4/8,6/8,1],'#4ADE80',6);
-
-  // ── Center cluster ───────────────────────────────────────────────────
-  const cx=W/2, cy=H/2;
-  // Fuel gauge
-  drawMiniGauge(ctx,cx-80,cy+40,45,0,100,'FUEL',dashFuelVal,'#F59E0B');
-  // Temp gauge
-  const tempDisplay = dash.engine ? Math.min(dashTempVal, 110) : dashTempVal;
-  const tempColor = tempDisplay > 100 ? '#EF4444' : tempDisplay > 90 ? '#F59E0B' : '#60A5FA';
-  drawMiniGauge(ctx,cx+80,cy+40,45,20,120,'TEMP',tempDisplay,tempColor);
-
-  // ── Warning lights ───────────────────────────────────────────────────
-  const scenario = FAULT_SCENARIOS[dash.faultScenario||'none'];
-  const activeLights = { ...dash.lights, ...(scenario?.lights||{}) };
-  if (!dash.ignition) Object.keys(activeLights).forEach(k=>activeLights[k]=false);
-
-  const warnDefs = [
-    {k:'check_engine', icon:'⚙', color:'#F59E0B', label:'CHECK\nENGINE'},
-    {k:'battery',      icon:'🔋', color:'#EF4444', label:'BATTERY'},
-    {k:'oil_pressure', icon:'🛢', color:'#EF4444', label:'OIL'},
-    {k:'abs',          icon:'ABS',color:'#F59E0B', label:'ABS'},
-    {k:'airbag',       icon:'💥', color:'#EF4444', label:'AIRBAG'},
-    {k:'temp',         icon:'🌡', color:'#EF4444', label:'TEMP'},
-    {k:'fuel',         icon:'⛽', color:'#F59E0B', label:'FUEL'},
-    {k:'brake',        icon:'!',  color:'#EF4444', label:'BRAKE'},
-    {k:'tpms',         icon:'⬤',  color:'#F59E0B', label:'TPMS'},
-    {k:'seatbelt',     icon:'💺', color:'#EF4444', label:'BELT'},
-  ];
-  const lStartX = cx-200, lStartY = cy-105, lSpacing=40;
-  warnDefs.forEach((w,i) => {
-    const x = lStartX + (i%5)*lSpacing;
-    const y = lStartY + Math.floor(i/5)*40;
-    const active = activeLights[w.k];
-    // Glow effect when active
-    if (active) {
-      ctx.shadowColor = w.color; ctx.shadowBlur = 10;
-    }
-    ctx.beginPath(); ctx.arc(x,y,13,0,Math.PI*2);
-    ctx.fillStyle = active ? w.color : '#1a1a1a';
-    ctx.fill();
-    ctx.strokeStyle = active ? w.color : '#2a2a2a'; ctx.lineWidth=1; ctx.stroke();
-    ctx.shadowBlur=0;
-    // Icon
-    ctx.fillStyle = active ? '#000' : '#333';
-    ctx.font = `bold 9px Arial`; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(w.icon.length>1?w.icon.substring(0,3):w.icon, x, y);
-    // Label
-    ctx.fillStyle = active ? w.color : '#333';
-    ctx.font='6px Arial'; ctx.textAlign='center';
-    ctx.fillText(w.label, x, y+20);
+window._eobdAnswer=function(sid,idx){
+  const st=_eobdState[sid]; if(!st||st.answered) return;
+  st.answered=true;
+  const def=st.def; const correct=idx===def.correct;
+  def.options.forEach((_,i)=>{
+    const b=document.getElementById(sid+'-opt'+i); if(!b) return;
+    b.disabled=true;
+    if(i===def.correct){b.style.borderColor='var(--green)';b.style.background='rgba(46,204,138,0.1)';b.style.color='var(--green)';}
+    else if(i===idx&&!correct){b.style.borderColor='var(--red)';b.style.background='rgba(224,84,84,0.08)';b.style.color='var(--red)';}
   });
-
-  // ── Gear indicator / ignition state ──────────────────────────────────
-  ctx.fillStyle = dash.engine ? '#4ADE80' : dash.ignition ? '#F59E0B' : '#333';
-  ctx.font='bold 14px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(dash.engine?'N':'OFF', cx, cy-10);
-  ctx.font='10px Arial';
-  ctx.fillStyle='#555';
-  ctx.fillText(dash.engine?'RUNNING':dash.ignition?'IGN ON':'IGNITION OFF', cx, cy+8);
-
-  if (dash.engine || dash.ignition) {
-    dashAnimId = requestAnimationFrame(dashDraw);
-  }
-}
-
-function drawGauge(ctx,cx,cy,r,vMin,vMax,label,value,ticks,tickPos,color,redZone) {
-  const startAngle = 0.75*Math.PI, sweepAngle = 1.5*Math.PI;
-  // Background arc
-  ctx.beginPath(); ctx.arc(cx,cy,r,startAngle,startAngle+sweepAngle);
-  ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=12; ctx.stroke();
-  // Red zone
-  const redStart = startAngle + (redZone/vMax)*sweepAngle;
-  ctx.beginPath(); ctx.arc(cx,cy,r,redStart,startAngle+sweepAngle);
-  ctx.strokeStyle='rgba(239,68,68,0.4)'; ctx.lineWidth=12; ctx.stroke();
-  // Value arc
-  const valAngle = startAngle + ((value-vMin)/(vMax-vMin))*sweepAngle;
-  ctx.beginPath(); ctx.arc(cx,cy,r,startAngle,Math.min(valAngle,startAngle+sweepAngle));
-  ctx.strokeStyle=value>redZone?'#EF4444':color; ctx.lineWidth=10;
-  ctx.shadowColor=color; ctx.shadowBlur=8; ctx.stroke(); ctx.shadowBlur=0;
-  // Needle
-  ctx.save(); ctx.translate(cx,cy); ctx.rotate(valAngle);
-  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.moveTo(-4,0); ctx.lineTo(0,-(r-25)); ctx.lineTo(4,0); ctx.fill();
-  ctx.restore();
-  // Center dot
-  ctx.beginPath(); ctx.arc(cx,cy,8,0,Math.PI*2);
-  ctx.fillStyle='#222'; ctx.fill();
-  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.stroke();
-  // Value text
-  ctx.fillStyle='#fff'; ctx.font=`bold 22px 'Courier New',monospace`;
-  ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(Math.round(value), cx, cy+35);
-  ctx.fillStyle='#666'; ctx.font='10px Arial';
-  ctx.fillText(label, cx, cy+52);
-  // Tick marks
-  ticks.forEach((t,i)=>{
-    const a=startAngle+tickPos[i]*sweepAngle;
-    ctx.save(); ctx.translate(cx,cy); ctx.rotate(a);
-    ctx.fillStyle='#666'; ctx.font='9px Arial'; ctx.textAlign='center';
-    ctx.fillText(t, 0, -(r+14));
-    ctx.restore();
-  });
-}
-
-function drawMiniGauge(ctx,cx,cy,r,vMin,vMax,label,value,color) {
-  const start=0.75*Math.PI, sweep=1.5*Math.PI;
-  ctx.beginPath(); ctx.arc(cx,cy,r,start,start+sweep); ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=7; ctx.stroke();
-  const va=start+((value-vMin)/(vMax-vMin))*sweep;
-  ctx.beginPath(); ctx.arc(cx,cy,r,start,va); ctx.strokeStyle=color; ctx.lineWidth=6; ctx.shadowColor=color; ctx.shadowBlur=5; ctx.stroke(); ctx.shadowBlur=0;
-  ctx.fillStyle='#fff'; ctx.font='bold 12px Courier New'; ctx.textAlign='center'; ctx.textBaseline='middle';
-  ctx.fillText(Math.round(value), cx, cy+2);
-  ctx.fillStyle='#666'; ctx.font='9px Arial'; ctx.fillText(label, cx, cy+18);
-}
-
-window.dashToggleIgnition = () => {
-  dash.ignition = !dash.ignition;
-  if (!dash.ignition) { dash.engine=false; dashSpeedTarget=0; dashRpmTarget=0; dashTempVal=20; }
-  const btn=document.getElementById('dash-ign-btn');
-  if(btn) btn.textContent = dash.ignition ? '🔑 Ignition OFF' : '🔑 Ignition ON';
-  renderDashboard();
+  const expl=document.getElementById(sid+'-expl');
+  if(expl){expl.style.display='block';expl.innerHTML=`<strong style="color:${correct?'var(--green)':'var(--red)'}">${correct?'✓ Correct!':'✗ Not quite.'}</strong><br>${def.explanation}<br><button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="_eobdContinue('${sid}',${correct})">Continue →</button>`;}
 };
-window.dashToggleEngine = () => {
-  if (!dash.ignition) { toast('Turn ignition on first','info'); return; }
-  dash.engine = !dash.engine;
-  if (dash.engine) { dashRpmTarget=800; dashTempVal=20; if(dashAnimId) cancelAnimationFrame(dashAnimId); dashAnimId=requestAnimationFrame(dashDraw); }
-  else { dashRpmTarget=0; dashSpeedTarget=0; }
-  const btn=document.getElementById('dash-eng-btn');
-  if(btn) btn.textContent = dash.engine ? '🔴 Stop Engine' : '▶ Start Engine';
-  const accBtn=document.querySelector('[onclick="dashAccel()"]');
-  const brakeBtn=document.querySelector('[onclick="dashBrake()"]');
-  if(accBtn) accBtn.disabled = !dash.engine;
-  if(brakeBtn) brakeBtn.disabled = !dash.engine;
-};
-window.dashAccel = () => {
-  dashSpeedTarget = Math.min(dashSpeedTarget+30, 200);
-  dashRpmTarget   = Math.min(dashRpmTarget+1000, 7000);
-  if(!dashAnimId) dashAnimId=requestAnimationFrame(dashDraw);
-  // Smooth animation
-  const accelAnim = setInterval(()=>{
-    if (Math.abs(dashSpeedTarget-Math.round(dashSpeedTarget))>1) {
-      dashSpeedTarget = dashSpeedTarget + (dashSpeedTarget-dashSpeedTarget)*0.1;
-    }
-    const canvas=document.getElementById('dash-canvas');
-    if(!canvas) { clearInterval(accelAnim); return; }
-  },50);
-  setTimeout(()=>clearInterval(accelAnim),1000);
-};
-window.dashBrake = () => {
-  dashSpeedTarget = Math.max(0, dashSpeedTarget-25);
-  dashRpmTarget   = Math.max(800, dashRpmTarget-800);
-};
-window.dashSetFault = (key) => {
-  dash.faultScenario = key;
-  document.querySelectorAll('[onclick^="dashSetFault"]').forEach(b=>{
-    const k=b.getAttribute('onclick').match(/'(\w+)'/)[1];
-    b.style.borderColor = k===key ? 'var(--red)' : 'var(--border)';
-    b.style.background = k===key ? 'rgba(224,84,84,0.1)' : 'var(--bg3)';
-    b.style.color = k===key ? 'var(--red)' : 'var(--text2)';
-  });
-  if(!dashAnimId && (dash.engine||dash.ignition)) dashAnimId=requestAnimationFrame(dashDraw);
-  else dashDraw();
-};
-// Smooth gauge animation
-setInterval(()=>{
-  if(!document.getElementById('dash-canvas')) return;
-  let changed=false;
-  const lerp=(a,b,t)=>a+(b-a)*t;
-  if(Math.abs(dash.speed-dashSpeedTarget)>0.5){dash.speed=lerp(dash.speed,dashSpeedTarget,0.08);changed=true;}
-  if(Math.abs(dash.rpm-dashRpmTarget)>10){dash.rpm=lerp(dash.rpm,dashRpmTarget,0.08);changed=true;}
-  if(dash.engine&&dashTempVal<92){dashTempVal+=0.2;changed=true;}
-  if(changed&&!dashAnimId&&(dash.engine||dash.ignition)){dashAnimId=requestAnimationFrame(dashDraw);}
-  dashSpeedTarget=dash.speed; dashRpmTarget=dash.rpm;
-},50);
-
-// ══════════════════════════════════════════════════════════════════════════
-// 5. ENGINE BAY SIMULATOR
-// ══════════════════════════════════════════════════════════════════════════
-const ENGINE_COMPONENTS = {
-  battery:    {label:'Battery',         x:80,  y:60,  w:90, h:55, color:'#1a3a5c', border:'#60A5FA', icon:'🔋', desc:'12V lead-acid battery. Provides power to start engine and backs up alternator. Check voltage: 12.6V charged, 12.0V = 50%, below 11.8V = flat. Check terminals for corrosion (white/blue powder).'},
-  alternator: {label:'Alternator',      x:200, y:140, w:80, h:60, color:'#1a2a1a', border:'#4ADE80', icon:'⚡', desc:'Belt-driven generator that charges battery while engine runs. Healthy output: 13.8–14.4V. If battery light on, test output with multimeter. Check drive belt for wear and correct tension.'},
-  airfilter:  {label:'Air Filter Box',  x:380, y:50,  w:100,h:55, color:'#2a1a0a', border:'#F59E0B', icon:'💨', desc:'Filters air entering the engine. Dirty filter restricts airflow, causes rich running, loss of power. Replace every 20,000–30,000 km. Inspect: hold to light — should see light through it.'},
-  maf:        {label:'MAF Sensor',      x:510, y:60,  w:80, h:40, color:'#1a1a2a', border:'#9B6DFF', icon:'📡', desc:'Mass Air Flow sensor. Measures air entering engine. Dirty MAF causes poor idle, hesitation, rich/lean faults. DTC: P0100–P0104. Clean with MAF cleaner spray — never touch the sensing wire.'},
-  coolant_res:{label:'Coolant Reservoir',x:450,y:120, w:90, h:50, color:'#0a1a2a', border:'#60A5FA', icon:'💧', desc:'Coolant expansion tank. Check level when engine COLD — should be between MIN and MAX marks. Low coolant = overheating risk. Coolant should be bright green/orange/pink, not brown/rusty.'},
-  radiator:   {label:'Radiator',        x:530, y:180, w:100,h:80, color:'#1a1a0a', border:'#94A3B8', icon:'🔲', desc:'Cools engine coolant by passing air through fins. Check for blockage (leaves, mud), leaks (green stains), bent fins. Cooling fans should operate when temp reaches ~95°C or when AC is on.'},
-  oil_cap:    {label:'Oil Filler Cap',  x:260, y:90,  w:60, h:40, color:'#1a0a0a', border:'#EF4444', icon:'🔴', desc:'Engine oil access point. Check oil level with dipstick when engine cold and on level ground. Milky/foamy oil = coolant contamination (head gasket). Check oil colour: black = old, gold/amber = good.'},
-  fuse_box:   {label:'Fuse Box',        x:60,  y:160, w:90, h:55, color:'#1a1a0a', border:'#F59E0B', icon:'📦', desc:'Contains blade fuses protecting all vehicle circuits. Each fuse is labelled with amperage and circuit. When a circuit fails, check its fuse first. Always replace with IDENTICAL amperage. Carry spare fuses.'},
-  engine_block:{label:'Engine Block',   x:200, y:220, w:240,h:90, color:'#0a0a0a', border:'#334155', icon:'🔧', desc:'The main engine structure containing cylinders, pistons, crankshaft. Identified by manufacturer and displacement (e.g. 1.6L, 2.0L). Access via spark plugs (ignition), injectors (fuel), sensors (coolant temp, oil pressure, knock).'},
-  spark_plugs:{label:'Spark Plugs (×4)',x:220, y:240, w:80, h:30, color:'#0a1a0a', border:'#4ADE80', icon:'⚡', desc:'Ignite the air/fuel mixture. Replace every 30–60,000 km (platinum/iridium last longer). Signs of wear: misfires, hard start, poor economy. A P0301-P0304 code = misfire on that cylinder. Check gap with feeler gauge.'},
-  thermostat: {label:'Thermostat',      x:340, y:160, w:80, h:45, color:'#0a1a1a', border:'#60A5FA', icon:'🌡', desc:'Controls coolant flow to maintain operating temperature (~85–92°C). Stuck OPEN = engine never reaches temp (poor efficiency). Stuck CLOSED = engine overheats rapidly. DTC: P0128 (too cool), P0217 (too hot).'},
-  injectors:  {label:'Fuel Injectors',  x:300, y:240, w:100,h:30, color:'#1a0a1a', border:'#9B6DFF', icon:'💉', desc:'Spray precise amount of fuel into cylinders. Controlled by ECU with microsecond timing. Dirty injectors cause misfire, rough idle, high fuel consumption. Can be cleaned with injector cleaner or ultrasonic cleaning.'},
-};
-
-let engineSelected = null;
-
-function renderEngineBay() {
-  const v = document.getElementById('v-sim-engine');
-  v.innerHTML = `
-    <div style="margin-bottom:22px">
-      <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:#fff;margin-bottom:4px">🔧 Engine Bay</h2>
-      <p style="color:var(--text2);font-size:13px">Explore the engine bay. Click any component to learn what it does, how to test it, and what fails.</p>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start">
-      <!-- Engine bay canvas -->
-      <div>
-        <div style="background:#0a0c0a;border:1px solid #1a2a1a;border-radius:12px;padding:12px;position:relative">
-          <div style="font-size:10px;color:#2a4a2a;margin-bottom:8px;font-family:monospace">ENGINE BAY — Click components to inspect</div>
-          <canvas id="engine-canvas" width="680" height="310" style="width:100%;display:block;cursor:pointer;border-radius:6px" onclick="engineClick(event)"></canvas>
-        </div>
-        <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:7px">
-          ${Object.entries(ENGINE_COMPONENTS).map(([k,c])=>`<button onclick="engineSelect('${k}')" style="padding:5px 10px;border-radius:5px;font-size:11px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;font-family:var(--font-body)">${c.icon} ${c.label}</button>`).join('')}
-        </div>
-      </div>
-      <!-- Info panel -->
-      <div>
-        <div id="engine-info" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;min-height:200px">
-          <div style="text-align:center;color:var(--text3);font-size:13px;padding:30px 0">
-            <div style="font-size:32px;margin-bottom:10px">🔧</div>
-            Click a component on the diagram to learn about it.
-          </div>
-        </div>
-        <div style="margin-top:12px;background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.15);border-radius:var(--r2);padding:10px 13px;font-size:12px;color:var(--text2)">
-          <strong style="color:var(--blue)">Tip:</strong> Every component shown is a real diagnostic target. Knowing its location and function is the first step to diagnosing it.
-        </div>
-      </div>
-    </div>`;
-  engineDraw(null);
-}
-
-function engineDraw(selected) {
-  const canvas=document.getElementById('engine-canvas');
-  if(!canvas) return;
-  const ctx=canvas.getContext('2d');
-  const W=680,H=310;
-  // Background — bonnet/bay
-  const bg=ctx.createLinearGradient(0,0,0,H);
-  bg.addColorStop(0,'#0d1a0d'); bg.addColorStop(1,'#050a05');
-  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
-  // Bay outline
-  ctx.strokeStyle='#1a3a1a'; ctx.lineWidth=2;
-  ctx.strokeRect(10,10,W-20,H-20);
-  // Firewall
-  ctx.fillStyle='#0a150a'; ctx.fillRect(10,H-30,W-20,20);
-  ctx.fillStyle='#1a2a1a'; ctx.font='10px Arial'; ctx.fillText('FIREWALL',W/2-24,H-15);
-  // Components
-  Object.entries(ENGINE_COMPONENTS).forEach(([k,c])=>{
-    const isSel=k===selected;
-    ctx.fillStyle=c.color;
-    ctx.strokeStyle=isSel?'#ffffff':c.border;
-    ctx.lineWidth=isSel?2.5:1.5;
-    if(isSel){ctx.shadowColor='#fff';ctx.shadowBlur=12;}
-    ctx.beginPath(); ctx.roundRect(c.x,c.y,c.w,c.h,6); ctx.fill(); ctx.stroke();
-    ctx.shadowBlur=0;
-    // Icon + label
-    ctx.fillStyle=isSel?'#fff':c.border;
-    ctx.font=`bold ${isSel?12:10}px Arial`; ctx.textAlign='center'; ctx.textBaseline='top';
-    ctx.fillText(c.icon+' '+c.label.split(' ').slice(0,2).join(' '), c.x+c.w/2, c.y+c.h/2-(isSel?10:8));
-    if(c.label.split(' ').length>2){
-      ctx.fillText(c.label.split(' ').slice(2).join(' '), c.x+c.w/2, c.y+c.h/2+4);
-    }
-  });
-}
-
-function engineClick(e) {
-  const canvas=document.getElementById('engine-canvas');
-  const rect=canvas.getBoundingClientRect();
-  const scaleX=680/rect.width;
-  const mx=(e.clientX-rect.left)*scaleX;
-  const my=(e.clientY-rect.top)*(310/rect.height);
-  for(const [k,c] of Object.entries(ENGINE_COMPONENTS)){
-    if(mx>=c.x&&mx<=c.x+c.w&&my>=c.y&&my<=c.y+c.h){
-      engineSelect(k); return;
-    }
-  }
-}
-
-window.engineSelect = (key) => {
-  engineSelected=key;
-  const c=ENGINE_COMPONENTS[key];
-  const info=document.getElementById('engine-info');
-  if(info){
-    info.innerHTML=`
-      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
-        <div style="font-size:32px">${c.icon}</div>
-        <div><h3 style="font-size:15px;font-weight:700;color:#fff;margin-bottom:3px">${c.label}</h3>
-        <div style="width:12px;height:3px;background:${c.border};border-radius:2px"></div></div>
-      </div>
-      <p style="font-size:13px;color:var(--text2);line-height:1.8">${c.desc}</p>`;
-  }
-  engineDraw(key);
-};
+window._eobdContinue=function(sid,correct){const st=_eobdState[sid];if(st&&st.onComplete)st.onComplete(correct);};
 
 // ══════════════════════════════════════════════════════════════════════════
 // TROUBLESHOOTING SIMULATOR — step type: 'simulator'
