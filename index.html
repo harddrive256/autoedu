@@ -1180,7 +1180,11 @@ async function renderPlayerStep(level, lesson) {
   const dots = playerSteps.map((_,i)=>`<div style="width:7px;height:7px;border-radius:50%;background:${i<playerIdx?'var(--green)':i===playerIdx?'var(--accent)':'var(--surface2)'};transition:background 0.2s"></div>`).join('');
   let stepHtml = '';
 
-  if (step.type==='circuit') {
+  if (step.type==='simulator') {
+    // Full scenario-based troubleshooting simulator
+    stepHtml = `<div id="sim-slot-${playerIdx}" style="padding:0"></div>`;
+
+  } else if (step.type==='circuit') {
     stepHtml = `<div style="padding:18px 20px">
       <div style="margin-bottom:12px">
         <span style="font-size:10px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--green);background:rgba(46,204,138,0.1);border:1px solid rgba(46,204,138,0.2);padding:2px 8px;border-radius:10px">🔌 Circuit Lab</span>
@@ -1225,7 +1229,21 @@ async function renderPlayerStep(level, lesson) {
     </div>
     <div class="step-card">${stepHtml}</div>`;
 
-  if (step.type==='circuit') {
+  if (step.type==='simulator') {
+    const slot = $(`sim-slot-${playerIdx}`);
+    if (slot && window.renderSimulatorStep) {
+      renderSimulatorStep(step, slot, (correct) => {
+        if(correct) playerScore++;
+        advanceStep();
+      });
+    } else {
+      document.addEventListener('simComplete', function handler(e) {
+        document.removeEventListener('simComplete', handler);
+        if(e.detail.correct) playerScore++;
+        advanceStep();
+      }, {once:true});
+    }
+  } else if (step.type==='circuit') {
     const slot = $(`circuit-slot-${playerIdx}`);
     if (slot && window.renderCircuitStep) {
       renderCircuitStep(step, slot);
@@ -2665,6 +2683,565 @@ window.engineSelect = (key) => {
       <p style="font-size:13px;color:var(--text2);line-height:1.8">${c.desc}</p>`;
   }
   engineDraw(key);
+};
+
+// ══════════════════════════════════════════════════════════════════════════
+// TROUBLESHOOTING SIMULATOR — step type: 'simulator'
+// Replaces quiz steps with a full scenario-based diagnostic interface
+// ══════════════════════════════════════════════════════════════════════════
+
+// ── CSS injected once ─────────────────────────────────────────────────────
+(function injectSimCSS(){
+  if(document.getElementById('sim-css')) return;
+  const s=document.createElement('style');
+  s.id='sim-css';
+  s.textContent=`
+    .sim-wrap{display:flex;flex-direction:column;height:calc(100vh - 120px);min-height:500px;gap:0;font-family:var(--font-body)}
+    .sim-workorder{background:linear-gradient(135deg,#1a1200,#1a1e2b);border:1px solid rgba(245,166,35,0.25);border-radius:var(--r);padding:12px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px}
+    .sim-wo-badge{background:rgba(245,166,35,0.15);border:1px solid rgba(245,166,35,0.3);color:var(--accent);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:3px 9px;border-radius:10px;flex-shrink:0;margin-top:2px}
+    .sim-wo-complaint{font-size:13px;color:var(--text);line-height:1.6}
+    .sim-wo-complaint strong{color:var(--accent)}
+    .sim-main{display:flex;flex:1;gap:10px;min-height:0}
+    /* Tool sidebar */
+    .sim-tools{width:180px;flex-shrink:0;display:flex;flex-direction:column;gap:6px}
+    .sim-tools-title{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);padding:4px 0 8px}
+    .sim-tool-btn{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:var(--r2);border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;transition:all 0.15s;text-align:left;width:100%}
+    .sim-tool-btn:hover{border-color:var(--border2);color:var(--text);background:var(--surface2)}
+    .sim-tool-btn.active{border-color:var(--accent);background:rgba(245,166,35,0.1);color:var(--accent)}
+    .sim-tool-btn.active .sim-tool-icon{filter:drop-shadow(0 0 4px var(--accent))}
+    .sim-tool-icon{font-size:16px;flex-shrink:0}
+    .sim-tool-hint{margin-top:auto;padding:10px;background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.15);border-radius:var(--r2);font-size:11px;color:var(--text3);line-height:1.5}
+    /* Car diagram */
+    .sim-car-wrap{flex:1;background:#080c12;border:1px solid var(--border);border-radius:var(--r);position:relative;overflow:hidden;display:flex;flex-direction:column}
+    .sim-car-label{font-size:10px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#2a4a3a;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04)}
+    #sim-svg{width:100%;flex:1}
+    .sim-comp{cursor:pointer;transition:filter 0.15s}
+    .sim-comp:hover .sim-comp-body{filter:brightness(1.4)}
+    .sim-comp.probed .sim-comp-body{filter:brightness(1.8)}
+    /* Results panel */
+    .sim-results{width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:8px}
+    .sim-log{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);overflow-y:auto;display:flex;flex-direction:column;gap:0}
+    .sim-log-title{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);padding:8px 11px;border-bottom:1px solid var(--border)}
+    .sim-log-entry{padding:8px 11px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px;line-height:1.5;animation:fadeIn 0.2s ease}
+    .sim-log-entry .log-tool{color:var(--accent);font-weight:600}
+    .sim-log-entry .log-comp{color:var(--blue)}
+    .sim-log-entry .log-result{display:block;margin-top:3px;padding:4px 7px;border-radius:4px;font-weight:500}
+    .log-ok{background:rgba(46,204,138,0.1);color:var(--green)}
+    .log-fault{background:rgba(224,84,84,0.1);color:var(--red)}
+    .log-info{background:rgba(79,142,247,0.08);color:var(--blue)}
+    .log-warn{background:rgba(245,166,35,0.08);color:var(--accent)}
+    .sim-diagnosis{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:10px 11px}
+    .sim-diagnosis-title{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+    .sim-diag-opt{display:block;width:100%;text-align:left;padding:6px 9px;margin-bottom:5px;border-radius:5px;font-size:11px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-family:var(--font-body);transition:all 0.15s}
+    .sim-diag-opt:hover:not(:disabled){border-color:var(--accent);color:var(--text)}
+    .sim-diag-opt.correct{border-color:var(--green)!important;background:rgba(46,204,138,0.1)!important;color:var(--green)!important}
+    .sim-diag-opt.wrong{border-color:var(--red)!important;background:rgba(224,84,84,0.08)!important;color:var(--red)!important}
+    .sim-diag-opt:disabled{cursor:default}
+    /* Component tooltip */
+    .sim-tooltip{position:absolute;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r2);padding:8px 11px;font-size:11px;color:var(--text2);max-width:180px;pointer-events:none;z-index:10;box-shadow:var(--shadow);display:none;line-height:1.5}
+    /* Progress bar */
+    .sim-progress-bar{height:3px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-bottom:10px}
+    .sim-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--blue));border-radius:2px;transition:width 0.4s}
+  `;
+  document.head.appendChild(s);
+})();
+
+// ── Simulator scenario data ────────────────────────────────────────────────
+const SIM_SCENARIOS = {
+
+  blown_fuse: {
+    workorder: 'Customer complaint: <strong>The left rear tail light is not working.</strong> All other lights work fine. The bulb was recently replaced but the problem continues.',
+    hint: 'Start by checking the fuse — it is the quickest first step.',
+    fault_component: 'fuse_taillight',
+    correct_diagnosis: 1,
+    diagnosis_options: [
+      'The tail light bulb is blown',
+      'The tail light fuse (F7) is blown',
+      'The battery is flat',
+      'The wiring has a short circuit',
+    ],
+    diagnosis_explanation: 'F7 (10A tail light fuse) was blown. Replacing the fuse restores the circuit. Always use the correct rated fuse — never fit a higher amperage replacement.',
+    required_actions: ['fuse_tester:fuse_taillight'], // at least one of these must happen
+    components: {
+      battery:       { label:'Battery (12V)',      x:60,  y:80,  w:95, h:60,  color:'#1a3050', hi:'#2a5080', icon:'🔋', faulty:false },
+      fuse_box:      { label:'Fuse Box',           x:200, y:75,  w:85, h:65,  color:'#2a2000', hi:'#4a3800', icon:'📦', faulty:false },
+      fuse_taillight:{ label:'Fuse F7 (10A)',      x:220, y:95,  w:44, h:26,  color:'#3a2800', hi:'#6a4800', icon:'🔴', faulty:true, parent:'fuse_box' },
+      headlight_relay:{ label:'Headlight Relay',   x:320, y:80,  w:80, h:55,  color:'#1a1a30', hi:'#2a2a50', icon:'⚡', faulty:false },
+      taillight_l:   { label:'Left Tail Light',    x:460, y:75,  w:80, h:60,  color:'#301a00', hi:'#502a00', icon:'💡', faulty:false },
+      headlight_l:   { label:'Left Headlight',     x:460, y:155, w:80, h:55,  color:'#1a3020', hi:'#2a4a30', icon:'💡', faulty:false },
+      wiring_main:   { label:'Main Wiring Loom',   x:185, y:165, w:250,h:30,  color:'#0a0a20', hi:'#1a1a35', icon:'〰️', faulty:false },
+      earth_point:   { label:'Earth Point',        x:370, y:220, w:75, h:45,  color:'#0a1a0a', hi:'#1a3a1a', icon:'⏚',  faulty:false },
+    },
+    tools_result: {
+      // tool_id:component_id → result
+      multimeter_voltage: {
+        battery:         { status:'ok',    text:'12.6V — Battery fully charged ✓' },
+        fuse_box:        { status:'ok',    text:'12.0V supply present at fuse box ✓' },
+        fuse_taillight:  { status:'fault', text:'12V in, 0V out — fuse element broken! Fuse is BLOWN ✗' },
+        headlight_relay: { status:'ok',    text:'12V at relay coil — relay is powered ✓' },
+        taillight_l:     { status:'fault', text:'0V at tail light — no power reaching bulb ✗' },
+        headlight_l:     { status:'ok',    text:'12V at headlight — headlights working ✓' },
+        wiring_main:     { status:'info',  text:'Wiring loom carries multiple circuits — test each individually' },
+        earth_point:     { status:'ok',    text:'Good earth connection — 0V at earth point ✓' },
+      },
+      multimeter_continuity: {
+        battery:         { status:'ok',    text:'BEEP — Circuit complete ✓' },
+        fuse_box:        { status:'ok',    text:'BEEP — Fuse box has continuity ✓' },
+        fuse_taillight:  { status:'fault', text:'SILENCE — No continuity. Fuse element is broken! ✗' },
+        headlight_relay: { status:'ok',    text:'BEEP — Relay coil has continuity ✓' },
+        taillight_l:     { status:'info',  text:'Cannot test with circuit live — disconnect first' },
+        headlight_l:     { status:'ok',    text:'BEEP — Headlight circuit complete ✓' },
+        wiring_main:     { status:'ok',    text:'BEEP — Main loom has continuity ✓' },
+        earth_point:     { status:'ok',    text:'BEEP — Earth connection good ✓' },
+      },
+      fuse_tester: {
+        battery:         { status:'info',  text:'Not a fuse — try the fuse box' },
+        fuse_box:        { status:'info',  text:'Fuse box contains multiple fuses. Test individual fuses.' },
+        fuse_taillight:  { status:'fault', text:'⚠ FUSE BLOWN — F7 (10A Tail Light) is BLOWN. Metal strip melted! ✗' },
+        headlight_relay: { status:'info',  text:'This is a relay, not a fuse — use relay tester' },
+        taillight_l:     { status:'info',  text:'No fuse here — this is the bulb assembly' },
+        headlight_l:     { status:'info',  text:'No fuse here — this is the bulb assembly' },
+        wiring_main:     { status:'info',  text:'No fuse in wiring loom' },
+        earth_point:     { status:'ok',    text:'Earth connection intact — not a fuse point' },
+      },
+      visual_inspect: {
+        battery:         { status:'ok',    text:'Battery terminals clean, no corrosion visible ✓' },
+        fuse_box:        { status:'warn',  text:'⚠ F7 fuse looks dark/discoloured — possible fault here' },
+        fuse_taillight:  { status:'fault', text:'Metal strip inside fuse is clearly broken — BLOWN FUSE ✗' },
+        headlight_relay: { status:'ok',    text:'Relay body intact, no burn marks ✓' },
+        taillight_l:     { status:'ok',    text:'Bulb filament looks intact — bulb is OK ✓' },
+        headlight_l:     { status:'ok',    text:'Headlight lens clean, bulb looks good ✓' },
+        wiring_main:     { status:'ok',    text:'No visible damage to wiring insulation ✓' },
+        earth_point:     { status:'ok',    text:'Earth strap secure, no corrosion ✓' },
+      },
+      replace_component: {
+        battery:         { status:'info',  text:'Battery replaced — but this was not the fault. Problem persists.' },
+        fuse_box:        { status:'info',  text:'Cannot replace entire fuse box — replace individual fuses.' },
+        fuse_taillight:  { status:'ok',    text:'✓ Replaced F7 with new 10A fuse. Tail light now working! Repair complete.' },
+        headlight_relay: { status:'info',  text:'Relay replaced — but this was not the fault. Problem persists.' },
+        taillight_l:     { status:'info',  text:'Bulb replaced — but this was not the fault. Problem persists.' },
+        headlight_l:     { status:'info',  text:'Headlight working — this is not the faulty component.' },
+        wiring_main:     { status:'info',  text:'Wiring loom checked — no fault here.' },
+        earth_point:     { status:'info',  text:'Earth connection OK — this is not the fault.' },
+      },
+      check_connections: {
+        battery:         { status:'ok',    text:'Battery connections tight and secure ✓' },
+        fuse_box:        { status:'ok',    text:'Fuse box connections secure ✓' },
+        fuse_taillight:  { status:'fault', text:'Fuse holder contacts OK, but fuse itself is blown ✗' },
+        headlight_relay: { status:'ok',    text:'Relay pins seated correctly in socket ✓' },
+        taillight_l:     { status:'ok',    text:'Tail light connector fully seated ✓' },
+        headlight_l:     { status:'ok',    text:'Headlight connector fully seated ✓' },
+        wiring_main:     { status:'ok',    text:'All loom connectors secure ✓' },
+        earth_point:     { status:'ok',    text:'Earth bolt torqued correctly ✓' },
+      },
+    },
+  },
+
+  dead_battery: {
+    workorder: 'Customer complaint: <strong>Car will not start — completely dead, no lights, no power at all.</strong> Car was working yesterday. No warning lights came on beforehand.',
+    hint: 'Start at the source of all power — the battery.',
+    fault_component: 'battery',
+    correct_diagnosis: 0,
+    diagnosis_options: [
+      'Battery is completely flat / dead',
+      'Main fuse has blown',
+      'Alternator has failed',
+      'Starter motor is faulty',
+    ],
+    diagnosis_explanation: 'The battery was completely discharged (likely left lights on overnight). Measure voltage: below 11.8V = flat. Recharge and test. If battery will not hold charge, replace it.',
+    required_actions: ['multimeter_voltage:battery'],
+    components: {
+      battery:       { label:'Battery (12V)',      x:60,  y:80,  w:95, h:60,  color:'#1a3050', hi:'#2a5080', icon:'🔋', faulty:true },
+      main_fuse:     { label:'Main Fuse (60A)',    x:200, y:80,  w:75, h:50,  color:'#2a2000', hi:'#4a3800', icon:'📦', faulty:false },
+      ignition_sw:   { label:'Ignition Switch',   x:310, y:80,  w:85, h:50,  color:'#1a1a30', hi:'#2a2a50', icon:'🔑', faulty:false },
+      fuse_box:      { label:'Fuse Box',           x:200, y:160, w:85, h:55,  color:'#2a2000', hi:'#3a3000', icon:'📦', faulty:false },
+      alternator:    { label:'Alternator',         x:420, y:80,  w:85, h:55,  color:'#1a2a10', hi:'#2a4a20', icon:'⚙️', faulty:false },
+      starter:       { label:'Starter Motor',      x:420, y:160, w:85, h:55,  color:'#201010', hi:'#3a2020', icon:'⚙️', faulty:false },
+      earth_point:   { label:'Earth Point',        x:310, y:180, w:75, h:45,  color:'#0a1a0a', hi:'#1a3a1a', icon:'⏚',  faulty:false },
+    },
+    tools_result: {
+      multimeter_voltage: {
+        battery:       { status:'fault', text:'3.8V — Battery completely flat! Needs charging or replacing ✗' },
+        main_fuse:     { status:'info',  text:'0V — Cannot test fuse without battery power' },
+        ignition_sw:   { status:'info',  text:'0V — No power in ignition circuit. Trace back to battery.' },
+        fuse_box:      { status:'info',  text:'0V — No power at fuse box. Source problem upstream.' },
+        alternator:    { status:'info',  text:'0V — Alternator not generating (engine not running)' },
+        starter:       { status:'info',  text:'0V — No power at starter. Battery is the source.' },
+        earth_point:   { status:'ok',    text:'0V — Earth connection intact ✓' },
+      },
+      multimeter_continuity: {
+        battery:       { status:'info',  text:'Battery is present but discharged — low voltage, not open circuit' },
+        main_fuse:     { status:'ok',    text:'BEEP — Main fuse has continuity ✓' },
+        ignition_sw:   { status:'ok',    text:'BEEP — Ignition switch continuity OK ✓' },
+        fuse_box:      { status:'ok',    text:'BEEP — Fuse box wiring intact ✓' },
+        alternator:    { status:'ok',    text:'BEEP — Alternator windings intact ✓' },
+        starter:       { status:'ok',    text:'BEEP — Starter motor windings intact ✓' },
+        earth_point:   { status:'ok',    text:'BEEP — Earth path intact ✓' },
+      },
+      fuse_tester: {
+        battery:       { status:'info',  text:'Not a fuse — this is the battery' },
+        main_fuse:     { status:'ok',    text:'Main fuse (60A) is intact — not the problem ✓' },
+        ignition_sw:   { status:'info',  text:'Not a fuse — this is the ignition switch' },
+        fuse_box:      { status:'ok',    text:'All fuses inside fuse box intact ✓' },
+        alternator:    { status:'info',  text:'Not a fuse — this is the alternator' },
+        starter:       { status:'info',  text:'Not a fuse — this is the starter motor' },
+        earth_point:   { status:'info',  text:'Not a fuse — this is the earth point' },
+      },
+      visual_inspect: {
+        battery:       { status:'fault', text:'⚠ Battery terminals have heavy white/green corrosion. Possible poor connection AND low charge ✗' },
+        main_fuse:     { status:'ok',    text:'Main fuse intact, no discolouration ✓' },
+        ignition_sw:   { status:'ok',    text:'Ignition switch looks intact ✓' },
+        fuse_box:      { status:'ok',    text:'All fuses appear intact visually ✓' },
+        alternator:    { status:'ok',    text:'Alternator belt present and intact ✓' },
+        starter:       { status:'ok',    text:'Starter motor and wiring look intact ✓' },
+        earth_point:   { status:'ok',    text:'Earth strap intact, secure ✓' },
+      },
+      replace_component: {
+        battery:       { status:'ok',    text:'✓ New battery fitted. Car starts immediately. Old battery was 3.8V — completely discharged.' },
+        main_fuse:     { status:'info',  text:'Fuse replaced but battery still flat. Fuse was not the fault.' },
+        ignition_sw:   { status:'info',  text:'Ignition switch replaced — but car still dead. Battery is the source.' },
+        fuse_box:      { status:'info',  text:'Fuse box checked — not the fault.' },
+        alternator:    { status:'info',  text:'Alternator replaced — car still dead. Battery has no charge.' },
+        starter:       { status:'info',  text:'Starter replaced — car still dead. No battery power to run it.' },
+        earth_point:   { status:'info',  text:'Earth connection OK — not the fault.' },
+      },
+      check_connections: {
+        battery:       { status:'fault', text:'⚠ Battery terminal connections loose and corroded — poor contact adding to problem ✗' },
+        main_fuse:     { status:'ok',    text:'Main fuse holder connection secure ✓' },
+        ignition_sw:   { status:'ok',    text:'Ignition switch wiring secure ✓' },
+        fuse_box:      { status:'ok',    text:'Fuse box connections all secure ✓' },
+        alternator:    { status:'ok',    text:'Alternator connections tight ✓' },
+        starter:       { status:'ok',    text:'Starter motor cable secure ✓' },
+        earth_point:   { status:'ok',    text:'Earth strap bolt tight ✓' },
+      },
+    },
+  },
+
+  relay_fault: {
+    workorder: 'Customer complaint: <strong>Both headlights completely dead.</strong> Side lights, brake lights, and indicators all work. Dashboard lit normally. Fuses all look intact.',
+    hint: 'Headlights use a relay. Check if the relay is working.',
+    fault_component: 'headlight_relay',
+    correct_diagnosis: 2,
+    diagnosis_options: [
+      'Both headlight bulbs have blown simultaneously',
+      'The headlight fuse is blown',
+      'The headlight relay has failed',
+      'The headlight switch is faulty',
+    ],
+    diagnosis_explanation: 'The headlight relay contacts failed (open circuit). The relay received its control signal (coil energised) but the main contacts would not close. Replacing the relay restored headlights immediately.',
+    required_actions: ['multimeter_voltage:headlight_relay'],
+    components: {
+      battery:          { label:'Battery (12V)',      x:50,  y:85,  w:90, h:55,  color:'#1a3050', hi:'#2a5080', icon:'🔋', faulty:false },
+      fuse_main:        { label:'Main Fuse (20A)',    x:190, y:85,  w:80, h:45,  color:'#2a2000', hi:'#4a3800', icon:'📦', faulty:false },
+      headlight_switch: { label:'Head Switch',       x:320, y:85,  w:80, h:45,  color:'#1a1a30', hi:'#2a2a50', icon:'🔘', faulty:false },
+      headlight_relay:  { label:'H/Light Relay',     x:440, y:75,  w:80, h:60,  color:'#301010', hi:'#501a1a', icon:'⚡', faulty:true },
+      headlight_l:      { label:'Left Headlight',    x:350, y:175, w:80, h:55,  color:'#301a00', hi:'#502a00', icon:'💡', faulty:false },
+      headlight_r:      { label:'Right Headlight',   x:460, y:175, w:80, h:55,  color:'#301a00', hi:'#502a00', icon:'💡', faulty:false },
+      earth_point:      { label:'Earth',             x:200, y:175, w:70, h:45,  color:'#0a1a0a', hi:'#1a3a1a', icon:'⏚',  faulty:false },
+    },
+    tools_result: {
+      multimeter_voltage: {
+        battery:          { status:'ok',    text:'12.6V — Battery healthy ✓' },
+        fuse_main:        { status:'ok',    text:'12V before and after fuse — fuse is good ✓' },
+        headlight_switch: { status:'ok',    text:'12V present at switch output — switch working ✓' },
+        headlight_relay:  { status:'fault', text:'12V at coil (85/86) — relay energised. BUT 0V at contacts output (87)! Relay contacts FAILED ✗' },
+        headlight_l:      { status:'fault', text:'0V at left headlight — no power getting through ✗' },
+        headlight_r:      { status:'fault', text:'0V at right headlight — no power getting through ✗' },
+        earth_point:      { status:'ok',    text:'Good earth — 0V measured ✓' },
+      },
+      multimeter_continuity: {
+        battery:          { status:'ok',    text:'BEEP — Battery circuit OK ✓' },
+        fuse_main:        { status:'ok',    text:'BEEP — Main fuse intact ✓' },
+        headlight_switch: { status:'ok',    text:'BEEP — Switch has continuity ✓' },
+        headlight_relay:  { status:'fault', text:'Coil: BEEP ✓  |  Contacts: SILENCE ✗ — Contacts are open (failed relay)' },
+        headlight_l:      { status:'info',  text:'Cannot test bulb continuity in circuit — remove bulb first' },
+        headlight_r:      { status:'info',  text:'Cannot test bulb continuity in circuit — remove bulb first' },
+        earth_point:      { status:'ok',    text:'BEEP — Earth continuity good ✓' },
+      },
+      fuse_tester: {
+        battery:          { status:'info',  text:'Not a fuse — this is the battery' },
+        fuse_main:        { status:'ok',    text:'20A fuse intact — not blown ✓' },
+        headlight_switch: { status:'info',  text:'Not a fuse — this is the switch' },
+        headlight_relay:  { status:'info',  text:'Not a fuse — this is a relay. Use relay tester or multimeter.' },
+        headlight_l:      { status:'info',  text:'No fuse here — this is the bulb' },
+        headlight_r:      { status:'info',  text:'No fuse here — this is the bulb' },
+        earth_point:      { status:'info',  text:'No fuse here' },
+      },
+      visual_inspect: {
+        battery:          { status:'ok',    text:'Battery terminals clean ✓' },
+        fuse_main:        { status:'ok',    text:'Main fuse element intact visually ✓' },
+        headlight_switch: { status:'ok',    text:'Switch looks intact, no burn marks ✓' },
+        headlight_relay:  { status:'warn',  text:'⚠ Relay body slightly discoloured on one side — possible internal burn' },
+        headlight_l:      { status:'ok',    text:'Headlight bulb filament intact — bulb looks good ✓' },
+        headlight_r:      { status:'ok',    text:'Headlight bulb filament intact — bulb looks good ✓' },
+        earth_point:      { status:'ok',    text:'Earth strap secure ✓' },
+      },
+      replace_component: {
+        battery:          { status:'info',  text:'Battery replaced — headlights still dead. Not the fault.' },
+        fuse_main:        { status:'info',  text:'Fuse replaced — headlights still dead. Fuse was fine.' },
+        headlight_switch: { status:'info',  text:'Switch replaced — headlights still dead. Not the fault.' },
+        headlight_relay:  { status:'ok',    text:'✓ Relay replaced! BOTH headlights now working. Fault confirmed: relay contacts had failed internally.' },
+        headlight_l:      { status:'info',  text:'Left bulb replaced — headlight still dead. Bulb was fine.' },
+        headlight_r:      { status:'info',  text:'Right bulb replaced — headlight still dead. Bulb was fine.' },
+        earth_point:      { status:'info',  text:'Earth connection checked — not the fault.' },
+      },
+      check_connections: {
+        battery:          { status:'ok',    text:'Battery connections tight ✓' },
+        fuse_main:        { status:'ok',    text:'Fuse holder connections secure ✓' },
+        headlight_switch: { status:'ok',    text:'Switch wiring connector fully seated ✓' },
+        headlight_relay:  { status:'ok',    text:'Relay pins seated fully in socket ✓ (problem is internal)' },
+        headlight_l:      { status:'ok',    text:'Headlight connector fully seated ✓' },
+        headlight_r:      { status:'ok',    text:'Headlight connector fully seated ✓' },
+        earth_point:      { status:'ok',    text:'Earth bolt torqued, good contact ✓' },
+      },
+    },
+  },
+};
+
+// ── Simulator state ───────────────────────────────────────────────────────
+let simState = {
+  selectedTool: null,
+  log: [],
+  actionsPerformed: [],
+  diagnosisAnswered: false,
+  stepEl: null,
+  scenario: null,
+  onComplete: null,
+};
+
+const TOOLS = [
+  { id:'multimeter_voltage',   icon:'🔬', label:'Multimeter',     sub:'Voltage (DC)' },
+  { id:'multimeter_continuity',icon:'🔊', label:'Multimeter',     sub:'Continuity' },
+  { id:'fuse_tester',          icon:'🔌', label:'Fuse Tester',    sub:'Check fuse' },
+  { id:'visual_inspect',       icon:'👁', label:'Visual Inspect', sub:'Look for damage' },
+  { id:'replace_component',    icon:'🔧', label:'Replace',        sub:'Swap component' },
+  { id:'check_connections',    icon:'🔗', label:'Connections',    sub:'Check plugs/wires' },
+];
+
+// ── Main entry point — called by renderPlayerStep when type==='simulator' ──
+window.renderSimulatorStep = function(step, container, onComplete) {
+  const scenarioKey = step.scenario_id || 'blown_fuse';
+  const scenario = SIM_SCENARIOS[scenarioKey] || SIM_SCENARIOS.blown_fuse;
+  simState = { selectedTool:null, log:[], actionsPerformed:[], diagnosisAnswered:false, scenario, onComplete };
+
+  container.innerHTML = `
+    <div class="sim-wrap">
+      <!-- Work Order -->
+      <div class="sim-workorder">
+        <div class="sim-wo-badge">📋 Work Order</div>
+        <div class="sim-wo-complaint">${scenario.workorder}<br><span style="font-size:11px;color:var(--text3);margin-top:4px;display:block">💡 Hint: ${scenario.hint}</span></div>
+      </div>
+      <!-- Main area -->
+      <div class="sim-main">
+        <!-- Tool sidebar -->
+        <div class="sim-tools">
+          <div class="sim-tools-title">Tools</div>
+          ${TOOLS.map(t=>`
+          <button class="sim-tool-btn" id="stool-${t.id}" onclick="simSelectTool('${t.id}')">
+            <span class="sim-tool-icon">${t.icon}</span>
+            <span><span style="display:block;font-size:12px;color:var(--text)">${t.label}</span><span style="font-size:10px;color:var(--text3)">${t.sub}</span></span>
+          </button>`).join('')}
+          <div class="sim-tool-hint" id="sim-tool-hint">Select a tool, then click a component in the diagram.</div>
+        </div>
+        <!-- Car diagram -->
+        <div class="sim-car-wrap">
+          <div class="sim-car-label">ENGINE BAY — Click a component with your selected tool</div>
+          <svg id="sim-svg" viewBox="0 0 660 280" xmlns="http://www.w3.org/2000/svg">
+            ${buildCarSVG(scenario)}
+          </svg>
+          <div class="sim-tooltip" id="sim-tooltip"></div>
+        </div>
+        <!-- Results panel -->
+        <div class="sim-results">
+          <div class="sim-log">
+            <div class="sim-log-title">Test Results</div>
+            <div id="sim-log-entries" style="padding:6px">
+              <div style="padding:10px;font-size:11px;color:var(--text3);text-align:center;padding-top:20px">No tests performed yet.<br>Select a tool and click a component.</div>
+            </div>
+          </div>
+          <!-- Diagnosis -->
+          <div class="sim-diagnosis" id="sim-diag-panel">
+            <div class="sim-diagnosis-title">Your Diagnosis</div>
+            ${scenario.diagnosis_options.map((opt,i)=>`
+            <button class="sim-diag-opt" id="sim-diag-${i}" onclick="simSubmitDiagnosis(${i})">${opt}</button>`).join('')}
+            <p style="font-size:10px;color:var(--text3);margin-top:6px">Use the tools above before making your diagnosis.</p>
+          </div>
+        </div>
+      </div>
+    </div>`;
+};
+
+function buildCarSVG(scenario) {
+  const comps = scenario.components;
+  let svg = '';
+
+  // Background — bonnet open
+  svg += `<rect x="0" y="0" width="660" height="280" fill="#080c0a" rx="6"/>`;
+  // Bonnet/Bay outline
+  svg += `<rect x="10" y="10" width="640" height="260" fill="none" stroke="#1a3a1a" stroke-width="1.5" rx="8" stroke-dasharray="6,3"/>`;
+  svg += `<text x="330" y="268" text-anchor="middle" fill="#1a3a1a" font-size="9" font-family="Arial" letter-spacing="3">ENGINE BAY — BONNET OPEN</text>`;
+
+  // Wiring traces (background)
+  svg += `<g opacity="0.3">
+    <line x1="100" y1="140" x2="600" y2="140" stroke="#334155" stroke-width="2" stroke-dasharray="5,3"/>
+    <line x1="150" y1="110" x2="150" y2="200" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <line x1="350" y1="110" x2="350" y2="200" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <line x1="500" y1="110" x2="500" y2="200" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,3"/>
+  </g>`;
+
+  // Components
+  Object.entries(comps).forEach(([id, c]) => {
+    if(c.parent) return; // sub-components drawn with parent
+    const isFaulty = c.faulty;
+    svg += `<g class="sim-comp" id="scomp-${id}" onclick="simClickComponent('${id}')"
+      onmouseenter="simShowTooltip(event,'${id}','${c.label}')"
+      onmouseleave="simHideTooltip()">
+      <rect class="sim-comp-body" x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}"
+        rx="6" fill="${c.color}" stroke="${isFaulty?'#e05454':c.hi}" stroke-width="${isFaulty?'1.5':'1'}"/>`;
+    if(isFaulty) {
+      svg += `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="6" fill="rgba(224,84,84,0)" stroke="rgba(224,84,84,0.3)" stroke-width="2.5"/>`;
+    }
+    svg += `<text x="${c.x+c.w/2}" y="${c.y+c.h/2-7}" text-anchor="middle" fill="${c.hi}" font-size="16" font-family="Arial">${c.icon}</text>`;
+    // Wrap label
+    const words = c.label.split(' ');
+    const lines = [];
+    let cur = '';
+    words.forEach(w => { if((cur+w).length > 11){lines.push(cur.trim());cur=w+' ';}else{cur+=w+' ';} });
+    lines.push(cur.trim());
+    lines.forEach((ln,li) => {
+      svg += `<text x="${c.x+c.w/2}" y="${c.y+c.h/2+7+(li*11)}" text-anchor="middle" fill="#64748B" font-size="9" font-family="Arial">${ln}</text>`;
+    });
+    svg += `</g>`;
+  });
+
+  // Draw sub-components on top
+  Object.entries(comps).forEach(([id, c]) => {
+    if(!c.parent) return;
+    const isFaulty = c.faulty;
+    svg += `<g class="sim-comp" id="scomp-${id}" onclick="simClickComponent('${id}')"
+      onmouseenter="simShowTooltip(event,'${id}','${c.label}')"
+      onmouseleave="simHideTooltip()">
+      <rect class="sim-comp-body" x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}"
+        rx="3" fill="${c.color}" stroke="${isFaulty?'#e05454':'#6a4800'}" stroke-width="${isFaulty?'1.5':'1'}"/>
+      <text x="${c.x+c.w/2}" y="${c.y+c.h/2+4}" text-anchor="middle" fill="${isFaulty?'#e05454':'#a06020'}" font-size="9" font-family="Arial">${c.label}</text>
+    </g>`;
+  });
+  return svg;
+}
+
+window.simSelectTool = function(toolId) {
+  simState.selectedTool = toolId;
+  // Update button styles
+  TOOLS.forEach(t => {
+    const b = document.getElementById('stool-'+t.id);
+    if(b) { b.className = 'sim-tool-btn' + (t.id===toolId?' active':''); }
+  });
+  const tool = TOOLS.find(t=>t.id===toolId);
+  const hint = document.getElementById('sim-tool-hint');
+  if(hint && tool) hint.textContent = `${tool.icon} ${tool.label} selected — now click a component in the diagram.`;
+};
+
+window.simClickComponent = function(compId) {
+  if(!simState.selectedTool) {
+    simAddLog(null, compId, {status:'info', text:'Select a tool first before clicking a component.'});
+    return;
+  }
+  const scenario = simState.scenario;
+  const toolResults = scenario.tools_result[simState.selectedTool];
+  const result = toolResults ? toolResults[compId] : null;
+  const comp = scenario.components[compId];
+  if(!result) {
+    simAddLog(simState.selectedTool, compId, {status:'info', text:`No data for this combination.`});
+    return;
+  }
+  // Track action
+  const actionKey = simState.selectedTool+':'+compId;
+  if(!simState.actionsPerformed.includes(actionKey)) simState.actionsPerformed.push(actionKey);
+  simAddLog(simState.selectedTool, compId, result);
+  // Highlight component
+  const el = document.getElementById('scomp-'+compId);
+  if(el) el.classList.add('probed');
+  // Check if required action done — enable diagnosis
+  const reqDone = scenario.required_actions.some(r => simState.actionsPerformed.includes(r));
+  if(reqDone) {
+    const diag = document.getElementById('sim-diag-panel');
+    if(diag) diag.style.borderColor = 'rgba(245,166,35,0.3)';
+    const note = diag?.querySelector('p');
+    if(note) note.textContent = '✓ You have gathered enough evidence. Submit your diagnosis!';
+    note && (note.style.color = 'var(--accent)');
+  }
+};
+
+function simAddLog(toolId, compId, result) {
+  const scenario = simState.scenario;
+  const comp = scenario.components[compId];
+  const tool = TOOLS.find(t=>t.id===toolId);
+  const entries = document.getElementById('sim-log-entries');
+  if(!entries) return;
+  if(entries.querySelector('[style*="No tests"]')) entries.innerHTML='';
+  const div = document.createElement('div');
+  div.className='sim-log-entry';
+  div.innerHTML=`
+    ${tool?`<span class="log-tool">${tool.icon} ${tool.label}</span> → `:''}
+    <span class="log-comp">${comp?.label||compId}</span>
+    <span class="log-result log-${result.status}">${result.text}</span>`;
+  entries.prepend(div);
+  entries.scrollTop=0;
+}
+
+window.simSubmitDiagnosis = function(idx) {
+  if(simState.diagnosisAnswered) return;
+  simState.diagnosisAnswered = true;
+  const scenario = simState.scenario;
+  const correct = idx === scenario.correct_diagnosis;
+  // Lock all options
+  scenario.diagnosis_options.forEach((_,i) => {
+    const b = document.getElementById('sim-diag-'+i);
+    if(!b) return;
+    b.disabled = true;
+    if(i===scenario.correct_diagnosis) b.className='sim-diag-opt correct';
+    else if(i===idx && !correct) b.className='sim-diag-opt wrong';
+  });
+  // Show explanation
+  const diag = document.getElementById('sim-diag-panel');
+  if(diag) {
+    const expDiv = document.createElement('div');
+    expDiv.style.cssText='margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:5px;font-size:11px;color:var(--text2);line-height:1.6;border:1px solid var(--border)';
+    expDiv.innerHTML=`<strong style="color:${correct?'var(--green)':'var(--red)'}">${correct?'✓ Correct!':'✗ Not quite.'}</strong><br>${scenario.diagnosis_explanation}`;
+    diag.appendChild(expDiv);
+    // Continue button
+    const btn = document.createElement('button');
+    btn.className='btn btn-primary btn-full';
+    btn.style.marginTop='10px';
+    btn.textContent='Continue →';
+    btn.onclick = () => {
+      if(simState.onComplete) simState.onComplete(correct);
+    };
+    diag.appendChild(btn);
+  }
+  if(correct && simState.onComplete===null) {
+    // Fallback: dispatch event
+    document.dispatchEvent(new CustomEvent('simComplete', {detail:{correct}}));
+  }
+};
+
+window.simShowTooltip = function(e, compId, label) {
+  const scenario = simState.scenario;
+  const comp = scenario?.components[compId];
+  if(!comp) return;
+  const tooltip = document.getElementById('sim-tooltip');
+  if(!tooltip) return;
+  const wrap = tooltip.closest('.sim-car-wrap');
+  if(!wrap) return;
+  const rect = wrap.getBoundingClientRect();
+  tooltip.style.display='block';
+  tooltip.style.left=(e.clientX-rect.left+10)+'px';
+  tooltip.style.top=(e.clientY-rect.top+10)+'px';
+  tooltip.textContent=label;
+};
+
+window.simHideTooltip = function() {
+  const t=document.getElementById('sim-tooltip'); if(t) t.style.display='none';
 };
 
 </script>
