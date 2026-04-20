@@ -1534,6 +1534,10 @@ const DEFAULT_LESSONS = [
   {id:'L01C',order_num:3,title:'Circuit Lab — Find the Fault',difficulty:'medium',pass_score:70,content:{steps:[
     {id:'s1',type:'info',image:'🔧',title:'Fault Finding with Test Points',body:'In this level you will use a virtual probe to test a real car circuit.\n\nThe method:\n1. Start at the battery — should be 12V\n2. Test AFTER the fuse — if 0V the fuse is blown\n3. Test after the switch — if 0V the switch is open/faulty\n4. Test at the load — confirms if the component gets power\n\nWhere voltage DROPS from 12V to 0V is where the fault is.'},
     {id:'s2',type:'circuit',circuit_id:'series_tail_light',title:'Tail Light Circuit — Find the Fault',question:'Which component is faulty?',explanation:'The switch has open contacts.'}
+  ]}},
+  {id:'L01D',order_num:4,title:'🔧 Workshop: Tail Light Fault',difficulty:'medium',pass_score:60,content:{steps:[
+    {id:'s1',type:'info',image:'🔧',title:'Your First Workshop Job',body:'A car has come in. The customer says the left rear tail light is not working.\n\nYou are the technician. Use the tools in the left panel to diagnose the fault step by step — just like a real workshop.\n\nTips:\n• Click a tool to select it\n• Then click a component on the car to test it\n• Right-click any component for options\n• Use the Diagnostics panel to read fault codes\n• Use the Oscilloscope to view live signals\n• Replace the faulty component to fix the car'},
+    {id:'s2',type:'workshop',scenario_id:'blown_fuse_headlight',title:'Diagnose: Headlights Not Working',question:'What is the fault?',explanation:'Fuse F3 (15A headlight circuit) was blown. Replacing it restores both headlights.'}
   ]}}
 ]},
 {id:'L02',title:'Diagnosing a Faulty Bulb',icon:'💡',description:'Learn to tell the difference between a dead bulb, a blown fuse, and a wiring problem.',status:'published',is_released:true,release_order:2,seeded:true,levels:[
@@ -1557,6 +1561,10 @@ const DEFAULT_LESSONS = [
   {id:'L03B',order_num:2,title:'Circuit Lab — Relay Fault Finding',difficulty:'medium',pass_score:70,content:{steps:[
     {id:'s1',type:'info',image:'🔧',title:'Relay Circuit Diagnosis',body:'A relay-controlled circuit has two separate loops:\n\n1. CONTROL loop (low current): Battery → fuse → switch → relay coil (85) → relay coil (86) → earth\n2. MAIN loop (high current): Battery → main fuse → relay contacts (30→87) → load → earth\n\nProbe the control loop first. If the coil is getting power but the output is dead, the relay contacts have failed.'},
     {id:'s2',type:'circuit',circuit_id:'relay_headlight',title:'Headlight Relay Circuit — Find the Fault',question:'Which component is faulty?',explanation:'The relay contacts are not closing.'}
+  ]}},
+  {id:'L03C',order_num:3,title:'🔧 Workshop: Headlights Dead',difficulty:'medium',pass_score:60,content:{steps:[
+    {id:'s1',type:'info',image:'🔧',title:'Workshop: Both Headlights Dead',body:'The customer reports both headlights are completely dead. Side lights and all other electrics work normally.\n\nThis is a classic relay fault pattern. Use your tools to confirm:\n• Probe the control circuit first (85/86 coil terminals)\n• Then probe the main circuit (30/87 contact terminals)\n• If coil has power but output is 0V → relay contacts have failed'},
+    {id:'s2',type:'workshop',scenario_id:'blown_fuse_headlight',title:'Diagnose the Headlight Fault',question:'What is the fault?',explanation:'The headlight fuse or relay is faulty. Systematic probing shows where voltage drops to 0V.'}
   ]}}
 ]},
 {id:'L04',title:'Battery & Charging System',icon:'🔋',description:'Learn healthy battery voltages, how the alternator charges the battery, and common faults.',status:'published',is_released:true,release_order:4,seeded:true,levels:[
@@ -1568,6 +1576,14 @@ const DEFAULT_LESSONS = [
   {id:'L04B',order_num:2,title:'Circuit Lab — Charging System',difficulty:'medium',pass_score:70,content:{steps:[
     {id:'s1',type:'info',image:'⚙️',title:'Alternator Diagnosis',body:'The alternator is driven by the engine belt and generates electricity to:\n1. Charge the battery\n2. Power all car electrics while the engine is running\n\nDiagnosis rule:\n• Engine off: measure battery voltage (should be ~12.6V)\n• Engine running: voltage should RISE to 13.8–14.4V\n• If voltage stays at 12V with engine running → alternator not charging\n• If voltage goes above 14.5V → regulator fault (overcharging)'},
     {id:'s2',type:'circuit',circuit_id:'battery_charging',title:'Battery & Charging Circuit — Find the Fault',question:'What is the fault?',explanation:'The alternator is not generating — belt broken or alternator failed.'}
+  ]}},
+  {id:'L04C',order_num:3,title:'🔧 Workshop: Dead Battery',difficulty:'easy',pass_score:60,content:{steps:[
+    {id:'s1',type:'info',image:'🔧',title:'Workshop: Car Completely Dead',body:'The car is completely dead — no power, no lights, nothing. The customer says it was working yesterday.\n\nStart at the source: measure the battery with your multimeter.\n\n• A healthy battery: 12.6V\n• Half charged: 12.0V\n• Flat: below 11.8V\n• Completely dead: may read 3–8V'},
+    {id:'s2',type:'workshop',scenario_id:'dead_battery',title:'Diagnose: No Power at All',question:'What is the fault?',explanation:'The battery was completely discharged (3.8V). All circuits dead because the battery cannot supply power.'}
+  ]}},
+  {id:'L04D',order_num:4,title:'🔧 Workshop: Temp Warning Light',difficulty:'medium',pass_score:60,content:{steps:[
+    {id:'s1',type:'info',image:'🌡',title:'Workshop: Temperature Warning',body:'The temperature warning light is on but the customer says the engine does not feel hot.\n\nThis pattern — warning light ON but no actual overheating — almost always means the temperature SENSOR has failed, not the engine.\n\nThe coolant temperature sensor (CTS) is an NTC thermistor:\n• At 90°C it should read ~2.2V signal\n• If open circuit (broken wire/failed sensor) → reads 4.9V (maximum) → ECU thinks engine is 200°C → warning light on'},
+    {id:'s2',type:'workshop',scenario_id:'coolant_sensor_fault',title:'Diagnose: Temperature Warning Light',question:'What is the fault?',explanation:'The coolant temperature sensor has failed (open circuit). It reads 4.9V instead of ~2.2V. DTC P0118.'}
   ]}}
 ]},
 {id:'L05',title:'Crank No-Start Diagnosis',icon:'🚗',description:'A car that cranks but will not start. Learn a systematic approach to finding the cause.',status:'published',is_released:true,release_order:5,seeded:true,levels:[
@@ -1618,6 +1634,10 @@ const DEFAULT_LESSONS = [
     {id:'s1',type:'info',image:'📡',title:'Sensors — The ECU\'s Eyes',body:'A sensor converts a physical measurement into an electrical signal.\n\nCommon sensors:\n🌡️ Coolant temperature (NTC) — resistance drops as temperature rises\n🌀 Crankshaft position — magnetic sensor counting engine rotations\n💨 MAF sensor — measures airflow into engine\n⛽ Oxygen (Lambda) — measures exhaust oxygen content\n💥 Knock sensor — detects abnormal combustion\n\nThe ECU reads these signals continuously and adjusts the engine to match.'},
     {id:'s2',type:'interactive',prompt:'An NTC coolant sensor shows HIGH resistance when engine is HOT. What does this indicate?',options:['Normal operation','Faulty sensor — NTC resistance should be LOW when hot','Engine overheating','ECU failure'],correct:1,feedback:{correct:'Correct! NTC = Negative Temperature Coefficient. Resistance FALLS as temperature RISES. High when hot = faulty sensor.',incorrect:'NTC means resistance goes DOWN as temperature goes UP. High resistance when engine is hot = sensor fault.'}},
     {id:'s3',type:'assessment',question:'The ECU receives data from sensors and sends commands to:',options:['Other sensors','Actuators — devices that take physical action','The driver display only','The battery'],correct:1,explanation:'Sensors are inputs to the ECU. Actuators are outputs — they receive commands and take physical action (open injector, switch relay, adjust valve).'}
+  ]}},
+  {id:'L09B',order_num:2,title:'🔬 Workshop: Oscilloscope Lab',difficulty:'medium',pass_score:60,content:{steps:[
+    {id:'s1',type:'info',image:'📈',title:'Reading Sensor Waveforms',body:'An oscilloscope shows voltage over time. For sensors:\n\n• Fuel injector: square wave switching 0V↔12V (each pulse = one injection)\n• O2 sensor: sine wave cycling 0.1V↔0.9V (about once per second)\n• Crank sensor: regular pulses with one missing tooth per revolution\n\nA flat line where there should be a wave = fault.\nA dropout or irregular signal = intermittent fault.\n\nUse the 🔧 Workshop below — open the Oscilloscope panel and select Inject Fault to see what these faults look like.'},
+    {id:'s2',type:'workshop',scenario_id:'coolant_sensor_fault',title:'Use the Oscilloscope on a Live Vehicle',question:'Observe the signals and diagnose the fault',explanation:'The CTS signal is flat at 4.9V instead of cycling — sensor open circuit.'}
   ]}}
 ]},
 {id:'L10',title:'Reading OBD Fault Codes',icon:'🔍',description:"A window into the car's computer. Learn to connect a scanner, read DTCs, and use them correctly.",status:'published',is_released:false,release_order:null,seeded:true,levels:[
@@ -1630,6 +1650,10 @@ const DEFAULT_LESSONS = [
     {id:'s1',type:'info',image:'📋',title:'DTC Format: P0301',body:'Every DTC follows this format:\n\nFirst letter = system:\n  P = Powertrain (engine/gearbox)\n  B = Body (airbags, windows)\n  C = Chassis (ABS, suspension)\n  U = Network communication\n\nSecond digit:\n  0 = Generic (all makes)\n  1, 2, 3 = Manufacturer specific\n\nLast 3 digits = fault number\n\nExamples:\nP0301 = Cylinder 1 misfire\nP0171 = System too lean (Bank 1)\nP0420 = Catalyst efficiency below threshold'},
     {id:'s2',type:'interactive',prompt:"Fault code P0171. The 'P' means the fault is in the:",options:['Body systems','Chassis systems','Powertrain — engine or transmission','Network communication'],correct:2,feedback:{correct:"Correct! P = Powertrain. P0171 means 'system too lean' — the engine is getting too much air relative to fuel.",incorrect:'P = Powertrain (engine/gearbox). B = Body. C = Chassis. U = Network.'}},
     {id:'s3',type:'assessment',question:'A car has fault code P0301. "301" relates to:',options:['A body fault','Cylinder 1 misfire — specific fault within the powertrain','A network fault','Battery state of charge'],correct:1,explanation:'P0301 is a well-known code: P = Powertrain, 0 = Generic, 301 = Cylinder 1 misfire detected. The scanner will often also show a description to help you understand.'}
+  ]}},
+  {id:'L10C',order_num:3,title:'🔍 Workshop: OBD Scanner Lab',difficulty:'easy',pass_score:60,content:{steps:[
+    {id:'s1',type:'info',image:'🔌',title:'Using the OBD Scanner',body:'In the workshop below, open the Diagnostics panel.\n\nStep 1: Click IDENTIFY VEHICLE — connects the scanner to the ECU\nStep 2: Click READ FAULT CODES — shows all stored DTCs\nStep 3: Click LIVE DATA — shows real-time sensor readings\nStep 4: After repair, click CLEAR CODES\n\nAlways read codes BEFORE clearing them. Write them down. Then diagnose.'},
+    {id:'s2',type:'workshop',scenario_id:'coolant_sensor_fault',title:'Connect OBD Scanner and Read Fault Codes',question:'Read the DTCs and identify the fault system',explanation:'P0118 (Coolant Temp Sensor High) identifies the CTS as the fault.'}
   ]}}
 ]},
 {id:'L11',title:'Parallel Circuit Fault Finding',icon:'⚡',description:'Two brake lights dead at once — diagnose a parallel circuit fault using test points.',status:'published',is_released:false,release_order:null,seeded:true,levels:[
