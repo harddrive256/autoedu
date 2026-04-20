@@ -1204,6 +1204,11 @@ async function renderPlayerStep(level, lesson) {
   const step = playerSteps[playerIdx];
   const total = playerSteps.length;
 
+  // Adjust container for workshop (full-width) vs theory (padded)
+  const isWorkshop = step && (step.type==='workshop' || step.type==='simulator');
+  v.style.padding    = isWorkshop ? '0' : '28px 32px';
+  v.style.maxWidth   = isWorkshop ? '100%' : '820px';
+
   if (!step) {
     // Level complete
     const totalQ = playerSteps.filter(s=>s.type==='assessment').length;
@@ -1228,7 +1233,7 @@ async function renderPlayerStep(level, lesson) {
   let stepHtml = '';
 
   if (step.type==='workshop' || step.type==='simulator') {
-    stepHtml = `<div id="ws-slot-${playerIdx}" style="padding:0;margin:-20px"></div>`;
+    stepHtml = `<div id="ws-slot-${playerIdx}" style="padding:0;margin:0"></div>`;
   } else if (step.type==='multimeter') {
     stepHtml = `<div id="emm-slot-${playerIdx}" style="padding:0"></div>`;
   } else if (step.type==='oscilloscope') {
@@ -2708,543 +2713,215 @@ window.renderSimulatorStep = function(step, container, onComplete) {
     </div>`;
 };
 
-function buildCarSVG(scenario) {
-  const comps = scenario.components;
-  let svg = '';
-
-  // Background — bonnet open
-  svg += `<rect x="0" y="0" width="660" height="280" fill="#080c0a" rx="6"/>`;
-  // Bonnet/Bay outline
-  svg += `<rect x="10" y="10" width="640" height="260" fill="none" stroke="#1a3a1a" stroke-width="1.5" rx="8" stroke-dasharray="6,3"/>`;
-  svg += `<text x="330" y="268" text-anchor="middle" fill="#1a3a1a" font-size="9" font-family="Arial" letter-spacing="3">ENGINE BAY — BONNET OPEN</text>`;
-
-  // Wiring traces (background)
-  svg += `<g opacity="0.3">
-    <line x1="100" y1="140" x2="600" y2="140" stroke="#334155" stroke-width="2" stroke-dasharray="5,3"/>
-    <line x1="150" y1="110" x2="150" y2="200" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,3"/>
-    <line x1="350" y1="110" x2="350" y2="200" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,3"/>
-    <line x1="500" y1="110" x2="500" y2="200" stroke="#334155" stroke-width="1.5" stroke-dasharray="4,3"/>
-  </g>`;
-
-  // Components
-  Object.entries(comps).forEach(([id, c]) => {
-    if(c.parent) return; // sub-components drawn with parent
-    const isFaulty = c.faulty;
-    svg += `<g class="sim-comp" id="scomp-${id}" onclick="simClickComponent('${id}')"
-      onmouseenter="simShowTooltip(event,'${id}','${c.label}')"
-      onmouseleave="simHideTooltip()">
-      <rect class="sim-comp-body" x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}"
-        rx="6" fill="${c.color}" stroke="${isFaulty?'#e05454':c.hi}" stroke-width="${isFaulty?'1.5':'1'}"/>`;
-    if(isFaulty) {
-      svg += `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="6" fill="rgba(224,84,84,0)" stroke="rgba(224,84,84,0.3)" stroke-width="2.5"/>`;
-    }
-    svg += `<text x="${c.x+c.w/2}" y="${c.y+c.h/2-7}" text-anchor="middle" fill="${c.hi}" font-size="16" font-family="Arial">${c.icon}</text>`;
-    // Wrap label
-    const words = c.label.split(' ');
-    const lines = [];
-    let cur = '';
-    words.forEach(w => { if((cur+w).length > 11){lines.push(cur.trim());cur=w+' ';}else{cur+=w+' ';} });
-    lines.push(cur.trim());
-    lines.forEach((ln,li) => {
-      svg += `<text x="${c.x+c.w/2}" y="${c.y+c.h/2+7+(li*11)}" text-anchor="middle" fill="#64748B" font-size="9" font-family="Arial">${ln}</text>`;
-    });
-    svg += `</g>`;
-  });
-
-  // Draw sub-components on top
-  Object.entries(comps).forEach(([id, c]) => {
-    if(!c.parent) return;
-    const isFaulty = c.faulty;
-    svg += `<g class="sim-comp" id="scomp-${id}" onclick="simClickComponent('${id}')"
-      onmouseenter="simShowTooltip(event,'${id}','${c.label}')"
-      onmouseleave="simHideTooltip()">
-      <rect class="sim-comp-body" x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}"
-        rx="3" fill="${c.color}" stroke="${isFaulty?'#e05454':'#6a4800'}" stroke-width="${isFaulty?'1.5':'1'}"/>
-      <text x="${c.x+c.w/2}" y="${c.y+c.h/2+4}" text-anchor="middle" fill="${isFaulty?'#e05454':'#a06020'}" font-size="9" font-family="Arial">${c.label}</text>
-    </g>`;
-  });
-  return svg;
-}
-
-window.simSelectTool = function(toolId) {
-  simState.selectedTool = toolId;
-  // Update button styles
-  TOOLS.forEach(t => {
-    const b = document.getElementById('stool-'+t.id);
-    if(b) { b.className = 'sim-tool-btn' + (t.id===toolId?' active':''); }
-  });
-  const tool = TOOLS.find(t=>t.id===toolId);
-  const hint = document.getElementById('sim-tool-hint');
-  if(hint && tool) hint.textContent = `${tool.icon} ${tool.label} selected — now click a component in the diagram.`;
-};
-
-window.simClickComponent = function(compId) {
-  if(!simState.selectedTool) {
-    simAddLog(null, compId, {status:'info', text:'Select a tool first before clicking a component.'});
-    return;
-  }
-  const scenario = simState.scenario;
-  const toolResults = scenario.tools_result[simState.selectedTool];
-  const result = toolResults ? toolResults[compId] : null;
-  const comp = scenario.components[compId];
-  if(!result) {
-    simAddLog(simState.selectedTool, compId, {status:'info', text:`No data for this combination.`});
-    return;
-  }
-  // Track action
-  const actionKey = simState.selectedTool+':'+compId;
-  if(!simState.actionsPerformed.includes(actionKey)) simState.actionsPerformed.push(actionKey);
-  simAddLog(simState.selectedTool, compId, result);
-  // Highlight component
-  const el = document.getElementById('scomp-'+compId);
-  if(el) el.classList.add('probed');
-  // Check if required action done — enable diagnosis
-  const reqDone = scenario.required_actions.some(r => simState.actionsPerformed.includes(r));
-  if(reqDone) {
-    const diag = document.getElementById('sim-diag-panel');
-    if(diag) diag.style.borderColor = 'rgba(245,166,35,0.3)';
-    const note = diag?.querySelector('p');
-    if(note) note.textContent = '✓ You have gathered enough evidence. Submit your diagnosis!';
-    note && (note.style.color = 'var(--accent)');
-  }
-};
-
-function simAddLog(toolId, compId, result) {
-  const scenario = simState.scenario;
-  const comp = scenario.components[compId];
-  const tool = TOOLS.find(t=>t.id===toolId);
-  const entries = document.getElementById('sim-log-entries');
-  if(!entries) return;
-  if(entries.querySelector('[style*="No tests"]')) entries.innerHTML='';
-  const div = document.createElement('div');
-  div.className='sim-log-entry';
-  div.innerHTML=`
-    ${tool?`<span class="log-tool">${tool.icon} ${tool.label}</span> → `:''}
-    <span class="log-comp">${comp?.label||compId}</span>
-    <span class="log-result log-${result.status}">${result.text}</span>`;
-  entries.prepend(div);
-  entries.scrollTop=0;
-}
-
-window.simSubmitDiagnosis = function(idx) {
-  if(simState.diagnosisAnswered) return;
-  simState.diagnosisAnswered = true;
-  const scenario = simState.scenario;
-  const correct = idx === scenario.correct_diagnosis;
-  // Lock all options
-  scenario.diagnosis_options.forEach((_,i) => {
-    const b = document.getElementById('sim-diag-'+i);
-    if(!b) return;
-    b.disabled = true;
-    if(i===scenario.correct_diagnosis) b.className='sim-diag-opt correct';
-    else if(i===idx && !correct) b.className='sim-diag-opt wrong';
-  });
-  // Show explanation
-  const diag = document.getElementById('sim-diag-panel');
-  if(diag) {
-    const expDiv = document.createElement('div');
-    expDiv.style.cssText='margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:5px;font-size:11px;color:var(--text2);line-height:1.6;border:1px solid var(--border)';
-    expDiv.innerHTML=`<strong style="color:${correct?'var(--green)':'var(--red)'}">${correct?'✓ Correct!':'✗ Not quite.'}</strong><br>${scenario.diagnosis_explanation}`;
-    diag.appendChild(expDiv);
-    // Continue button
-    const btn = document.createElement('button');
-    btn.className='btn btn-primary btn-full';
-    btn.style.marginTop='10px';
-    btn.textContent='Continue →';
-    btn.onclick = () => {
-      if(simState.onComplete) simState.onComplete(correct);
-    };
-    diag.appendChild(btn);
-  }
-  if(correct && simState.onComplete===null) {
-    // Fallback: dispatch event
-    document.dispatchEvent(new CustomEvent('simComplete', {detail:{correct}}));
-  }
-};
-
-window.simShowTooltip = function(e, compId, label) {
-  const scenario = simState.scenario;
-  const comp = scenario?.components[compId];
-  if(!comp) return;
-  const tooltip = document.getElementById('sim-tooltip');
-  if(!tooltip) return;
-  const wrap = tooltip.closest('.sim-car-wrap');
-  if(!wrap) return;
-  const rect = wrap.getBoundingClientRect();
-  tooltip.style.display='block';
-  tooltip.style.left=(e.clientX-rect.left+10)+'px';
-  tooltip.style.top=(e.clientY-rect.top+10)+'px';
-  tooltip.textContent=label;
-};
-
-window.simHideTooltip = function() {
-  const t=document.getElementById('sim-tooltip'); if(t) t.style.display='none';
-};
-
-
-// ══════════════════════════════════════════════════════════════════════════
-// AUTOEDU WORKSHOP SIMULATOR — Full Electude-style interface
-// Embedded in lesson levels as step type: 'workshop'
-// One unified interface: zoomable car + slide-out tools + component bar
-// ══════════════════════════════════════════════════════════════════════════
-
-(function injectWSCSS(){
-  if(document.getElementById('ws-css')) return;
-  const s=document.createElement('style'); s.id='ws-css';
-  s.textContent=`
-.ws-root{display:flex;flex-direction:column;height:calc(100vh - 108px);min-height:520px;background:#050809;border:1px solid #0e1a0e;border-radius:var(--r);overflow:hidden;position:relative;font-family:var(--font-body);transition:height 0.2s}
-.ws-root.ws-fs{position:fixed;inset:0;z-index:9000;height:100vh!important;border-radius:0;border:none;width:100vw}
-.ws-root:fullscreen{height:100vh!important;border-radius:0;width:100vw}
-.ws-root:-webkit-full-screen{height:100vh!important;border-radius:0;width:100vw}
-.ws-root:-moz-full-screen{height:100vh!important;border-radius:0;width:100vw}
-/* Fullscreen button */
-.ws-fs-btn{position:absolute;top:8px;right:10px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);color:#2a6a2a;border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;z-index:10;transition:all 0.15s;flex-shrink:0}
-.ws-fs-btn:hover{background:rgba(74,222,128,0.15);color:#4ADE80;border-color:rgba(74,222,128,0.4)}
-.ws-fs-btn{width:34px;height:34px;border-radius:6px;border:1px solid #0e1a0e;background:transparent;color:#2a4a2a;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;margin-top:2px}
-.ws-fs-btn:hover{color:#4ADE80;border-color:#1a3a1a;background:rgba(74,222,128,0.06)}
-.ws-fs-btn.ws-active{color:#4ADE80;border-color:#4ADE80;background:rgba(74,222,128,0.1)}
-/* Top bar - work order */
-.ws-topbar{background:linear-gradient(135deg,#0c0900,#080c18);border-bottom:1px solid rgba(245,166,35,0.15);padding:7px 14px;display:flex;align-items:center;gap:12px;flex-shrink:0;min-height:46px}
-.ws-wo-badge{background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.2);color:#f5a623;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:3px 9px;border-radius:10px;flex-shrink:0}
-.ws-wo-text{font-size:11px;color:#9aacb8;line-height:1.5;flex:1}
-.ws-wo-text b{color:#f5a623}
-.ws-diff-badge{padding:2px 8px;border-radius:8px;font-size:9px;font-weight:700;border:1px solid}
-.ws-wo-meta{text-align:right;flex-shrink:0;font-size:10px;color:#2a4a3a}
-.ws-score-val{font-size:15px;font-weight:800;color:#4ADE80;font-family:'Courier New',monospace;display:block}
-/* Main area */
-.ws-body{display:flex;flex:1;min-height:0;position:relative}
-/* Left tool rail */
-.ws-rail{width:50px;background:#040608;border-right:1px solid #0a1010;display:flex;flex-direction:column;align-items:center;padding:6px 0;gap:3px;flex-shrink:0;z-index:20}
-.ws-rail-toggle{width:34px;height:28px;border-radius:6px;border:1px solid #0a1a0a;background:transparent;color:#2a4a2a;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-bottom:6px;transition:all 0.15s}
-.ws-rail-toggle:hover{color:#4ADE80;border-color:#1a3a1a}
-.ws-rail-btn{width:36px;height:36px;border-radius:7px;border:1px solid #0a1010;background:transparent;color:#2a4a2a;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;position:relative}
-.ws-rail-btn:hover{border-color:#1a3a1a;background:rgba(74,222,128,0.05);color:#3a6a3a}
-.ws-rail-btn.ws-active{border-color:#4ADE80;background:rgba(74,222,128,0.12);color:#4ADE80}
-.ws-rail-btn.ws-open{border-color:#1a3a1a;color:#3a6a3a}
-.ws-rail-tooltip{position:absolute;left:46px;top:50%;transform:translateY(-50%);background:#0a1010;border:1px solid #1a2a1a;border-radius:5px;padding:3px 8px;font-size:10px;color:#4ADE80;white-space:nowrap;pointer-events:none;display:none;z-index:100}
-.ws-rail-btn:hover .ws-rail-tooltip{display:block}
-/* Car viewport */
-.ws-viewport{flex:1;overflow:hidden;position:relative;cursor:default;background:radial-gradient(ellipse at 40% 40%, #070c09 0%, #040608 100%)}
-.ws-viewport.ws-grab{cursor:grab}
-.ws-viewport.ws-grabbing{cursor:grabbing}
-.ws-viewport.ws-crosshair{cursor:crosshair}
-.ws-car-layer{position:absolute;transform-origin:0 0;will-change:transform}
-/* SVG component styles */
-.ws-comp-g{cursor:pointer}
-.ws-comp-g:hover .ws-comp-rect{filter:brightness(1.5)}
-.ws-comp-g.ws-sel .ws-comp-rect{filter:brightness(1.8);stroke-width:2.5!important}
-.ws-comp-g.ws-removed .ws-comp-rect{opacity:0.2}
-.ws-probe-dot{cursor:crosshair;transition:all 0.12s}
-.ws-probe-dot:hover circle{r:8;fill-opacity:0.3}
-.ws-probe-dot.ws-red-p circle{fill:rgba(239,68,68,0.3);stroke:#EF4444!important;r:9}
-.ws-probe-dot.ws-blue-p circle{fill:rgba(79,142,247,0.3);stroke:#4F8EF7!important;r:9}
-/* Zoom controls */
-.ws-zoom-ctrl{position:absolute;bottom:10px;right:10px;display:flex;flex-direction:column;gap:3px;z-index:15}
-.ws-zoom-ctrl button{width:24px;height:24px;border-radius:5px;border:1px solid #0e1810;background:#040608;color:#2a4a2a;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.12s}
-.ws-zoom-ctrl button:hover{color:#4ADE80;border-color:#1a3a1a}
-/* Floating tool panels - draggable */
-.ws-panel{position:absolute;background:#050809;border:1px solid #0e1810;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,0.9);z-index:30;overflow:hidden;min-width:220px}
-.ws-panel-hdr{background:#040608;padding:7px 11px;border-bottom:1px solid #0e1810;display:flex;align-items:center;gap:8px;cursor:move;user-select:none}
-.ws-panel-title{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#2a5a2a;flex:1}
-.ws-panel-x{background:none;border:none;color:#1a3a1a;font-size:15px;cursor:pointer;padding:0 2px;line-height:1}
-.ws-panel-x:hover{color:#EF4444}
-.ws-panel-body{padding:11px}
-/* Multimeter panel */
-.ws-mm-lcd{background:#080e08;border:2px solid #0e1a0e;border-radius:7px;padding:9px 13px;margin-bottom:9px;text-align:right}
-.ws-mm-mode-lbl{font-size:9px;color:#1a3a1a;font-family:'Courier New',monospace;margin-bottom:3px;letter-spacing:0.1em}
-.ws-mm-val{font-family:'Courier New',monospace;font-size:34px;font-weight:700;letter-spacing:3px;text-shadow:0 0 10px currentColor}
-.ws-mm-unit{font-size:11px;margin-top:1px;font-family:'Courier New',monospace}
-.ws-mm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-bottom:9px}
-.ws-mm-key{padding:5px 2px;border-radius:4px;font-size:9px;font-weight:700;border:1px solid #080e08;background:#030405;color:#1a2a1a;cursor:pointer;font-family:sans-serif;text-align:center;transition:all 0.12s}
-.ws-mm-key.ws-on{border-color:#4ADE80;background:rgba(74,222,128,0.1);color:#4ADE80}
-.ws-mm-probes{display:flex;justify-content:space-around;padding:4px 0}
-.ws-probe-socket{text-align:center;cursor:pointer}
-.ws-probe-socket div:first-child{width:15px;height:15px;border-radius:50%;margin:0 auto 3px;border:1.5px solid}
-.ws-probe-socket div:last-child{font-size:9px;font-weight:700}
-.ws-probe-socket.ws-selected div:first-child{box-shadow:0 0 8px currentColor}
-/* Oscilloscope panel */
-.ws-osc-screen{background:#040904;border:2px solid #0e1a0e;border-radius:7px;overflow:hidden;margin-bottom:8px}
-.ws-osc-canvas{width:100%;display:block}
-.ws-osc-ctrl-row{display:flex;gap:4px;margin-bottom:6px}
-.ws-osc-key{flex:1;padding:5px;border-radius:4px;font-size:9px;font-weight:700;border:1px solid #080e08;background:#030405;color:#1a2a1a;cursor:pointer;font-family:sans-serif;text-align:center;transition:all 0.12s}
-.ws-osc-key.ws-on{border-color:#F59E0B;background:rgba(245,158,11,0.1);color:#F59E0B}
-.ws-osc-key.ws-fault{border-color:#EF4444;background:rgba(239,68,68,0.1);color:#EF4444}
-/* Dashboard panel */
-.ws-dash-canvas{width:100%;display:block;border-radius:6px;background:#050505}
-.ws-dash-row{display:flex;gap:5px;margin-top:8px}
-.ws-dash-btn{flex:1;padding:7px;border-radius:5px;font-size:11px;font-weight:700;border:1px solid #0e1010;background:#030405;color:#2a4a2a;cursor:pointer;font-family:var(--font-body);transition:all 0.15s;text-align:center}
-.ws-dash-btn:hover{border-color:#1a3a1a;color:#4ADE80}
-.ws-dash-btn.ws-on{border-color:#4ADE80;background:rgba(74,222,128,0.1);color:#4ADE80}
-/* Diagnostic panel */
-.ws-diag-screen{background:#030903;border:2px solid #0e1a0e;border-radius:6px;padding:9px;font-family:'Courier New',monospace;font-size:10px;color:#4ADE80;line-height:1.8;min-height:90px;margin-bottom:8px;white-space:pre-wrap}
-.ws-diag-menu button{display:block;width:100%;padding:6px 9px;margin-bottom:4px;border-radius:5px;font-size:11px;border:1px solid #080e08;background:#030405;color:#2a5a2a;cursor:pointer;font-family:var(--font-body);text-align:left;transition:all 0.12s}
-.ws-diag-menu button:hover{border-color:#1a3a1a;color:#4ADE80}
-/* Wiring diagram panel */
-.ws-wiring-svg{width:100%;display:block;background:#030608;border:1px solid #0e1010;border-radius:6px;margin-bottom:8px}
-/* Component bar */
-.ws-compbar{height:60px;background:#030405;border-top:1px solid #0a1010;display:flex;align-items:center;gap:8px;padding:0 12px;overflow-x:auto;flex-shrink:0}
-.ws-compbar-label{font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#1a2a1a;white-space:nowrap}
-.ws-removed-slot{width:46px;height:44px;border:1px dashed #0e1a0e;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;flex-shrink:0;background:#040608}
-.ws-removed-slot:hover{border-color:#4ADE80;background:rgba(74,222,128,0.04)}
-.ws-removed-slot-icon{font-size:16px;line-height:1}
-.ws-removed-slot-lbl{font-size:7px;color:#1a3a1a;text-align:center;margin-top:2px;line-height:1.2}
-/* Result notification */
-.ws-notif{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);padding:7px 16px;border-radius:20px;font-size:11px;font-weight:600;z-index:50;pointer-events:none;animation:fadeIn 0.2s;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,0.6)}
-.ws-notif.ws-ok{background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.35);color:#4ADE80}
-.ws-notif.ws-fault{background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);color:#EF4444}
-.ws-notif.ws-info{background:rgba(79,142,247,0.1);border:1px solid rgba(79,142,247,0.25);color:#60A5FA}
-.ws-notif.ws-warn{background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#F59E0B}
-/* Complete overlay */
-.ws-complete{position:absolute;inset:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}
-.ws-complete-card{background:#080c0a;border:1px solid #1a3a1a;border-radius:14px;padding:30px 36px;max-width:440px;width:90%;text-align:center}
-/* Invoice */
-.ws-inv-row{display:flex;justify-content:space-between;font-size:11px;color:#2a5a2a;padding:3px 0;border-bottom:1px solid #0a1010;font-family:'Courier New',monospace}
-.ws-inv-total{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#4ADE80;margin-top:6px;padding-top:6px;border-top:1px solid #1a3a1a;font-family:'Courier New',monospace}
-/* Probe wire overlay */
-.ws-probe-wire{position:absolute;pointer-events:none;z-index:25}
-`;
-document.head.appendChild(s);
-})();
-
-// ── Scenario definitions ──────────────────────────────────────────────────
-const WS_SCENARIOS = {
-
-  blown_fuse_headlight:{
-    title:'No Headlights',
-    workorder:'Customer concern: <b>Both headlights completely dead.</b> Side lights, brake lights, indicators all work. Fuses look OK visually.',
-    difficulty:'Basic',
-    fault_comp:'fuse_hl',
-    correct_fix:['fuse_hl'],
-    dtcs:['No engine DTCs stored'],
-    live:{rpm:'0 RPM',coolant:'Off',battery:'12.6V',throttle:'0%',hl_fuse:'OPEN (0V out)'},
-    osc_point:'fuse_hl',
-    scoring:{max:100},
-    components:{
-      battery:     {x:60, y:80, w:95,h:60,label:'Battery 12V',icon:'🔋',stroke:'#60A5FA',fill:'#040d1a',conn:[{id:'bp',cx:107,cy:80,v:12.6,lbl:'B+'},{id:'bn',cx:60,cy:140,v:0,lbl:'B-'}],removable:false,faulty:false},
-      fuse_box:    {x:210,y:78,w:85,h:62,label:'Fuse Box',   icon:'📦',stroke:'#F59E0B',fill:'#0e0800',conn:[{id:'fb_i',cx:210,cy:109,v:12.6,lbl:'IN'},{id:'fb_o',cx:295,cy:109,v:12.6,lbl:'OUT'}],removable:false,faulty:false},
-      fuse_hl:     {x:228,y:97,w:50,h:28,label:'F3 15A',     icon:'💥',stroke:'#EF4444',fill:'#1a0505',conn:[{id:'fhl_i',cx:228,cy:111,v:12.6,lbl:'IN'},{id:'fhl_o',cx:278,cy:111,v:0,lbl:'OUT'}],removable:true,faulty:true},
-      hl_relay:    {x:335,y:75,w:82,h:65,label:'HL Relay',   icon:'⚡',stroke:'#9B6DFF',fill:'#05050e',conn:[{id:'r85',cx:335,cy:95,v:12.6,lbl:'85'},{id:'r86',cx:417,cy:95,v:0.1,lbl:'86'},{id:'r30',cx:335,cy:140,v:12.6,lbl:'30'},{id:'r87',cx:417,cy:140,v:0,lbl:'87'}],removable:true,faulty:false},
-      hl_sw:       {x:210,y:185,w:80,h:52,label:'Head Sw.',  icon:'🔘',stroke:'#9B6DFF',fill:'#05050e',conn:[{id:'sw_i',cx:210,cy:211,v:12.6,lbl:'IN'},{id:'sw_o',cx:290,cy:211,v:12.6,lbl:'OUT'}],removable:false,faulty:false},
-      headlight_l: {x:490,y:72,w:80,h:52,label:'Left HL',   icon:'💡',stroke:'#F59E0B',fill:'#0e0600',conn:[{id:'hll_p',cx:490,cy:98,v:0,lbl:'+'},{id:'hll_n',cx:570,cy:98,v:0,lbl:'-'}],removable:true,faulty:false},
-      headlight_r: {x:490,y:145,w:80,h:52,label:'Right HL', icon:'💡',stroke:'#F59E0B',fill:'#0e0600',conn:[{id:'hlr_p',cx:490,cy:171,v:0,lbl:'+'},{id:'hlr_n',cx:570,cy:171,v:0,lbl:'-'}],removable:true,faulty:false},
-      earth:       {x:60, y:205,w:75,h:48,label:'Earth Pt', icon:'⏚', stroke:'#4ADE80',fill:'#020704',conn:[{id:'gnd',cx:97,cy:229,v:0,lbl:'GND'}],removable:false,faulty:false},
-    },
-    wires:[
-      {a:'bp',  b:'fb_i', broken:false},
-      {a:'fb_o',b:'r30',  broken:false},
-      {a:'r87', b:'hll_p',broken:false},
-      {a:'r87', b:'hlr_p',broken:false},
-      {a:'sw_o',b:'r85',  broken:false},
-      {a:'sw_i',b:'fb_o', broken:false},
-      {a:'bn',  b:'gnd',  broken:false},
-      {a:'hll_n',b:'gnd', broken:false},
-      {a:'hlr_n',b:'gnd', broken:false},
-    ],
-  },
-
-  dead_battery:{
-    title:'No Power — Completely Dead',
-    workorder:'Customer concern: <b>Car is completely dead, no power at all.</b> Nothing works when key is turned. Was fine yesterday. No warning lights came on.',
-    difficulty:'Basic',
-    fault_comp:'battery',
-    correct_fix:['battery'],
-    dtcs:['Cannot connect — no power to ECU'],
-    live:{rpm:'N/A',coolant:'N/A',battery:'3.8V (FLAT!)',throttle:'N/A'},
-    osc_point:'battery',
-    scoring:{max:100},
-    components:{
-      battery:   {x:60, y:85, w:95,h:60,label:'Battery 12V',icon:'🔋',stroke:'#EF4444',fill:'#1a0505',conn:[{id:'bp',cx:107,cy:85,v:3.8,lbl:'B+'},{id:'bn',cx:60,cy:145,v:0,lbl:'B-'}],removable:true,faulty:true},
-      main_fuse: {x:210,y:85,w:80,h:52,label:'Main Fuse\n60A',icon:'📦',stroke:'#F59E0B',fill:'#0e0800',conn:[{id:'mf_i',cx:210,cy:111,v:3.8,lbl:'IN'},{id:'mf_o',cx:290,cy:111,v:3.8,lbl:'OUT'}],removable:true,faulty:false},
-      ignition_sw:{x:340,y:85,w:85,h:52,label:'Ignition\nSwitch',icon:'🔑',stroke:'#9B6DFF',fill:'#05050e',conn:[{id:'ig_i',cx:340,cy:111,v:3.8,lbl:'IN'},{id:'ig_o',cx:425,cy:111,v:0,lbl:'OUT'}],removable:false,faulty:false},
-      fuse_box:  {x:210,y:185,w:85,h:52,label:'Fuse Box',   icon:'📦',stroke:'#F59E0B',fill:'#0e0800',conn:[{id:'fb_i',cx:210,cy:211,v:3.8,lbl:'IN'},{id:'fb_o',cx:295,cy:211,v:0,lbl:'OUT'}],removable:false,faulty:false},
-      alternator:{x:470,y:85,w:90,h:55,label:'Alternator', icon:'⚙️',stroke:'#4ADE80',fill:'#020804',conn:[{id:'alt_o',cx:470,cy:112,v:0,lbl:'OUT'},{id:'alt_g',cx:560,cy:112,v:0,lbl:'GND'}],removable:false,faulty:false},
-      earth:     {x:60, y:215,w:75,h:48,label:'Earth Pt',  icon:'⏚', stroke:'#4ADE80',fill:'#020704',conn:[{id:'gnd',cx:97,cy:239,v:0,lbl:'GND'}],removable:false,faulty:false},
-    },
-    wires:[
-      {a:'bp',   b:'mf_i', broken:false},
-      {a:'mf_o', b:'ig_i', broken:false},
-      {a:'mf_o', b:'fb_i', broken:false},
-      {a:'bn',   b:'gnd',  broken:false},
-    ],
-  },
-
-  coolant_sensor_fault:{
-    title:'Temp Warning Light On',
-    workorder:'Customer concern: <b>Temperature warning light on, gauge reads max.</b> Engine runs normally. Coolant level is correct. No overheating noticed.',
-    difficulty:'Basic',
-    fault_comp:'cts',
-    correct_fix:['cts'],
-    dtcs:['P0118 — Engine Coolant Temp Sensor High Input','P0116 — Engine Coolant Temp Sensor Range/Performance'],
-    live:{rpm:'820',coolant:'130°C (FAULT)',battery:'14.1V',throttle:'14%','CTS signal':'4.9V (open circuit)'},
-    osc_point:'cts',
-    scoring:{max:100},
-    components:{
-      battery:  {x:50,y:85,w:90,h:55,label:'Battery',    icon:'🔋',stroke:'#60A5FA',fill:'#040d1a',conn:[{id:'bp',cx:95,cy:85,v:12.6,lbl:'B+'},{id:'bn',cx:50,cy:140,v:0,lbl:'B-'}],removable:false,faulty:false},
-      ecu:      {x:200,y:80,w:95,h:65,label:'ECU',        icon:'💻',stroke:'#9B6DFF',fill:'#04040e',conn:[{id:'e_cts',cx:200,cy:112,v:4.9,lbl:'CTS'},{id:'e_gnd',cx:295,cy:112,v:0,lbl:'GND'},{id:'e_5v',cx:247,cy:80,v:5.0,lbl:'5V REF'}],removable:false,faulty:false},
-      cts:      {x:355,y:80,w:90,h:65,label:'Coolant\nTemp Sensor',icon:'🌡',stroke:'#EF4444',fill:'#0e0303',conn:[{id:'cts_s',cx:355,cy:112,v:4.9,lbl:'SIG'},{id:'cts_g',cx:445,cy:112,v:0,lbl:'GND'}],removable:true,faulty:true},
-      radiator: {x:500,y:80,w:90,h:60,label:'Radiator',   icon:'🔲',stroke:'#334155',fill:'#03030a',conn:[{id:'rad_i',cx:500,cy:110,v:0,lbl:'IN'},{id:'rad_o',cx:590,cy:110,v:0,lbl:'OUT'}],removable:false,faulty:false},
-      thermostat:{x:355,y:190,w:80,h:52,label:'Thermostat',icon:'♨️',stroke:'#60A5FA',fill:'#03080e',conn:[{id:'th_i',cx:355,cy:216,v:0,lbl:'IN'},{id:'th_o',cx:435,cy:216,v:0,lbl:'OUT'}],removable:false,faulty:false},
-      earth:    {x:50,y:210,w:75,h:48,label:'Earth Pt',   icon:'⏚', stroke:'#4ADE80',fill:'#020704',conn:[{id:'gnd',cx:87,cy:234,v:0,lbl:'GND'}],removable:false,faulty:false},
-    },
-    wires:[
-      {a:'e_cts', b:'cts_s', broken:false},
-      {a:'cts_g', b:'gnd',   broken:false},
-      {a:'e_5v',  b:'cts_s', broken:false},
-      {a:'bn',    b:'gnd',   broken:false},
-    ],
-  },
-};
-
-// ── Main state ────────────────────────────────────────────────────────────
-let WS={};
-
-window.renderWorkshopSimulator = function(step, container, onComplete) {
-  const key = step.scenario_id || 'blown_fuse_headlight';
-  const sc = WS_SCENARIOS[key] || WS_SCENARIOS.blown_fuse_headlight;
-
-  WS = {
-    sc, onComplete, container,
-    zoom:1.0, panX:20, panY:20,
-    dragging:false, lastX:0, lastY:0,
-    activeTool:null, sidebarOpen:false,
-    mm:{ mode:'DCV', redProbe:null, blueProbe:null, activeSocket:null },
-    osc:{ ch1:null, ch2:null, running:true, showFault:false, animId:null, t:0 },
-    dash:{ ign:false, engine:false, rpm:0, temp:20, rpmTarget:0, tempTarget:20 },
-    diag:{ state:'home' },
-    panels:{},
-    removed:{},     // compId → true
-    replaced:{},    // compId → true
-    faultFixed:false,
-    invoice:{ parts:[], time:0, timer:null },
-    score:100,
-    log:[],
-  };
-
-  // Build connector → component map
-  WS.connMap={};
-  Object.entries(sc.components).forEach(([cid,c])=>{
-    (c.conn||[]).forEach(cn=>{ WS.connMap[cn.id]={comp:cid, conn:cn}; });
-  });
-
-  container.innerHTML = buildWSHTML(sc);
-  attachWSEvents();
-  renderCar();
-  startInvoiceTimer();
-};
-
-// ── HTML structure ────────────────────────────────────────────────────────
-function buildWSHTML(sc) {
-  const diffColor = {Basic:'#4ADE80',Advanced:'#F59E0B',Specialist:'#EF4444'};
-  const dc = diffColor[sc.difficulty]||'#4ADE80';
-  return `
-  <div class="ws-root" id="ws-root">
-    <div class="ws-topbar">
-      <div class="ws-wo-badge">📋 Work Order</div>
-      <div class="ws-wo-text">${sc.workorder}</div>
-      <div class="ws-wo-meta" style="display:flex;align-items:center;gap:8px">
-        <div style="text-align:right">
-          <span class="ws-diff-badge" style="color:${dc};border-color:${dc}20;background:${dc}12">${sc.difficulty}</span>
-          <div class="ws-score-val" id="ws-score" style="margin-top:4px">100 pts</div>
-        </div>
-        <button class="ws-fs-btn" id="ws-fs-btn" onclick="wsToggleFullscreen()" title="Toggle fullscreen (F)">⛶</button>
-      </div>
-    </div>
-    <div class="ws-body">
-      <div class="ws-rail" id="ws-rail">
-        <button class="ws-rail-toggle" id="ws-rail-toggle" onclick="wsToggleSidebar()" title="Expand tools">☰</button>
-        ${[
-          {id:'mm',    icon:'🔬', label:'Multimeter'},
-          {id:'osc',   icon:'📈', label:'Oscilloscope'},
-          {id:'dash',  icon:'🚗', label:'Dashboard'},
-          {id:'diag',  icon:'🔍', label:'Diagnostics'},
-          {id:'wire',  icon:'📄', label:'Wiring Diagram'},
-          {id:'inv',   icon:'📋', label:'Invoice'},
-        ].map(t=>`
-        <button class="ws-rail-btn" id="ws-rb-${t.id}" onclick="wsOpenTool('${t.id}')" title="${t.label}">
-          <span style="font-size:18px">${t.icon}</span>
-          <div class="ws-rail-tooltip">${t.label}</div>
-        </button>`).join('')}
-        <div style="flex:1"></div>
-        <button class="ws-rail-btn" id="ws-rb-done" onclick="wsReturnVehicle()" title="Return vehicle">
-          <span style="font-size:16px">✅</span>
-          <div class="ws-rail-tooltip">Return Vehicle</div>
-        </button>
-      </div>
-      <div class="ws-viewport" id="ws-viewport">
-        <div class="ws-car-layer" id="ws-car"></div>
-        <div class="ws-zoom-ctrl">
-          <button onclick="wsZoom(0.2)">+</button>
-          <button onclick="wsZoom(-0.2)">−</button>
-          <button onclick="wsResetZoom()">⊞</button>
-        </div>
-        <div id="ws-notif-area"></div>
-      </div>
-    </div>
-    <div class="ws-compbar" id="ws-compbar">
-      <div class="ws-compbar-label">Component Bay</div>
-      <div style="font-size:10px;color:#1a2a1a;padding-left:6px" id="ws-compbar-hint">Remove components by clicking them in the car diagram. Replace faulty parts here.</div>
-    </div>
-  </div>`;
-}
-
-// ── SVG car renderer ──────────────────────────────────────────────────────
 function renderCar() {
   const sc = WS.sc;
-  const SVG_W=680, SVG_H=290;
-  let svg = `<svg id="ws-svg" viewBox="0 0 ${SVG_W} ${SVG_H}" style="width:${SVG_W*WS.zoom}px;height:${SVG_H*WS.zoom}px;display:block;transform-origin:0 0">`;
+  const W=900, H=520;
 
-  // Background
-  svg += `<rect width="${SVG_W}" height="${SVG_H}" fill="#030508" rx="0"/>`;
-  // Grid
-  svg += `<g opacity="0.06">`;
-  for(let x=0;x<SVG_W;x+=40) svg+=`<line x1="${x}" y1="0" x2="${x}" y2="${SVG_H}" stroke="#4ADE80" stroke-width="0.5"/>`;
-  for(let y=0;y<SVG_H;y+=40) svg+=`<line x1="0" y1="${y}" x2="${SVG_W}" y2="${y}" stroke="#4ADE80" stroke-width="0.5"/>`;
-  svg += `</g>`;
-  // Bay outline
-  svg += `<rect x="16" y="16" width="${SVG_W-32}" height="${SVG_H-32}" fill="none" stroke="#0e2010" stroke-width="1.5" rx="8" stroke-dasharray="8,4"/>`;
-  svg += `<text x="${SVG_W/2}" y="${SVG_H-8}" text-anchor="middle" fill="#0e2010" font-size="10" font-family="Arial" letter-spacing="4">ENGINE BAY — BONNET OPEN</text>`;
-
-  // Wires (build connector position map)
+  // Build connector position map
   const connPos={};
   Object.values(sc.components).forEach(c=>{
     (c.conn||[]).forEach(cn=>{ connPos[cn.id]={x:cn.cx,y:cn.cy}; });
   });
+
+  let svg = `<svg id="ws-svg" viewBox="0 0 ${W} ${H}" style="width:${W*WS.zoom}px;height:${H*WS.zoom}px;display:block;transform-origin:0 0">`;
+
+  // ── Defs: gradients & patterns ────────────────────────────────────────
+  svg += `<defs>
+    <linearGradient id="bay-floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#111814"/>
+      <stop offset="40%" stop-color="#0d1310"/>
+      <stop offset="100%" stop-color="#090d0b"/>
+    </linearGradient>
+    <linearGradient id="body-metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2a3028"/>
+      <stop offset="50%" stop-color="#1e2420"/>
+      <stop offset="100%" stop-color="#151a16"/>
+    </linearGradient>
+    <linearGradient id="bat-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1c2020"/>
+      <stop offset="30%" stop-color="#131818"/>
+      <stop offset="100%" stop-color="#0a0e0e"/>
+    </linearGradient>
+    <linearGradient id="bat-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#252a2a"/>
+      <stop offset="100%" stop-color="#1a1f1f"/>
+    </linearGradient>
+    <linearGradient id="engine-cover" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a3050"/>
+      <stop offset="50%" stop-color="#0f2040"/>
+      <stop offset="100%" stop-color="#081530"/>
+    </linearGradient>
+    <linearGradient id="fuse-box-lid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e1e1e"/>
+      <stop offset="100%" stop-color="#0a0a0a"/>
+    </linearGradient>
+    <linearGradient id="rad-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a1a"/>
+      <stop offset="50%" stop-color="#222222"/>
+      <stop offset="100%" stop-color="#141414"/>
+    </linearGradient>
+    <linearGradient id="hl-lens" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a2030" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0a1020" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="ecu-body" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2a2a30"/>
+      <stop offset="50%" stop-color="#1e1e26"/>
+      <stop offset="100%" stop-color="#141420"/>
+    </linearGradient>
+    <linearGradient id="relay-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a28"/>
+      <stop offset="100%" stop-color="#0e0e1a"/>
+    </linearGradient>
+    <linearGradient id="wire-red" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#cc1515"/>
+      <stop offset="50%" stop-color="#ee2020"/>
+      <stop offset="100%" stop-color="#aa1010"/>
+    </linearGradient>
+    <linearGradient id="coolant-res" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a2040" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#061530" stop-opacity="0.9"/>
+    </linearGradient>
+    <pattern id="rad-fins" x="0" y="0" width="8" height="1" patternUnits="userSpaceOnUse">
+      <rect width="6" height="1" fill="#1a1a1a"/>
+      <rect x="6" width="2" height="1" fill="#2d2d2d"/>
+    </pattern>
+    <pattern id="fuse-grid" x="0" y="0" width="14" height="12" patternUnits="userSpaceOnUse">
+      <rect width="11" height="9" rx="2" fill="#111" stroke="#222" stroke-width="0.5"/>
+    </pattern>
+    <filter id="glow-red"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="glow-green"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="shadow"><feDropShadow dx="2" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.7"/></filter>
+  </defs>`;
+
+  // ── Engine bay background ─────────────────────────────────────────────
+  svg += `<rect width="${W}" height="${H}" fill="url(#bay-floor)"/>`;
+
+  // Bay floor texture — subtle panel lines
+  svg += `<g opacity="0.15">
+    <line x1="0" y1="130" x2="${W}" y2="130" stroke="#4ADE80" stroke-width="0.3" stroke-dasharray="40,20"/>
+    <line x1="0" y1="260" x2="${W}" y2="260" stroke="#4ADE80" stroke-width="0.3" stroke-dasharray="40,20"/>
+    <line x1="0" y1="390" x2="${W}" y2="390" stroke="#4ADE80" stroke-width="0.3" stroke-dasharray="40,20"/>
+    <line x1="200" y1="0" x2="200" y2="${H}" stroke="#4ADE80" stroke-width="0.3" stroke-dasharray="40,20"/>
+    <line x1="450" y1="0" x2="450" y2="${H}" stroke="#4ADE80" stroke-width="0.3" stroke-dasharray="40,20"/>
+    <line x1="700" y1="0" x2="700" y2="${H}" stroke="#4ADE80" stroke-width="0.3" stroke-dasharray="40,20"/>
+  </g>`;
+
+  // ── Car body structure ────────────────────────────────────────────────
+  // Left inner wing
+  svg += `<path d="M0,0 L160,0 L160,130 Q0,150 0,160 Z" fill="url(#body-metal)" stroke="#1a2a1a" stroke-width="1"/>`;
+  // Right inner wing
+  svg += `<path d="M${W},0 L${W-160},0 L${W-160},130 Q${W},150 ${W},160 Z" fill="url(#body-metal)" stroke="#1a2a1a" stroke-width="1"/>`;
+  // Firewall
+  svg += `<rect x="0" y="395" width="${W}" height="18" fill="#1a2018" stroke="#0e1a0e" stroke-width="1"/>`;
+  svg += `<text x="${W/2}" y="407" text-anchor="middle" fill="#2a4a2a" font-size="10" font-family="Arial" letter-spacing="6" font-weight="700">FIREWALL</text>`;
+  // Strut brace (aesthetic)
+  svg += `<path d="M30,130 Q${W/2},115 ${W-30},130" fill="none" stroke="#1a3a1a" stroke-width="3" stroke-linecap="round"/>`;
+  svg += `<circle cx="${W/2}" cy="116" r="6" fill="#0e1a0e" stroke="#1a3a1a" stroke-width="1.5"/>`;
+  // Bonnet latch (center front)
+  svg += `<rect x="${W/2-15}" y="8" width="30" height="12" rx="3" fill="#1a2018" stroke="#2a3a2a" stroke-width="1"/>`;
+  svg += `<circle cx="${W/2}" cy="14" r="4" fill="#0a1010" stroke="#2a4a2a" stroke-width="1"/>`;
+  // Front bumper line
+  svg += `<rect x="0" y="0" width="${W}" height="6" fill="#101810" stroke="#1a2a1a" stroke-width="0.5"/>`;
+
+  // ── Engine block (background layer — drawn before specific components) ─
+  const hasEngine = ['blown_fuse_headlight','dead_battery','coolant_sensor_fault'].includes(WS.sc.fault_comp === 'cts' ? 'coolant_sensor_fault' : WS.sc.fault_comp === 'battery' ? 'dead_battery' : 'blown_fuse_headlight');
+  // Engine block body
+  svg += `<rect x="220" y="175" width="380" height="195" rx="10" fill="url(#engine-cover)" filter="url(#shadow)"/>`;
+  // Engine cover ribbing
+  for(let i=0;i<5;i++) {
+    svg += `<line x1="${240+i*68}" y1="185" x2="${240+i*68}" y2="360" stroke="#0a1828" stroke-width="1.5" opacity="0.6"/>`;
+  }
+  svg += `<line x1="230" y1="230" x2="590" y2="230" stroke="#0a1828" stroke-width="1" opacity="0.5"/>`;
+  svg += `<line x1="230" y1="280" x2="590" y2="280" stroke="#0a1828" stroke-width="1" opacity="0.5"/>`;
+  svg += `<line x1="230" y1="330" x2="590" y2="330" stroke="#0a1828" stroke-width="1" opacity="0.5"/>`;
+  // Engine label
+  svg += `<text x="400" y="208" text-anchor="middle" fill="#1a3a5a" font-size="11" font-family="Arial" font-weight="700" letter-spacing="3">1.6 VVTi</text>`;
+  // Oil filler cap
+  svg += `<circle cx="540" cy="195" r="14" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="2"/>`;
+  svg += `<circle cx="540" cy="195" r="9" fill="#0a0a0a" stroke="#2a2a2a" stroke-width="1"/>`;
+  svg += `<text x="540" y="199" text-anchor="middle" fill="#3a3a3a" font-size="8" font-family="Arial">OIL</text>`;
+  // Spark plug leads (4 cylinders)
+  [270,320,370,420].forEach((x,i) => {
+    svg += `<circle cx="${x}" cy="370" r="7" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1.5"/>`;
+    svg += `<line x1="${x}" y1="363" x2="${x}" y2="355" stroke="#cc3300" stroke-width="2.5"/>`;
+  });
+  svg += `<text x="345" y="388" text-anchor="middle" fill="#1a2a2a" font-size="9" font-family="Arial">SPARK PLUGS</text>`;
+  // Intake manifold (top of engine)
+  svg += `<rect x="250" y="175" width="300" height="22" rx="4" fill="#0e1e30" stroke="#1a3a50" stroke-width="1"/>`;
+  svg += `<text x="400" y="191" text-anchor="middle" fill="#1a3a50" font-size="8" font-family="Arial" letter-spacing="2">INTAKE MANIFOLD</text>`;
+  // Throttle body (on intake)
+  svg += `<circle cx="480" cy="186" r="12" fill="#0a1820" stroke="#1a3a50" stroke-width="1.5"/>`;
+  svg += `<circle cx="480" cy="186" r="7" fill="#060e18" stroke="#0e2030" stroke-width="1"/>`;
+  // Alternator (right side of engine)
+  svg += `<ellipse cx="610" cy="260" rx="30" ry="28" fill="#0e1e0e" stroke="#1a3a1a" stroke-width="1.5" filter="url(#shadow)"/>`;
+  svg += `<ellipse cx="610" cy="260" rx="18" ry="17" fill="#0a1a0a" stroke="#1a2a1a" stroke-width="1"/>`;
+  svg += `<text x="610" y="264" text-anchor="middle" fill="#1a3a1a" font-size="8" font-family="Arial">ALT</text>`;
+  svg += `<line x1="610" y1="232" x2="610" y2="175" stroke="#1a3a1a" stroke-width="6" stroke-linecap="round" opacity="0.5"/>`;
+
+  // ── Coolant hoses ─────────────────────────────────────────────────────
+  svg += `<path d="M220,200 Q180,200 160,110" fill="none" stroke="#1a3a2a" stroke-width="8" stroke-linecap="round"/>`;
+  svg += `<path d="M600,200 Q640,200 660,110" fill="none" stroke="#1a3a2a" stroke-width="8" stroke-linecap="round"/>`;
+
+  // ── Wiring harnesses (before components so components are on top) ──────
+  const connPosMap = {};
+  Object.values(sc.components).forEach(c=>(c.conn||[]).forEach(cn=>connPosMap[cn.id]={x:cn.cx,y:cn.cy}));
+
   sc.wires.forEach(w=>{
-    const a=connPos[w.a], b=connPos[w.b];
-    if(!a||!b) return;
+    const a=connPosMap[w.a], b=connPosMap[w.b]; if(!a||!b) return;
     if(WS.removed[wsCompOfConn(w.a)]||WS.removed[wsCompOfConn(w.b)]) return;
-    const mid_x=(a.x+b.x)/2, mid_y=(a.y+b.y)/2;
-    svg += `<path d="M${a.x},${a.y} Q${mid_x},${a.y} ${mid_x},${mid_y} Q${mid_x},${b.y} ${b.x},${b.y}" fill="none" stroke="${w.broken?'#EF4444':'#1a2a1a'}" stroke-width="2" stroke-linecap="round"/>`;
+    const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    const broken = w.broken;
+    // Cable bundle shadow
+    if(w.w >= 4) {
+      svg += `<path d="M${a.x},${a.y} Q${mx},${a.y} ${mx},${my} Q${mx},${b.y} ${b.x},${b.y}" fill="none" stroke="#000" stroke-width="${(w.w||2)+4}" stroke-linecap="round" opacity="0.4"/>`;
+    }
+    svg += `<path d="M${a.x},${a.y} Q${mx},${a.y} ${mx},${my} Q${mx},${b.y} ${b.x},${b.y}" fill="none" stroke="${broken?'#EF4444':(w.color||'#333')}" stroke-width="${w.w||2}" stroke-linecap="round" ${broken?'stroke-dasharray="6,4"':''}/>`;
+    // Cable highlight
+    if(w.w >= 4 && !broken) {
+      svg += `<path d="M${a.x},${a.y} Q${mx},${a.y} ${mx},${my} Q${mx},${b.y} ${b.x},${b.y}" fill="none" stroke="${w.color||'#333'}" stroke-width="${Math.max(1,(w.w||2)-2)}" stroke-linecap="round" opacity="0.4"/>`;
+    }
   });
 
-  // Components
-  Object.entries(sc.components).forEach(([cid, c])=>{
+  // ── Draw each component with realistic shapes ─────────────────────────
+  Object.entries(sc.components).forEach(([cid, c]) => {
     if(WS.removed[cid]) return;
-    const isFaulty = c.faulty && !WS.replaced[cid];
-    const isSelected = WS.selectedComp === cid;
-    const extraStroke = isFaulty ? '#EF4444' : c.stroke;
-    const strokeW = isSelected ? '2.5' : '1.5';
-    svg += `<g class="ws-comp-g${isSelected?' ws-sel':''}" id="wsg-${cid}" onclick="wsClickComp('${cid}',event)" data-cid="${cid}">`;
-    svg += `<rect class="ws-comp-rect" x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="6" fill="${c.fill}" stroke="${extraStroke}" stroke-width="${strokeW}" opacity="${WS.removed[cid]?0.2:1}"/>`;
-    if(isFaulty) svg += `<rect x="${c.x+2}" y="${c.y+2}" width="${c.w-4}" height="${c.h-4}" rx="5" fill="rgba(239,68,68,0.06)" stroke="rgba(239,68,68,0.3)" stroke-width="1.5"/>`;
-    // Icon + label
-    const lines = c.label.split('\n');
-    const iconY = c.y + c.h/2 - (lines.length>1?10:6);
-    svg += `<text x="${c.x+c.w/2}" y="${iconY}" text-anchor="middle" font-size="17" font-family="Arial">${c.icon}</text>`;
-    lines.forEach((ln,li)=>{
-      svg += `<text x="${c.x+c.w/2}" y="${iconY+17+(li*11)}" text-anchor="middle" fill="${c.stroke}aa" font-size="9" font-family="Arial">${ln}</text>`;
-    });
-    // Connector dots
+    const isFaulty  = c.faulty && !WS.replaced[cid];
+    const isReplaced= !!WS.replaced[cid];
+    const isSelected= WS.selectedComp === cid;
+    const glowFilt  = isFaulty ? 'url(#glow-red)' : isSelected ? 'url(#glow-green)' : '';
+
+    svg += `<g class="ws-comp-g${isSelected?' ws-sel':''}" id="wsg-${cid}" onclick="wsClickComp('${cid}',event)" style="cursor:pointer">`;
+
+    // Draw component-specific realistic shape
+    svg += drawRealisticComponent(cid, c, {isFaulty, isReplaced, isSelected});
+
+    // Fault/selected border glow
+    if(isFaulty) {
+      svg += `<rect x="${c.x-2}" y="${c.y-2}" width="${c.w+4}" height="${c.h+4}" rx="9" fill="none" stroke="#EF4444" stroke-width="2" opacity="0.6" filter="url(#glow-red)" style="pointer-events:none"/>`;
+    }
+    if(isSelected) {
+      svg += `<rect x="${c.x-3}" y="${c.y-3}" width="${c.w+6}" height="${c.h+6}" rx="10" fill="none" stroke="#4ADE80" stroke-width="2.5" opacity="0.8" filter="url(#glow-green)" style="pointer-events:none"/>`;
+    }
+
+    // Connector probe dots
     (c.conn||[]).forEach(cn=>{
-      const inUse = WS.mm.redProbe===cn.id||WS.mm.blueProbe===cn.id;
-      const probeClass = WS.mm.redProbe===cn.id?'ws-red-p':WS.mm.blueProbe===cn.id?'ws-blue-p':'';
-      svg += `<g class="ws-probe-dot ${probeClass}" id="wsconn-${cn.id}" onclick="wsClickConn('${cn.id}',event)" data-conn="${cn.id}">
-        <circle cx="${cn.cx}" cy="${cn.cy}" r="5" fill="${WS.mm.redProbe===cn.id?'rgba(239,68,68,0.3)':WS.mm.blueProbe===cn.id?'rgba(79,142,247,0.3)':'rgba(74,222,128,0.08)'}" stroke="${WS.mm.redProbe===cn.id?'#EF4444':WS.mm.blueProbe===cn.id?'#4F8EF7':'#4ADE80'}" stroke-width="1.5"/>
-        <text x="${cn.cx}" y="${cn.cy+3}" text-anchor="middle" fill="${WS.mm.redProbe===cn.id?'#EF4444':WS.mm.blueProbe===cn.id?'#4F8EF7':'#4ADE80'}" font-size="6" font-family="Arial">${cn.lbl}</text>
+      const isRed  = WS.mm.redProbe  === cn.id;
+      const isBlue = WS.mm.blueProbe === cn.id;
+      const pc     = isRed ? '#EF4444' : isBlue ? '#4F8EF7' : '#4ADE80';
+      const pf     = isRed ? 'rgba(239,68,68,0.25)' : isBlue ? 'rgba(79,142,247,0.25)' : 'rgba(74,222,128,0.1)';
+      svg += `<g class="ws-probe-dot${isRed?' ws-red-p':isBlue?' ws-blue-p':''}" id="wsconn-${cn.id}" onclick="wsClickConn('${cn.id}',event)" style="cursor:crosshair">
+        <circle cx="${cn.cx}" cy="${cn.cy}" r="${isRed||isBlue?9:6}" fill="${pf}" stroke="${pc}" stroke-width="${isRed||isBlue?2:1.5}"/>
+        <circle cx="${cn.cx}" cy="${cn.cy}" r="3" fill="${pc}" opacity="${isRed||isBlue?1:0.6}"/>
+        <text x="${cn.cx}" y="${cn.cy+14}" text-anchor="middle" fill="${pc}" font-size="8" font-family="Arial" font-weight="${isRed||isBlue?'bold':'normal'}">${cn.lbl}</text>
       </g>`;
     });
+
     svg += `</g>`;
   });
+
+  // ── Labels overlay ────────────────────────────────────────────────────
+  svg += `<text x="${W/2}" y="${H-6}" text-anchor="middle" fill="#1a3a1a" font-size="9" font-family="Arial" letter-spacing="5" opacity="0.6">ENGINE BAY — BONNET OPEN — SCROLL TO ZOOM</text>`;
 
   svg += `</svg>`;
 
@@ -3254,6 +2931,259 @@ function renderCar() {
     car.style.transform = `translate(${WS.panX}px,${WS.panY}px)`;
   }
 }
+
+// ── Realistic component drawing ───────────────────────────────────────────
+function drawRealisticComponent(cid, c, {isFaulty, isReplaced, isSelected}) {
+  const {x,y,w,h} = c;
+  let s = '';
+
+  switch(cid) {
+
+    case 'battery': {
+      // Battery body
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="url(#bat-body)" stroke="${isFaulty?'#EF4444':'#2a3030'}" stroke-width="1.5" filter="url(#shadow)"/>`;
+      // Top surface detail
+      s += `<rect x="${x+4}" y="${y}" width="${w-8}" height="${h*0.35}" rx="4" fill="url(#bat-top)"/>`;
+      // Vent manifold strip
+      s += `<rect x="${x+8}" y="${y+6}" width="${w-16}" height="8" rx="2" fill="#0e1818" stroke="#1a2828" stroke-width="0.5"/>`;
+      // Vent holes
+      for(let i=0;i<5;i++) s += `<circle cx="${x+18+i*16}" cy="${y+10}" r="2" fill="#060d0d"/>`;
+      // Positive terminal (red)
+      s += `<circle cx="${x+w*0.28}" cy="${y}" r="10" fill="#440000" stroke="#cc1010" stroke-width="2" filter="${isFaulty?'url(#glow-red)':''}"/>`;
+      s += `<circle cx="${x+w*0.28}" cy="${y}" r="6" fill="#220000" stroke="#aa0808" stroke-width="1"/>`;
+      s += `<text x="${x+w*0.28}" y="${y+4}" text-anchor="middle" fill="#cc1010" font-size="9" font-weight="bold" font-family="Arial">+</text>`;
+      // Negative terminal (dark)
+      s += `<circle cx="${x+w*0.72}" cy="${y}" r="10" fill="#1a1a1a" stroke="#444" stroke-width="2"/>`;
+      s += `<circle cx="${x+w*0.72}" cy="${y}" r="6" fill="#0a0a0a" stroke="#333" stroke-width="1"/>`;
+      s += `<text x="${x+w*0.72}" y="${y+4}" text-anchor="middle" fill="#888" font-size="10" font-weight="bold" font-family="Arial">−</text>`;
+      // Battery label
+      s += `<text x="${x+w/2}" y="${y+h*0.65}" text-anchor="middle" fill="#2a5a5a" font-size="11" font-weight="700" font-family="Arial">12V</text>`;
+      s += `<text x="${x+w/2}" y="${y+h*0.85}" text-anchor="middle" fill="#1a3a3a" font-size="8" font-family="Arial">60Ah</text>`;
+      // Corrosion effect if faulty
+      if(isFaulty) {
+        s += `<ellipse cx="${x+w*0.28}" cy="${y}" rx="15" ry="8" fill="rgba(255,255,255,0.08)" filter="url(#glow-red)"/>`;
+        s += `<ellipse cx="${x+w*0.72}" cy="${y}" rx="12" ry="7" fill="rgba(255,255,255,0.06)"/>`;
+      }
+      // Hold-down bracket
+      s += `<rect x="${x-3}" y="${y+h-12}" width="${w+6}" height="10" rx="2" fill="#0a1010" stroke="#1a2020" stroke-width="1"/>`;
+      s += `<text x="${x+w/2}" y="${y+h+14}" text-anchor="middle" fill="${c.stroke}99" font-size="9" font-family="Arial">${c.label}</text>`;
+      break;
+    }
+
+    case 'fuse_box': {
+      // Main body
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="url(#fuse-box-lid)" stroke="${isFaulty?'#EF4444':'#2a2a2a'}" stroke-width="1.5" filter="url(#shadow)"/>`;
+      // Fuse grid area
+      s += `<rect x="${x+6}" y="${y+18}" width="${w-12}" height="${h-26}" rx="3" fill="url(#fuse-grid)" stroke="#1a1a1a" stroke-width="0.5"/>`;
+      // Lid detail
+      s += `<rect x="${x+4}" y="${y+4}" width="${w-8}" height="12" rx="3" fill="#1a1a1a" stroke="#222" stroke-width="0.5"/>`;
+      s += `<text x="${x+w/2}" y="${y+13}" text-anchor="middle" fill="#3a3a3a" font-size="7" font-family="Arial" letter-spacing="1">FUSE BOX</text>`;
+      // Latch
+      s += `<rect x="${x+w/2-8}" y="${y-4}" width="16" height="7" rx="2" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1"/>`;
+      s += `<text x="${x+w/2}" y="${y+h+14}" text-anchor="middle" fill="${c.stroke}99" font-size="9" font-family="Arial">Fuse Box</text>`;
+      break;
+    }
+
+    case 'fuse_hl': {
+      // Blade fuse
+      const blown = isFaulty;
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${blown?'#1a0505':'#151515'}" stroke="${blown?'#EF4444':'#333'}" stroke-width="${blown?2:1}" filter="${blown?'url(#glow-red)':''}"/>`;
+      // Fuse body (translucent look)
+      s += `<rect x="${x+4}" y="${y+4}" width="${w-8}" height="${h-8}" rx="2" fill="${blown?'rgba(100,0,0,0.4)':'rgba(40,40,40,0.8)'}" stroke="${blown?'#880000':'#222'}" stroke-width="0.5"/>`;
+      // Metal strip (broken if blown)
+      if(blown) {
+        s += `<line x1="${x+8}" y1="${y+h/2}" x2="${x+w/2-4}" y2="${y+h/2}" stroke="#cc4400" stroke-width="2"/>`;
+        s += `<line x1="${x+w/2+4}" y1="${y+h/2}" x2="${x+w-8}" y2="${y+h/2}" stroke="#cc4400" stroke-width="2"/>`;
+        s += `<text x="${x+w/2}" y="${y+h/2+1}" text-anchor="middle" fill="#EF4444" font-size="8">✗</text>`;
+      } else {
+        s += `<line x1="${x+8}" y1="${y+h/2}" x2="${x+w-8}" y2="${y+h/2}" stroke="#F59E0B" stroke-width="2"/>`;
+      }
+      // Rating label
+      s += `<text x="${x+w/2}" y="${y-4}" text-anchor="middle" fill="${blown?'#EF4444':'#F59E0B'}" font-size="9" font-weight="700" font-family="Arial">F3 15A</text>`;
+      break;
+    }
+
+    case 'hl_relay': {
+      // Relay module body
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="url(#relay-body)" stroke="${isFaulty?'#EF4444':'#2a2a40'}" stroke-width="1.5" filter="url(#shadow)"/>`;
+      // Terminal pins (4x at bottom)
+      ['85','86','30','87'].forEach((pin,i) => {
+        const px = x + 14 + i*22;
+        const py = y + h - 6;
+        s += `<rect x="${px-5}" y="${py}" width="10" height="12" rx="2" fill="#1a1a2a" stroke="#3a3a5a" stroke-width="1"/>`;
+        s += `<text x="${px}" y="${py+22}" text-anchor="middle" fill="#3a3a6a" font-size="7" font-family="Arial">${pin}</text>`;
+      });
+      // Label
+      s += `<text x="${x+w/2}" y="${y+h/2-4}" text-anchor="middle" fill="#3a3a7a" font-size="10" font-weight="700" font-family="Arial">RELAY</text>`;
+      s += `<text x="${x+w/2}" y="${y+h/2+10}" text-anchor="middle" fill="#2a2a5a" font-size="8" font-family="Arial">H/LIGHT</text>`;
+      s += `<text x="${x+w/2}" y="${y+h+26}" text-anchor="middle" fill="${c.stroke}99" font-size="9" font-family="Arial">HL Relay</text>`;
+      break;
+    }
+
+    case 'headlight_l':
+    case 'headlight_r': {
+      const isLeft = cid === 'headlight_l';
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="url(#hl-lens)" stroke="${isFaulty?'#EF4444':'#2a3a4a'}" stroke-width="1.5" filter="url(#shadow)"/>`;
+      // Outer lens pattern
+      s += `<rect x="${x+3}" y="${y+3}" width="${w-6}" height="${h-6}" rx="6" fill="none" stroke="#1a2a3a" stroke-width="1"/>`;
+      // Reflector bowls
+      const bowlCx = isLeft ? x+w*0.65 : x+w*0.35;
+      const bowlCy = y+h/2;
+      s += `<circle cx="${bowlCx}" cy="${bowlCy}" r="${h*0.36}" fill="#0a1525" stroke="#1a2a40" stroke-width="1"/>`;
+      s += `<circle cx="${bowlCx}" cy="${bowlCy}" r="${h*0.22}" fill="#060e18" stroke="#0e1a2a" stroke-width="0.5"/>`;
+      s += `<ellipse cx="${bowlCx}" cy="${bowlCy}" rx="${h*0.1}" ry="${h*0.12}" fill="#1a2535" stroke="#2a3a50" stroke-width="0.5"/>`;
+      // DRL strip
+      const dlrX = isLeft ? x+4 : x+4;
+      s += `<rect x="${dlrX}" y="${y+h*0.7}" width="${w-8}" height="8" rx="3" fill="#0a1520" stroke="#1a2a35" stroke-width="0.5"/>`;
+      // Connector housing
+      const connX = isLeft ? x+w-10 : x;
+      s += `<rect x="${connX-8}" y="${y+h/2-8}" width="16" height="16" rx="3" fill="#0a1020" stroke="#1a2030" stroke-width="1"/>`;
+      s += `<text x="${x+w/2}" y="${y+h+16}" text-anchor="middle" fill="${c.stroke}99" font-size="9" font-family="Arial">${isLeft?'Left':'Right'} Headlight</text>`;
+      break;
+    }
+
+    case 'earth': {
+      // Earth strap on chassis
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="#060d06" stroke="#1a3a1a" stroke-width="1.5"/>`;
+      // Earth symbol
+      s += `<line x1="${x+w/2}" y1="${y+8}" x2="${x+w/2}" y2="${y+h-14}" stroke="#1a4a1a" stroke-width="2"/>`;
+      s += `<line x1="${x+w/2-14}" y1="${y+h-14}" x2="${x+w/2+14}" y2="${y+h-14}" stroke="#4ADE80" stroke-width="2.5"/>`;
+      s += `<line x1="${x+w/2-9}" y1="${y+h-9}" x2="${x+w/2+9}" y2="${y+h-9}" stroke="#4ADE80" stroke-width="2"/>`;
+      s += `<line x1="${x+w/2-4}" y1="${y+h-4}" x2="${x+w/2+4}" y2="${y+h-4}" stroke="#4ADE80" stroke-width="1.5"/>`;
+      // Bolt
+      s += `<circle cx="${x+w/2}" cy="${y+h/2}" r="8" fill="#0a1a0a" stroke="#1a4a1a" stroke-width="1.5"/>`;
+      s += `<circle cx="${x+w/2}" cy="${y+h/2}" r="4" fill="#061006" stroke="#1a3a1a" stroke-width="1"/>`;
+      s += `<text x="${x+w/2}" y="${y+h+16}" text-anchor="middle" fill="#4ADE80" font-size="9" font-family="Arial" opacity="0.8">Earth Point</text>`;
+      break;
+    }
+
+    case 'hl_sw':
+    case 'ignition_sw': {
+      // Interior switch/module (behind firewall)
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="#0a0a14" stroke="${c.stroke}66" stroke-width="1.5"/>`;
+      s += `<rect x="${x+5}" y="${y+5}" width="${w-10}" height="${h-10}" rx="3" fill="#050508" stroke="#1a1a28" stroke-width="0.5"/>`;
+      s += `<text x="${x+w/2}" y="${y+h/2-4}" text-anchor="middle" fill="${c.stroke}99" font-size="9" font-weight="700" font-family="Arial">${cid==='ignition_sw'?'IGN':'HEAD'}</text>`;
+      s += `<text x="${x+w/2}" y="${y+h/2+10}" text-anchor="middle" fill="${c.stroke}66" font-size="8" font-family="Arial">${cid==='ignition_sw'?'SWITCH':'SWITCH'}</text>`;
+      s += `<text x="${x+w/2}" y="${y+h+16}" text-anchor="middle" fill="${c.stroke}88" font-size="9" font-family="Arial">${c.label.replace('\n',' ')}</text>`;
+      // Interior indicator line
+      s += `<line x1="${x}" y1="${y-2}" x2="${x+w}" y2="${y-2}" stroke="#1a2a1a" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>`;
+      s += `<text x="${x+w/2}" y="${y-8}" text-anchor="middle" fill="#1a2a1a" font-size="7" font-family="Arial" opacity="0.6">INTERIOR</text>`;
+      break;
+    }
+
+    case 'ecu': {
+      // ECU module
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="url(#ecu-body)" stroke="${isFaulty?'#EF4444':'#3a3a50'}" stroke-width="1.5" filter="url(#shadow)"/>`;
+      // Main connector (large multi-pin)
+      s += `<rect x="${x}" y="${y+15}" width="22" height="${h-30}" rx="2" fill="#1a1a28" stroke="#2a2a40" stroke-width="1.5"/>`;
+      for(let i=0;i<8;i++) {
+        s += `<circle cx="${x+11}" cy="${y+24+i*9}" r="2" fill="#0a0a18" stroke="#3a3a60" stroke-width="0.5"/>`;
+      }
+      // PCB detail on surface
+      for(let i=0;i<4;i++) {
+        s += `<rect x="${x+28+i*22}" y="${y+12}" width="14" height="8" rx="2" fill="#0a0a18" stroke="#2a2a3a" stroke-width="0.5"/>`;
+        s += `<rect x="${x+28+i*22}" y="${y+h-20}" width="14" height="8" rx="2" fill="#0a0a18" stroke="#2a2a3a" stroke-width="0.5"/>`;
+      }
+      s += `<text x="${x+w/2+10}" y="${y+h/2-4}" text-anchor="middle" fill="#3a3a6a" font-size="11" font-weight="700" font-family="Arial">ECU</text>`;
+      s += `<text x="${x+w/2+10}" y="${y+h/2+10}" text-anchor="middle" fill="#2a2a50" font-size="8" font-family="Arial">ENGINE MGT</text>`;
+      s += `<text x="${x+w/2}" y="${y+h+16}" text-anchor="middle" fill="${c.stroke}99" font-size="9" font-family="Arial">ECU</text>`;
+      break;
+    }
+
+    case 'cts': {
+      // Coolant temp sensor — screwed into engine
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="#0e0505" stroke="${isFaulty?'#EF4444':'#3a1010'}" stroke-width="${isFaulty?2:1.5}" filter="url(#shadow)"/>`;
+      // Sensor body (hexagonal nut look)
+      const cx2=x+w/2, cy2=y+h/2;
+      s += `<polygon points="${cx2},${cy2-22} ${cx2+19},${cy2-11} ${cx2+19},${cy2+11} ${cx2},${cy2+22} ${cx2-19},${cy2+11} ${cx2-19},${cy2-11}" fill="${isFaulty?'#1a0505':'#1a1010'}" stroke="${isFaulty?'#EF4444':'#3a1a1a'}" stroke-width="1.5"/>`;
+      // Thread indication
+      for(let i=0;i<4;i++) {
+        s += `<line x1="${cx2-14}" y1="${cy2-16+i*11}" x2="${cx2+14}" y2="${cy2-20+i*11}" stroke="${isFaulty?'#cc2020':'#2a1010'}" stroke-width="1" opacity="0.6"/>`;
+      }
+      // Connector on top
+      s += `<rect x="${cx2-12}" y="${y}" width="24" height="16" rx="3" fill="#0a0808" stroke="${isFaulty?'#EF4444':'#2a1010'}" stroke-width="1"/>`;
+      if(isFaulty) {
+        s += `<text x="${cx2}" y="${cy2+4}" text-anchor="middle" fill="#EF4444" font-size="8" font-weight="700" font-family="Arial">OPEN</text>`;
+      }
+      s += `<text x="${x+w/2}" y="${y+h+16}" text-anchor="middle" fill="${c.stroke}99" font-size="9" font-family="Arial">CTS Sensor</text>`;
+      break;
+    }
+
+    case 'radiator': {
+      // Radiator — spans full width near front
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="url(#rad-body)" stroke="#2a2a2a" stroke-width="1.5" filter="url(#shadow)"/>`;
+      // Fin pattern
+      s += `<rect x="${x+20}" y="${y+8}" width="${w-40}" height="${h-16}" fill="url(#rad-fins)"/>`;
+      // Header tanks (top/bottom rails)
+      s += `<rect x="${x}" y="${y}" width="${w}" height="10" rx="4" fill="#1e1e1e" stroke="#2a2a2a" stroke-width="1"/>`;
+      s += `<rect x="${x}" y="${y+h-10}" width="${w}" height="10" rx="4" fill="#1e1e1e" stroke="#2a2a2a" stroke-width="1"/>`;
+      // Hose stubs
+      s += `<rect x="${x+15}" y="${y-8}" width="20" height="12" rx="4" fill="#181818" stroke="#2a2a2a" stroke-width="1"/>`;
+      s += `<rect x="${x+w-35}" y="${y+h-4}" width="20" height="12" rx="4" fill="#181818" stroke="#2a2a2a" stroke-width="1"/>`;
+      s += `<text x="${x+w/2}" y="${y+h/2+4}" text-anchor="middle" fill="#2a2a2a" font-size="11" font-weight="700" font-family="Arial" letter-spacing="4">RADIATOR</text>`;
+      s += `<text x="${x+w/2}" y="${y+h+16}" text-anchor="middle" fill="${c.stroke}88" font-size="9" font-family="Arial">Radiator</text>`;
+      break;
+    }
+
+    case 'thermostat': {
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="#04080e" stroke="${c.stroke}66" stroke-width="1.5" filter="url(#shadow)"/>`;
+      // Thermostat housing shape
+      s += `<ellipse cx="${x+w/2}" cy="${y+h/2}" rx="${w*0.38}" ry="${h*0.35}" fill="#080e18" stroke="#1a2a3a" stroke-width="1"/>`;
+      // Temperature indicator ring
+      s += `<circle cx="${x+w/2}" cy="${y+h/2}" r="${Math.min(w,h)*0.2}" fill="none" stroke="#1a3a5a" stroke-width="2" stroke-dasharray="3,2"/>`;
+      s += `<text x="${x+w/2}" y="${y+h/2+4}" text-anchor="middle" fill="#1a3a5a" font-size="8" font-weight="700" font-family="Arial">THERM</text>`;
+      s += `<text x="${x+w/2}" y="${y+h+16}" text-anchor="middle" fill="${c.stroke}99" font-size="9" font-family="Arial">Thermostat</text>`;
+      break;
+    }
+
+    case 'main_fuse': {
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" fill="#0e0800" stroke="#F59E0B66" stroke-width="1.5" filter="url(#shadow)"/>`;
+      s += `<rect x="${x+6}" y="${y+6}" width="${w-12}" height="${h-12}" rx="3" fill="#080500" stroke="#2a1a00" stroke-width="0.5"/>`;
+      s += `<text x="${x+w/2}" y="${y+h/2-4}" text-anchor="middle" fill="#F59E0B88" font-size="10" font-weight="700" font-family="Arial">60A</text>`;
+      s += `<text x="${x+w/2}" y="${y+h/2+10}" text-anchor="middle" fill="#F59E0B55" font-size="8" font-family="Arial">MAIN FUSE</text>`;
+      s += `<text x="${x+w/2}" y="${y+h+16}" text-anchor="middle" fill="${c.stroke}88" font-size="9" font-family="Arial">Main Fuse</text>`;
+      break;
+    }
+
+    case 'alternator': {
+      s += `<ellipse cx="${x+w/2}" cy="${y+h/2}" rx="${w/2}" ry="${h/2}" fill="#0e1e0e" stroke="#1a3a1a" stroke-width="1.5" filter="url(#shadow)"/>`;
+      s += `<ellipse cx="${x+w/2}" cy="${y+h/2}" rx="${w*0.35}" ry="${h*0.35}" fill="#0a1a0a" stroke="#1a2a1a" stroke-width="1"/>`;
+      s += `<text x="${x+w/2}" y="${y+h/2+4}" text-anchor="middle" fill="#1a4a1a" font-size="9" font-weight="700" font-family="Arial">ALT</text>`;
+      s += `<text x="${x+w/2}" y="${y+h+16}" text-anchor="middle" fill="${c.stroke}99" font-size="9" font-family="Arial">Alternator</text>`;
+      break;
+    }
+
+    default: {
+      // Generic component fallback
+      s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="${c.fill}" stroke="${isFaulty?'#EF4444':c.stroke}" stroke-width="1.5" filter="url(#shadow)"/>`;
+      const lines = c.label.split('\n');
+      const iconY = y + h/2 - (lines.length>1?10:6);
+      s += `<text x="${x+w/2}" y="${iconY}" text-anchor="middle" font-size="18" font-family="Arial">${c.icon}</text>`;
+      lines.forEach((ln,li) => {
+        s += `<text x="${x+w/2}" y="${iconY+18+(li*12)}" text-anchor="middle" fill="${c.stroke}aa" font-size="9" font-family="Arial">${ln}</text>`;
+      });
+      s += `<text x="${x+w/2}" y="${y+h+16}" text-anchor="middle" fill="${c.stroke}88" font-size="9" font-family="Arial">${c.label.replace('\n',' ')}</text>`;
+    }
+  }
+  return s;
+}
+
+// ── Double-click to zoom into component ────────────────────────────────────
+document.addEventListener('dblclick', e => {
+  const compEl = e.target.closest('.ws-comp-g');
+  if(!compEl) return;
+  const cid = compEl.dataset.cid;
+  const comp = WS.sc?.components[cid]; if(!comp) return;
+  // Zoom to component
+  const vp = document.getElementById('ws-viewport');
+  if(!vp) return;
+  const vpW = vp.clientWidth, vpH = vp.clientHeight;
+  WS.zoom = 2.0;
+  WS.panX = vpW/2 - (comp.x + comp.w/2) * WS.zoom;
+  WS.panY = vpH/2 - (comp.y + comp.h/2) * WS.zoom;
+  renderCar();
+});
+
 
 function wsCompOfConn(connId) {
   return WS.connMap[connId]?.comp;
@@ -3380,7 +3310,7 @@ window.wsOpenTool = function(toolId) {
     return;
   }
   if(rb) rb.classList.add('ws-open');
-  const positions={mm:{x:60,y:50},osc:{x:60,y:50},dash:{x:200,y:50},diag:{x:60,y:50},wire:{x:200,y:50},inv:{x:350,y:50}};
+  const positions={mm:{x:60,y:50},osc:{x:60,y:50},dash:{x:200,y:50},diag:{x:60,y:50},wire:{x:200,y:50},inv:{x:350,y:50},sol:{x:60,y:50}};
   const pos=positions[toolId]||{x:80,y:60};
   const panel=document.createElement('div');
   panel.className='ws-panel'; panel.id='ws-panel-'+toolId;
@@ -3394,9 +3324,10 @@ window.wsOpenTool = function(toolId) {
     case 'diag': inner=buildDiagPanel(); break;
     case 'wire': inner=buildWirePanel(); break;
     case 'inv': inner=buildInvPanel(); break;
+    case 'sol': inner=buildSolutionPanel(); break;
   }
-  const icons={mm:'🔬',osc:'📈',dash:'🚗',diag:'🔍',wire:'📄',inv:'📋'};
-  const titles={mm:'Multimeter',osc:'Oscilloscope',dash:'Instrument Panel',diag:'Diagnostic System',wire:'Wiring Diagram',inv:'Invoice'};
+  const icons={mm:'🔬',osc:'📈',dash:'🚗',diag:'🔍',wire:'📄',inv:'📋',sol:'💡'};
+  const titles={mm:'Multimeter',osc:'Oscilloscope',dash:'Instrument Panel',diag:'Diagnostic System',wire:'Wiring Diagram',inv:'Invoice',sol:'Solution Guide'};
   panel.innerHTML=`
     <div class="ws-panel-hdr" onmousedown="wsDragPanel(event,'${toolId}')">
       <span style="font-size:14px">${icons[toolId]}</span>
@@ -3698,6 +3629,43 @@ function buildWirePanel(){
 }
 
 // ── Invoice panel ─────────────────────────────────────────────────────────
+function buildSolutionPanel(){
+  const sc = WS.sc;
+  const sol = sc.solution;
+  if(!sol) return `<div style="color:#2a5a2a;font-size:12px;padding:8px">No solution data for this scenario.</div>`;
+  return `
+    <div style="max-width:360px">
+      <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:7px;padding:10px 12px;margin-bottom:12px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#EF4444;margin-bottom:5px">⚠ Fault</div>
+        <div style="font-size:12px;font-weight:700;color:#f87171">${sol.fault}</div>
+      </div>
+      <div style="background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.15);border-radius:7px;padding:10px 12px;margin-bottom:12px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#60A5FA;margin-bottom:5px">📖 Why This Happens</div>
+        <div style="font-size:11px;color:#6a9abf;line-height:1.7">${sol.cause}</div>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#2a5a2a;margin-bottom:8px">🔧 Step-by-Step Solution</div>
+        ${sol.steps.map((s,i)=>`
+        <div style="display:flex;gap:10px;margin-bottom:8px;padding:8px 10px;background:#030608;border:1px solid #0a1510;border-radius:7px;border-left:2px solid ${s.expect.includes('FAULT')||s.expect.includes('✗')?'#EF4444':'#4ADE80'}">
+          <div style="width:20px;height:20px;border-radius:50%;background:${s.expect.includes('FAULT')||s.expect.includes('✗')?'rgba(239,68,68,0.15)':'rgba(74,222,128,0.1)'};border:1px solid ${s.expect.includes('FAULT')||s.expect.includes('✗')?'rgba(239,68,68,0.3)':'rgba(74,222,128,0.2)'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${s.expect.includes('FAULT')||s.expect.includes('✗')?'#EF4444':'#4ADE80'};flex-shrink:0">${s.n}</div>
+          <div style="flex:1">
+            <div style="font-size:10px;color:#3a6a3a;margin-bottom:2px;font-family:'Courier New',monospace">${s.tool} → ${s.comp}</div>
+            <div style="font-size:11px;font-weight:600;color:${s.expect.includes('FAULT')||s.expect.includes('✗')?'#f87171':'#86efac'};margin-bottom:2px">Result: ${s.expect}</div>
+            <div style="font-size:10px;color:#2a4a2a;line-height:1.5">${s.why}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:7px;padding:10px 12px;margin-bottom:10px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4ADE80;margin-bottom:5px">✅ Fix</div>
+        <div style="font-size:12px;font-weight:700;color:#86efac">${sol.fix}</div>
+      </div>
+      <div style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.15);border-radius:7px;padding:10px 12px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#f5a623;margin-bottom:5px">💡 Important Note</div>
+        <div style="font-size:11px;color:#c8a060;line-height:1.7">${sol.note}</div>
+      </div>
+    </div>`;
+}
+
 function buildInvPanel(){
   const mins=Math.floor(WS.invoice.time/60), secs=WS.invoice.time%60;
   return `<div class="ws-inv-row"><span>Diagnostic time:</span><span id="ws-inv-time">${mins}m ${secs}s</span></div>
@@ -3852,6 +3820,7 @@ window.wsReturnVehicle=function(){
           ${efficient?`<span style="color:#4ADE80">✓ Efficient repair (${WS.invoice.parts.length} parts)</span>`:`<span style="color:#F59E0B">⚠ Unnecessary parts replaced</span>`}<br>
           Time: ${Math.floor(WS.invoice.time/60)}m ${WS.invoice.time%60}s
         </div>
+        <button class="btn btn-ghost" style="width:100%;margin-bottom:8px" onclick="wsShowSolutionOverlay()">💡 View Solution</button>
         <button class="btn btn-primary" style="width:100%" onclick="wsFinish(${score>=70})">Continue →</button>
       </div>
     </div>`);
@@ -3927,6 +3896,63 @@ document.addEventListener('keydown', e => {
   }
 });
 
+function wsFormatSolutionStep(s) {
+  const isFault = s.expect.includes('FAULT') || s.expect.includes('✗');
+  const isFix   = s.expect.includes('✓');
+  const bc  = isFault ? 'rgba(239,68,68,0.1)'   : isFix ? 'rgba(74,222,128,0.07)' : 'rgba(0,0,0,0.3)';
+  const bdr = isFault ? 'rgba(239,68,68,0.25)'  : isFix ? 'rgba(74,222,128,0.18)' : '#0a1510';
+  const nc  = isFault ? '#EF4444' : isFix ? '#4ADE80' : '#3a6a3a';
+  const ec  = isFault ? '#f87171' : isFix ? '#86efac' : '#4ADE80';
+  return '<div style="display:flex;gap:12px;margin-bottom:10px;padding:10px 12px;background:'+bc+';border:1px solid '+bdr+';border-radius:8px">'
+    + '<div style="width:24px;height:24px;border-radius:50%;background:rgba(74,222,128,0.08);border:1px solid '+nc+'40;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:'+nc+';flex-shrink:0">'+s.n+'</div>'
+    + '<div style="flex:1">'
+    + '<div style="font-size:11px;color:#3a6a3a;margin-bottom:3px;font-family:monospace">'+s.tool+' \u2192 '+s.comp+'</div>'
+    + '<div style="font-size:13px;font-weight:700;color:'+ec+';margin-bottom:3px">Result: '+s.expect+'</div>'
+    + '<div style="font-size:11px;color:#2a4a2a;line-height:1.6">'+s.why+'</div>'
+    + '</div></div>';
+}
+
+window.wsShowSolutionOverlay=function(){
+  const sol=WS.sc?.solution; if(!sol) return;
+  const existing=document.getElementById('ws-sol-overlay');
+  if(existing) existing.remove();
+  const root=document.getElementById('ws-root'); if(!root) return;
+  root.insertAdjacentHTML('beforeend',`
+    <div id="ws-sol-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,0.95);z-index:200;overflow-y:auto;display:flex;align-items:flex-start;justify-content:center;padding:20px;backdrop-filter:blur(4px)">
+      <div style="background:#060a08;border:1px solid #1a3a1a;border-radius:14px;max-width:580px;width:100%;padding:0;overflow:hidden">
+        <div style="background:#040608;padding:14px 20px;border-bottom:1px solid #0e1a0e;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1">
+          <div>
+            <div style="font-size:14px;font-weight:800;color:#fff">💡 Solution Guide</div>
+            <div style="font-size:11px;color:#2a5a2a;margin-top:2px">${WS.sc.title}</div>
+          </div>
+          <button onclick="document.getElementById('ws-sol-overlay').remove()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#EF4444;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;font-family:var(--font-body)">Close ✕</button>
+        </div>
+        <div style="padding:20px">
+          <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:12px 14px;margin-bottom:16px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#EF4444;margin-bottom:6px">⚠ The Fault</div>
+            <div style="font-size:14px;font-weight:700;color:#f87171">${sol.fault}</div>
+          </div>
+          <div style="background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.15);border-radius:8px;padding:12px 14px;margin-bottom:16px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#60A5FA;margin-bottom:6px">📖 Why This Happens</div>
+            <div style="font-size:13px;color:#6a9abf;line-height:1.8">${sol.cause}</div>
+          </div>
+          <div style="margin-bottom:16px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#2a5a2a;margin-bottom:10px">🔧 Correct Diagnostic Steps</div>
+            ${sol.steps.map(s=>wsFormatSolutionStep(s)).join('')}
+          </div>
+          <div style="background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.2);border-radius:8px;padding:12px 14px;margin-bottom:12px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4ADE80;margin-bottom:6px">✅ The Fix</div>
+            <div style="font-size:14px;font-weight:700;color:#86efac">${sol.fix}</div>
+          </div>
+          <div style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.15);border-radius:8px;padding:12px 14px">
+            <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#f5a623;margin-bottom:6px">💡 Remember</div>
+            <div style="font-size:13px;color:#c8a060;line-height:1.8">${sol.note}</div>
+          </div>
+        </div>
+      </div>
+    </div>`);
+};
+
 window.wsFinish=function(passed){
   if(WS.onComplete) WS.onComplete(passed);
 };
@@ -3949,6 +3975,134 @@ window.wsToggleSidebar=function(){
 };
 
 // ── Context menu for component (right-click) ──────────────────────────────
+
+window.wsShowInspection = function(cid) {
+  const comp = WS.sc?.components[cid]; if(!comp) return;
+  const ins  = comp.inspect;
+
+  // Toggle: clicking same component again closes the panel
+  const existing = document.getElementById('ws-inspect-panel');
+  if (existing) { existing.remove(); if(existing.dataset.cid === cid) return; }
+
+  const statusColor = {ok:'#4ADE80', warn:'#F59E0B', fault:'#EF4444'};
+  const statusBg    = {ok:'rgba(74,222,128,0.07)', warn:'rgba(245,166,35,0.07)', fault:'rgba(239,68,68,0.07)'};
+  const statusIcon  = {ok:'✓', warn:'⚠', fault:'✗'};
+  const statusLabel = {ok:'All Clear', warn:'Attention Needed', fault:'Fault Found'};
+
+  const alreadyReplaced = !!WS.replaced[cid];
+  const isFaulty  = comp.faulty && !alreadyReplaced;
+  const sc  = alreadyReplaced ? 'ok' : (ins?.status || (isFaulty ? 'fault' : 'ok'));
+  const col = statusColor[sc];
+  const bg  = statusBg[sc];
+
+  const summary = alreadyReplaced
+    ? 'Replaced — new component fitted'
+    : (ins?.summary || (isFaulty ? 'Component appears damaged' : 'No visible damage'));
+  const details = alreadyReplaced
+    ? 'This component has been replaced with a new part. It is now in correct working condition.'
+    : (ins?.details || (isFaulty
+        ? 'This component shows signs of failure on close inspection.'
+        : 'No cracks, burn marks, corrosion or loose connections visible.'));
+  const tip = ins?.tip || 'Visual inspection is the first step — always follow up with multimeter measurements.';
+
+  // Build action buttons based on component state
+  const actions = [];
+  if (!alreadyReplaced && comp.removable) {
+    actions.push({
+      label: '🔧 Remove & Replace',
+      style: 'background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#f87171',
+      onclick: `wsInspectReplace('${cid}')`
+    });
+  }
+  actions.push({
+    label: '🔬 Probe with Multimeter',
+    style: 'background:rgba(74,222,128,0.07);border:1px solid rgba(74,222,128,0.2);color:#4ADE80',
+    onclick: `wsOpenTool('mm');document.getElementById('ws-inspect-panel')?.remove();wsNotif('Multimeter open — select a mode then click a connector','info')`
+  });
+  if (!alreadyReplaced && comp.removable) {
+    actions.push({
+      label: '📦 Remove for Bench Test',
+      style: 'background:rgba(245,166,35,0.07);border:1px solid rgba(245,166,35,0.2);color:#f5a623',
+      onclick: `wsRemoveComp('${cid}');document.getElementById('ws-inspect-panel')?.remove()`
+    });
+  }
+  actions.push({
+    label: '✕ Close Inspection',
+    style: 'background:transparent;border:1px solid #0e1810;color:#2a4a2a',
+    onclick: `document.getElementById('ws-inspect-panel')?.remove()`
+  });
+
+  const panel = document.createElement('div');
+  panel.id = 'ws-inspect-panel';
+  panel.dataset.cid = cid;
+  panel.className = 'ws-panel';
+  panel.style.cssText = 'left:70px;top:55px;width:290px;z-index:45';
+
+  panel.innerHTML = `
+    <div class="ws-panel-hdr" onmousedown="wsDragPanel(event,'__inspect')">
+      <span style="font-size:14px">👁</span>
+      <span class="ws-panel-title">Visual Inspection — ${comp.label.replace('\n',' ')}</span>
+      <button class="ws-panel-x" onclick="document.getElementById('ws-inspect-panel')?.remove()">✕</button>
+    </div>
+    <div class="ws-panel-body" style="padding:0">
+
+      <!-- Component close-up view -->
+      <div style="background:${bg};border-bottom:1px solid #0a1510;padding:14px 14px 12px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="width:52px;height:52px;border-radius:10px;background:#030608;border:2px solid ${col}40;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">${comp.icon}</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#dde">${comp.label.replace('\n',' ')}</div>
+            <div style="display:inline-flex;align-items:center;gap:5px;margin-top:4px;padding:3px 8px;border-radius:10px;background:${col}15;border:1px solid ${col}30">
+              <span style="font-size:11px;font-weight:700;color:${col}">${statusIcon[sc]} ${statusLabel[sc]}</span>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:#ccd;margin-bottom:6px">${summary}</div>
+        <div style="font-size:11px;color:#3a6a4a;line-height:1.7;background:#030608;padding:9px 11px;border-radius:6px;border:1px solid #0a1510">${details}</div>
+      </div>
+
+      <!-- Technician tip -->
+      <div style="padding:9px 14px;border-bottom:1px solid #0a1510;background:rgba(245,166,35,0.04)">
+        <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#f5a623;margin-bottom:4px">💡 Technician Note</div>
+        <div style="font-size:11px;color:#c8a060;line-height:1.6">${tip}</div>
+      </div>
+
+      <!-- Action buttons -->
+      <div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#1a3a1a;margin-bottom:2px">Actions</div>
+        ${actions.map(a => `<button onclick="${a.onclick}" style="width:100%;padding:8px 12px;border-radius:6px;${a.style};cursor:pointer;font-size:12px;font-weight:600;text-align:left;font-family:var(--font-body);transition:filter 0.15s" onmouseover="this.style.filter='brightness(1.3)'" onmouseout="this.style.filter=''">
+          ${a.label}
+        </button>`).join('')}
+      </div>
+    </div>`;
+
+  const vp = document.getElementById('ws-viewport');
+  if (vp) vp.appendChild(panel);
+  wsLog('inspect_visual', cid);
+};
+
+// Inspect → Replace shortcut (remove immediately then replace from compbar)
+window.wsInspectReplace = function(cid) {
+  document.getElementById('ws-inspect-panel')?.remove();
+  wsRemoveComp(cid);
+  // Auto-trigger replace after a short delay so the compbar slot appears
+  setTimeout(() => wsReplaceComp(cid), 300);
+};
+
+// Override wsDragPanel to handle the inspection panel's special id
+const _origWsDragPanel = window.wsDragPanel;
+window.wsDragPanel = function(e, toolId) {
+  if (toolId === '__inspect') {
+    const panel = document.getElementById('ws-inspect-panel'); if(!panel) return;
+    let ox=e.clientX-panel.offsetLeft, oy=e.clientY-panel.offsetTop;
+    function mm(ev){panel.style.left=(ev.clientX-ox)+'px';panel.style.top=(ev.clientY-oy)+'px';}
+    function mu(){document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);}
+    document.addEventListener('mousemove',mm); document.addEventListener('mouseup',mu);
+  } else {
+    _origWsDragPanel(e, toolId);
+  }
+};
+
 window.wsClickComp=function(cid,e){
   e.stopPropagation();
   const comp=WS.sc.components[cid]; if(!comp) return;
@@ -3963,7 +4117,7 @@ window.wsClickComp=function(cid,e){
   const actions=[
     {label:`${comp.icon} ${comp.label.replace('\n',' ')}`,hdr:true},
     {label:'🔬 Probe with Multimeter', action:()=>{wsOpenTool('mm');wsNotif('Multimeter open — click a probe socket then a connector on this component','info');}},
-    {label:'👁 Visual Inspection', action:()=>{wsNotif(`Visual: ${comp.faulty&&!WS.replaced[cid]?'⚠ Component looks suspicious/discoloured':'OK — no visible damage'}`,comp.faulty&&!WS.replaced[cid]?'warn':'ok');}},
+    {label:'👁 Visual Inspection', action:()=>wsShowInspection(cid)},
     ...(comp.removable?[{label:'🔧 Remove Component', action:()=>wsRemoveComp(cid)}]:[]),
     {label:'✕ Close',action:()=>{}},
   ];
