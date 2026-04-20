@@ -1677,8 +1677,18 @@ document.addEventListener('keydown', e => {
     ['m-student','m-preview'].forEach(id=>{ const el=$(id); if(el&&el.style.display!=='none') el.style.display='none'; });
     document.querySelectorAll('[id$="-overlay"],[id^="m-level"],[id^="m-lesson"]').forEach(el=>{ if(el&&el.style.display!=='none') if(el.remove) el.remove(); else el.style.display='none'; });
     closeConfirm();
+    // Exit CSS-based fullscreen if Escape wasn't caught by native fullscreen
+    const wsr = document.getElementById('ws-root');
+    if (wsr && wsr.classList.contains('ws-fs') && !document.fullscreenElement && !document.webkitFullscreenElement) {
+      wsUseCSSFullscreen(wsr, false);
+    }
   }
   if (e.key==='Enter' && $('login')?.style?.display!=='none') submitAuth();
+  // F = toggle workshop fullscreen
+  if ((e.key==='f'||e.key==='F') && document.getElementById('ws-root') && !e.target.matches('input,textarea,select')) {
+    e.preventDefault();
+    if (typeof wsToggleFullscreen === 'function') wsToggleFullscreen();
+  }
 });
 
 window._appBooted = true;
@@ -2882,7 +2892,17 @@ window.simHideTooltip = function() {
   if(document.getElementById('ws-css')) return;
   const s=document.createElement('style'); s.id='ws-css';
   s.textContent=`
-.ws-root{display:flex;flex-direction:column;height:calc(100vh - 108px);min-height:520px;background:#050809;border:1px solid #0e1a0e;border-radius:var(--r);overflow:hidden;position:relative;font-family:var(--font-body)}
+.ws-root{display:flex;flex-direction:column;height:calc(100vh - 108px);min-height:520px;background:#050809;border:1px solid #0e1a0e;border-radius:var(--r);overflow:hidden;position:relative;font-family:var(--font-body);transition:height 0.2s}
+.ws-root.ws-fs{position:fixed;inset:0;z-index:9000;height:100vh!important;border-radius:0;border:none;width:100vw}
+.ws-root:fullscreen{height:100vh!important;border-radius:0;width:100vw}
+.ws-root:-webkit-full-screen{height:100vh!important;border-radius:0;width:100vw}
+.ws-root:-moz-full-screen{height:100vh!important;border-radius:0;width:100vw}
+/* Fullscreen button */
+.ws-fs-btn{position:absolute;top:8px;right:10px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);color:#2a6a2a;border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;z-index:10;transition:all 0.15s;flex-shrink:0}
+.ws-fs-btn:hover{background:rgba(74,222,128,0.15);color:#4ADE80;border-color:rgba(74,222,128,0.4)}
+.ws-fs-btn{width:34px;height:34px;border-radius:6px;border:1px solid #0e1a0e;background:transparent;color:#2a4a2a;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0;margin-top:2px}
+.ws-fs-btn:hover{color:#4ADE80;border-color:#1a3a1a;background:rgba(74,222,128,0.06)}
+.ws-fs-btn.ws-active{color:#4ADE80;border-color:#4ADE80;background:rgba(74,222,128,0.1)}
 /* Top bar - work order */
 .ws-topbar{background:linear-gradient(135deg,#0c0900,#080c18);border-bottom:1px solid rgba(245,166,35,0.15);padding:7px 14px;display:flex;align-items:center;gap:12px;flex-shrink:0;min-height:46px}
 .ws-wo-badge{background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.2);color:#f5a623;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:3px 9px;border-radius:10px;flex-shrink:0}
@@ -3121,9 +3141,12 @@ function buildWSHTML(sc) {
     <div class="ws-topbar">
       <div class="ws-wo-badge">📋 Work Order</div>
       <div class="ws-wo-text">${sc.workorder}</div>
-      <div class="ws-wo-meta">
-        <span class="ws-diff-badge" style="color:${dc};border-color:${dc}20;background:${dc}12">${sc.difficulty}</span>
-        <div class="ws-score-val" id="ws-score" style="margin-top:4px">100 pts</div>
+      <div class="ws-wo-meta" style="display:flex;align-items:center;gap:8px">
+        <div style="text-align:right">
+          <span class="ws-diff-badge" style="color:${dc};border-color:${dc}20;background:${dc}12">${sc.difficulty}</span>
+          <div class="ws-score-val" id="ws-score" style="margin-top:4px">100 pts</div>
+        </div>
+        <button class="ws-fs-btn" id="ws-fs-btn" onclick="wsToggleFullscreen()" title="Toggle fullscreen (F)">⛶</button>
       </div>
     </div>
     <div class="ws-body">
@@ -3739,6 +3762,73 @@ window.wsReplaceComp=function(cid){
 };
 
 // ── Return vehicle / Complete ─────────────────────────────────────────────
+window.wsToggleFullscreen = function() {
+  const root = document.getElementById('ws-root');
+  if (!root) return;
+
+  // Try native browser fullscreen first
+  const isNativeFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+
+  if (!isNativeFS && !root.classList.contains('ws-fs')) {
+    // Enter fullscreen — try native, fall back to CSS fixed
+    const req = root.requestFullscreen || root.webkitRequestFullscreen || root.mozRequestFullScreen;
+    if (req) {
+      req.call(root).catch(() => wsUseCSSFullscreen(root, true));
+    } else {
+      wsUseCSSFullscreen(root, true);
+    }
+  } else {
+    // Exit fullscreen
+    if (isNativeFS) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen;
+      if (exit) exit.call(document).catch(() => {});
+    }
+    wsUseCSSFullscreen(root, false);
+  }
+};
+
+function wsUseCSSFullscreen(root, enter) {
+  if (enter) {
+    root.classList.add('ws-fs');
+    document.getElementById('ws-fs-btn').textContent = '⊠';
+    document.getElementById('ws-fs-btn').title = 'Exit fullscreen (F)';
+    document.body.style.overflow = 'hidden';
+  } else {
+    root.classList.remove('ws-fs');
+    document.getElementById('ws-fs-btn').textContent = '⛶';
+    document.getElementById('ws-fs-btn').title = 'Toggle fullscreen (F)';
+    document.body.style.overflow = '';
+  }
+}
+
+// Listen for native fullscreen exit (e.g. pressing Escape)
+document.addEventListener('fullscreenchange', () => {
+  const root = document.getElementById('ws-root');
+  if (!root) return;
+  const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const btn = document.getElementById('ws-fs-btn');
+  if (!isFS) {
+    root.classList.remove('ws-fs');
+    document.body.style.overflow = '';
+    if (btn) { btn.textContent = '⛶'; btn.title = 'Toggle fullscreen (F)'; }
+  } else {
+    if (btn) { btn.textContent = '⊠'; btn.title = 'Exit fullscreen (F)'; }
+  }
+});
+document.addEventListener('webkitfullscreenchange', () => {
+  const root = document.getElementById('ws-root');
+  if (!root) return;
+  const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const btn = document.getElementById('ws-fs-btn');
+  if (!isFS) {
+    root.classList.remove('ws-fs');
+    document.body.style.overflow = '';
+    if (btn) { btn.textContent = '⛶'; btn.title = 'Toggle fullscreen (F)'; }
+  } else {
+    if (btn) { btn.textContent = '⊠'; btn.title = 'Exit fullscreen (F)'; }
+  }
+});
+
 window.wsReturnVehicle=function(){
   clearInterval(WS.invoice.timer);
   if(WS.osc.animId){cancelAnimationFrame(WS.osc.animId);WS.osc.animId=null;}
@@ -3766,6 +3856,76 @@ window.wsReturnVehicle=function(){
       </div>
     </div>`);
 };
+
+
+window.wsToggleFullscreen = function() {
+  const root = document.getElementById('ws-root');
+  const btn  = document.getElementById('ws-fs-btn');
+  if (!root) return;
+
+  // Try native Fullscreen API first
+  const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+
+  if (!isFullscreen) {
+    // Enter fullscreen
+    const req = root.requestFullscreen || root.webkitRequestFullscreen || root.mozRequestFullScreen;
+    if (req) {
+      req.call(root).then(() => {
+        root.classList.add('ws-fullscreen');
+        if (btn) { btn.textContent = '⛶'; btn.classList.add('ws-active'); btn.title = 'Exit full screen (Esc)'; }
+      }).catch(() => {
+        // Fallback: CSS fullscreen if native API fails (e.g. iframe)
+        wsCSSTullscreen(root, btn);
+      });
+    } else {
+      wsCSSTullscreen(root, btn);
+    }
+  } else {
+    // Exit fullscreen
+    const exitReq = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen;
+    if (exitReq) exitReq.call(document);
+    root.classList.remove('ws-fullscreen');
+    if (btn) { btn.textContent = '⛶'; btn.classList.remove('ws-active'); btn.title = 'Full screen'; }
+  }
+};
+
+// CSS fallback fullscreen (works when native API is blocked)
+function wsCSSTullscreen(root, btn) {
+  const isFs = root.classList.contains('ws-fullscreen');
+  if (!isFs) {
+    root.classList.add('ws-fullscreen');
+    document.body.style.overflow = 'hidden';
+    if (btn) { btn.textContent = '✕'; btn.classList.add('ws-active'); btn.title = 'Exit full screen'; }
+  } else {
+    root.classList.remove('ws-fullscreen');
+    document.body.style.overflow = '';
+    if (btn) { btn.textContent = '⛶'; btn.classList.remove('ws-active'); btn.title = 'Full screen'; }
+  }
+}
+
+// Listen for native fullscreen exit (Esc key)
+document.addEventListener('fullscreenchange',     () => wsHandleFSChange());
+document.addEventListener('webkitfullscreenchange', () => wsHandleFSChange());
+function wsHandleFSChange() {
+  const root = document.getElementById('ws-root');
+  const btn  = document.getElementById('ws-fs-btn');
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  if (!isFs && root) {
+    root.classList.remove('ws-fullscreen');
+    document.body.style.overflow = '';
+    if (btn) { btn.textContent = '⛶'; btn.classList.remove('ws-active'); btn.title = 'Full screen'; }
+  }
+}
+
+// F key shortcut inside simulator
+document.addEventListener('keydown', e => {
+  if (e.key === 'f' || e.key === 'F') {
+    const root = document.getElementById('ws-root');
+    if (root && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+      wsToggleFullscreen();
+    }
+  }
+});
 
 window.wsFinish=function(passed){
   if(WS.onComplete) WS.onComplete(passed);
