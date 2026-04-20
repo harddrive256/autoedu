@@ -436,21 +436,54 @@ async function resetProgress(userId) {
 }
 
 async function seedLessons() {
-  const ex = await getLessons();
-  if (ex.length) return;
-  toast('Setting up lessons...','info');
+  // Sync: upsert all DEFAULT_LESSONS + their levels into Firestore.
+  // Runs on every boot — adds missing lessons/levels, preserves existing
+  // customisations (release state, custom lessons added by admin).
+  const [exLessons, exLevels] = await Promise.all([getLessons(), getAllLevels()]);
+  const exLessonIds = new Set(exLessons.map(l=>l.id));
+  const exLevelIds  = new Set(exLevels.map(l=>l.id));
+
   const ops = [];
+  let newCount = 0;
+
   DEFAULT_LESSONS.forEach((l, idx) => {
     const {levels: lvls, ...ld} = l;
-    ld.created_at = new Date(Date.now() + idx).toISOString();
-    ld.updated_at = ld.created_at;
-    if (idx < 5) { ld.is_released = true; ld.release_order = idx+1; }
-    else         { ld.is_released = false; ld.release_order = null; }
-    ops.push(setDoc(doc(db,'lessons',l.id), ld));
-    lvls.forEach(lv => ops.push(setDoc(doc(db,'levels',lv.id), {...lv, lesson_id:l.id, created_at:ld.created_at})));
+    const ts = new Date(Date.now() + idx).toISOString();
+
+    // ── Upsert lesson doc (only write fields that are safe to overwrite) ──
+    if (!exLessonIds.has(l.id)) {
+      // Brand new lesson — full write with release state
+      ld.created_at = ts;
+      ld.updated_at = ts;
+      ld.is_released = idx < 5;
+      ld.release_order = idx < 5 ? idx+1 : null;
+      ops.push(setDoc(doc(db,'lessons',l.id), ld));
+      newCount++;
+    } else {
+      // Lesson exists — only update content fields, not release state
+      ops.push(setDoc(doc(db,'lessons',l.id), {
+        title: ld.title, description: ld.description, icon: ld.icon,
+        status: ld.status||'published', seeded: true,
+        updated_at: ts
+      }, {merge: true}));
+    }
+
+    // ── Upsert each level (add missing, preserve existing custom levels) ──
+    lvls.forEach(lv => {
+      if (!exLevelIds.has(lv.id)) {
+        ops.push(setDoc(doc(db,'levels',lv.id), {
+          ...lv, lesson_id: l.id, created_at: ts, updated_at: ts
+        }));
+        newCount++;
+      }
+      // If level already exists, leave it alone (admin may have edited it)
+    });
   });
-  await Promise.all(ops);
-  toast('Lessons ready!','success');
+
+  if (ops.length > 0) {
+    await Promise.all(ops);
+    if (newCount > 0) toast(`Synced ${newCount} new items`, 'info');
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -611,7 +644,8 @@ async function renderLessons() {
   v.innerHTML = `
     <div class="page-hdr">
       <div><h2>Lessons</h2><p style="color:var(--text2);font-size:13px;margin-top:3px">${lessons.length} lessons in library</p></div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="syncDefaultLevels()">⟳ Sync New Levels</button>
         <button class="btn btn-ghost btn-sm" onclick="confirmReseed()">↺ Restore Defaults</button>
         <button class="btn btn-primary" onclick="openLessonModal()">+ New Lesson</button>
       </div>
@@ -638,6 +672,15 @@ async function renderLessons() {
       </div>`).join('')||`<div class="empty-state"><div class="empty-state-icon">📚</div><p>No lessons yet.</p></div>`}
     </div>`;
 }
+
+window.syncDefaultLevels = async () => {
+  const btn = event?.target;
+  if(btn) { btn.disabled=true; btn.textContent='Syncing...'; }
+  await seedLessons();
+  await renderLessons();
+  if(btn) { btn.disabled=false; btn.textContent='⟳ Sync New Levels'; }
+  toast('Lessons synced — all new levels added', 'success');
+};
 
 window.confirmReseed = () => showConfirm('🔄','Reset All Lessons?','Delete all lessons & levels and restore the 11 default lessons. Student progress is kept.',async()=>{
   const [ls,lvls]=await Promise.all([getLessons(),getAllLevels()]);
@@ -1066,7 +1109,11 @@ window.saveLevelModal = async () => {
 // ══════════════════════════════════════════════════════════════════════════
 async function renderSHome() {
   const [lessons,allLevels,progress] = await Promise.all([
-    getLessons().then(ls=>ls.filter(l=>l.is_released).sort((a,b)=>(a.release_order||99)-(b.release_order||99))),
+    getLessons().then(ls=>{
+      const isAdmin = CUD.role==='admin';
+      const filtered = isAdmin ? ls : ls.filter(l=>l.is_released);
+      return filtered.sort((a,b)=>(a.release_order||99)-(b.release_order||99)||(a.created_at||'').localeCompare(b.created_at||''));
+    }),
     getAllLevels(),
     getProgressForUser(CUD.id)
   ]);
@@ -1318,7 +1365,11 @@ window.answerStep = (chosen, correct, idx) => {
 // ══════════════════════════════════════════════════════════════════════════
 async function renderMyProg() {
   const [lessons,allLevels,progress] = await Promise.all([
-    getLessons().then(ls=>ls.filter(l=>l.is_released).sort((a,b)=>(a.release_order||99)-(b.release_order||99))),
+    getLessons().then(ls=>{
+      const isAdmin = CUD.role==='admin';
+      const filtered = isAdmin ? ls : ls.filter(l=>l.is_released);
+      return filtered.sort((a,b)=>(a.release_order||99)-(b.release_order||99)||(a.created_at||'').localeCompare(b.created_at||''));
+    }),
     getAllLevels(),
     getProgressForUser(CUD.id)
   ]);
