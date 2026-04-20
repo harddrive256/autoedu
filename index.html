@@ -1210,9 +1210,14 @@ async function renderPlayerStep(level, lesson) {
   v.style.maxWidth   = isWorkshop ? '100%' : '820px';
 
   if (!step) {
-    // Level complete
-    const totalQ = playerSteps.filter(s=>s.type==='assessment').length;
-    const pct = totalQ>0 ? Math.round((playerScore/totalQ)*100) : 100;
+    // Level complete — count every step type that can award a point
+    const scoreable = playerSteps.filter(s =>
+      ['assessment','interactive','circuit','multimeter',
+       'oscilloscope','obd_scan','workshop','simulator'].includes(s.type)
+    ).length;
+    // Clamp: score can never exceed scoreable steps, pct never exceeds 100
+    const safeScore = Math.max(0, Math.min(playerScore, scoreable));
+    const pct = scoreable > 0 ? Math.min(100, Math.round((safeScore / scoreable) * 100)) : 100;
     const passed = pct >= level.pass_score;
     await upsertProgress({user_id:CUD.id,lesson_id:lesson.id,level_id:level.id,status:'completed',score:pct,completed_at:new Date().toISOString()});
     v.innerHTML = `
