@@ -2744,21 +2744,21 @@ const WS_SCENARIOS = {
       note:'After fitting new fuse, investigate WHY it blew. If it blows again immediately there is a short circuit in the headlight wiring.',
     },
     components:{
-      battery:    {x:35, y:140,w:115,h:85, label:'Battery 12V',icon:'🔋',stroke:'#60A5FA',fill:'#040d1a',conn:[{id:'bp',cx:80,cy:140,v:12.6,lbl:'B+'},{id:'bn',cx:35,cy:225,v:0,lbl:'B-'}],removable:false,faulty:false,
+      battery:    {x:490, y:370,w:105,h:80, label:'Battery 12V',icon:'🔋',stroke:'#60A5FA',fill:'#040d1a',conn:[{id:'bp',cx:535,cy:370,v:12.6,lbl:'B+'},{id:'bn',cx:490,cy:450,v:0,lbl:'B-'}],removable:false,faulty:false,
         inspect:{status:'ok',summary:'Battery looks healthy',details:'Terminals clean, no corrosion. Casing intact. Clamps tight. No acid leaks visible.',tip:'Even a clean battery can be flat — always measure voltage.'}},
-      fuse_box:   {x:175,y:132,w:110,h:100,label:'Fuse Box',   icon:'📦',stroke:'#F59E0B',fill:'#0e0800',conn:[{id:'fb_i',cx:175,cy:165,v:12.6,lbl:'IN'},{id:'fb_o',cx:285,cy:165,v:12.6,lbl:'OUT'}],removable:false,faulty:false,
+      fuse_box:   {x:490,y:270,w:100,h:85,label:'Fuse Box',   icon:'📦',stroke:'#F59E0B',fill:'#0e0800',conn:[{id:'fb_i',cx:490,cy:312,v:12.6,lbl:'IN'},{id:'fb_o',cx:590,cy:312,v:12.6,lbl:'OUT'}],removable:false,faulty:false,
         inspect:{status:'warn',summary:'Fuse F3 appears darker than others',details:'Most fuses look intact. However, fuse F3 (15A Headlights) appears slightly discoloured/darker. The transparent body looks cloudy.',tip:'A darkened fuse body is a visual sign it may have blown. Pull it out and inspect the metal strip directly.'}},
-      fuse_hl:    {x:195,y:152,w:62,h:34, label:'F3 15A',      icon:'💥',stroke:'#EF4444',fill:'#1a0505',conn:[{id:'fhl_i',cx:195,cy:169,v:12.6,lbl:'IN'},{id:'fhl_o',cx:257,cy:169,v:0,lbl:'OUT'}],removable:true,faulty:true,
+      fuse_hl:    {x:506,y:288,w:56,h:30, label:'F3 15A',      icon:'💥',stroke:'#EF4444',fill:'#1a0505',conn:[{id:'fhl_i',cx:506,cy:303,v:12.6,lbl:'IN'},{id:'fhl_o',cx:562,cy:303,v:0,lbl:'OUT'}],removable:true,faulty:true,
         inspect:{status:'fault',summary:'BLOWN — metal strip is broken',details:'Holding fuse F3 up to light reveals the metal strip inside is clearly broken. Slight scorch mark on the body. Confirmed blown fuse.',tip:'Always replace with EXACT same amperage (15A). A higher rated fuse removes circuit protection.'}},
-      hl_relay:   {x:320,y:128,w:105,h:85,label:'HL Relay',    icon:'⚡',stroke:'#9B6DFF',fill:'#05050e',conn:[{id:'r85',cx:320,cy:150,v:12.6,lbl:'85'},{id:'r86',cx:425,cy:150,v:0.1,lbl:'86'},{id:'r30',cx:320,cy:210,v:12.6,lbl:'30'},{id:'r87',cx:425,cy:210,v:0,lbl:'87'}],removable:true,faulty:false,
+      hl_relay:   {x:340,y:270,w:95,h:75,label:'HL Relay',    icon:'⚡',stroke:'#9B6DFF',fill:'#05050e',conn:[{id:'r85',cx:320,cy:150,v:12.6,lbl:'85'},{id:'r86',cx:425,cy:150,v:0.1,lbl:'86'},{id:'r30',cx:320,cy:210,v:12.6,lbl:'30'},{id:'r87',cx:425,cy:210,v:0,lbl:'87'}],removable:true,faulty:false,
         inspect:{status:'ok',summary:'Relay looks normal',details:'Relay body intact, no burn marks, no melted plastic. Pins seated correctly. Relay clicks when headlight switch is operated.',tip:'A clicking relay means the coil works, but contacts could still fail internally.'}},
-      hl_sw:      {x:200,y:400,w:95,h:65, label:'Head Switch',  icon:'🔘',stroke:'#9B6DFF',fill:'#05050e',conn:[{id:'sw_i',cx:200,cy:430,v:12.6,lbl:'IN'},{id:'sw_o',cx:295,cy:430,v:12.6,lbl:'OUT'}],removable:false,faulty:false,
+      hl_sw:      {x:180,y:430,w:85,h:55, label:'Head Switch',  icon:'🔘',stroke:'#9B6DFF',fill:'#05050e',conn:[{id:'sw_i',cx:180,cy:457,v:12.6,lbl:'IN'},{id:'sw_o',cx:265,cy:457,v:12.6,lbl:'OUT'}],removable:false,faulty:false,
         inspect:{status:'ok',summary:'Switch operates normally',details:'Clicks firmly between positions. No burning around switch or connector. Mechanically sound.',tip:'Use multimeter continuity mode to confirm switch operation.'}},
-      headlight_l:{x:30, y:30, w:120,h:80, label:'Left HL',     icon:'💡',stroke:'#F59E0B',fill:'#0e0600',conn:[{id:'hll_p',cx:30,cy:70,v:0,lbl:'+'},{id:'hll_n',cx:150,cy:70,v:0,lbl:'-'}],removable:true,faulty:false,
+      headlight_l:{x:112, y:118, w:75,h:55, label:'Left HL',     icon:'💡',stroke:'#F59E0B',fill:'#0e0600',conn:[{id:'hll_p',cx:112,cy:145,v:0,lbl:'+'},{id:'hll_n',cx:187,cy:145,v:0,lbl:'-'}],removable:true,faulty:false,
         inspect:{status:'ok',summary:'Bulb filament appears intact',details:'Filament wire visible and unbroken. No blackening inside glass. Connector fully seated.',tip:'Both headlights died together — fuse/relay far more likely than two bulbs failing simultaneously.'}},
-      headlight_r:{x:740,y:30, w:120,h:80, label:'Right HL',    icon:'💡',stroke:'#F59E0B',fill:'#0e0600',conn:[{id:'hlr_p',cx:740,cy:70,v:0,lbl:'+'},{id:'hlr_n',cx:860,cy:70,v:0,lbl:'-'}],removable:true,faulty:false,
+      headlight_r:{x:573,y:118, w:75,h:55, label:'Right HL',    icon:'💡',stroke:'#F59E0B',fill:'#0e0600',conn:[{id:'hlr_p',cx:573,cy:145,v:0,lbl:'+'},{id:'hlr_n',cx:648,cy:145,v:0,lbl:'-'}],removable:true,faulty:false,
         inspect:{status:'ok',summary:'Bulb filament appears intact',details:'Right headlight bulb filament unbroken. Connector secure.',tip:'Check shared fuse and relay before replacing bulbs.'}},
-      earth:      {x:35, y:360,w:90, h:55, label:'Earth Pt',    icon:'⏚', stroke:'#4ADE80',fill:'#020704',conn:[{id:'gnd',cx:80,cy:387,v:0,lbl:'GND'}],removable:false,faulty:false,
+      earth:      {x:160, y:390,w:75, h:50, label:'Earth Pt',    icon:'⏚', stroke:'#4ADE80',fill:'#020704',conn:[{id:'gnd',cx:197,cy:415,v:0,lbl:'GND'}],removable:false,faulty:false,
         inspect:{status:'ok',summary:'Earth connection secure',details:'Earth bolt tight, no corrosion. Metal contact area clean. Cable undamaged.',tip:'A poor earth can cause many strange electrical faults.'}},
     },
     wires:[
@@ -2797,17 +2797,17 @@ const WS_SCENARIOS = {
       note:'After replacing, check alternator output with engine running — should be 13.8–14.4V. If battery goes flat again, the alternator is faulty.',
     },
     components:{
-      battery:    {x:35, y:140,w:115,h:85,label:'Battery 12V', icon:'🔋',stroke:'#EF4444',fill:'#1a0505',conn:[{id:'bp',cx:80,cy:140,v:3.8,lbl:'B+'},{id:'bn',cx:35,cy:225,v:0,lbl:'B-'}],removable:true,faulty:true,
+      battery:    {x:490, y:370,w:105,h:80,label:'Battery 12V', icon:'🔋',stroke:'#EF4444',fill:'#1a0505',conn:[{id:'bp',cx:535,cy:370,v:3.8,lbl:'B+'},{id:'bn',cx:490,cy:450,v:0,lbl:'B-'}],removable:true,faulty:true,
         inspect:{status:'fault',summary:'Heavy corrosion on both terminals',details:'Both terminals show significant white/green corrosion. Positive terminal has thick powder deposit. Clamps feel slightly loose. Case intact.',tip:'Corrosion adds resistance. Clean with wire brush and baking soda. But also measure voltage — corrosion alone does not cause total electrical death.'}},
-      main_fuse:  {x:175,y:140,w:100,h:65,label:'Main Fuse 60A',icon:'📦',stroke:'#F59E0B',fill:'#0e0800',conn:[{id:'mf_i',cx:175,cy:172,v:3.8,lbl:'IN'},{id:'mf_o',cx:275,cy:172,v:3.8,lbl:'OUT'}],removable:true,faulty:false,
+      main_fuse:  {x:490,y:270,w:95,h:60,label:'Main Fuse 60A',icon:'📦',stroke:'#F59E0B',fill:'#0e0800',conn:[{id:'mf_i',cx:490,cy:300,v:3.8,lbl:'IN'},{id:'mf_o',cx:585,cy:300,v:3.8,lbl:'OUT'}],removable:true,faulty:false,
         inspect:{status:'ok',summary:'Main fuse intact',details:'60A main fuse shows no damage. Element unbroken. No discolouration or burn marks.',tip:'If main fuse were blown, no power would reach anything — but measure battery first.'}},
-      ignition_sw:{x:290,y:400,w:110,h:70,label:'Ignition\nSwitch',icon:'🔑',stroke:'#9B6DFF',fill:'#05050e',conn:[{id:'ig_i',cx:290,cy:432,v:3.8,lbl:'IN'},{id:'ig_o',cx:400,cy:432,v:0,lbl:'OUT'}],removable:false,faulty:false,
+      ignition_sw:{x:180,y:430,w:105,h:60,label:'Ignition\nSwitch',icon:'🔑',stroke:'#9B6DFF',fill:'#05050e',conn:[{id:'ig_i',cx:180,cy:460,v:3.8,lbl:'IN'},{id:'ig_o',cx:285,cy:460,v:0,lbl:'OUT'}],removable:false,faulty:false,
         inspect:{status:'ok',summary:'Ignition switch looks normal',details:'Key turns smoothly. No stiffness. No burn marks. Connector fully seated.',tip:'Complete silence with key on points to no battery power, not a switch fault.'}},
-      fuse_box:   {x:175,y:240,w:110,h:80,label:'Fuse Box',    icon:'📦',stroke:'#F59E0B',fill:'#0e0800',conn:[{id:'fb_i',cx:175,cy:272,v:3.8,lbl:'IN'},{id:'fb_o',cx:285,cy:272,v:0,lbl:'OUT'}],removable:false,faulty:false,
+      fuse_box:   {x:335,y:270,w:100,h:75,label:'Fuse Box',    icon:'📦',stroke:'#F59E0B',fill:'#0e0800',conn:[{id:'fb_i',cx:335,cy:307,v:3.8,lbl:'IN'},{id:'fb_o',cx:435,cy:307,v:0,lbl:'OUT'}],removable:false,faulty:false,
         inspect:{status:'ok',summary:'Fuse box looks normal',details:'All fuses visually intact. No blown fuses. No burn smell.',tip:'When everything is dead, individual fuses are unlikely to be the cause.'}},
-      alternator: {x:540,y:200,w:110,h:80,label:'Alternator',  icon:'⚙️',stroke:'#4ADE80',fill:'#020804',conn:[{id:'alt_o',cx:540,cy:232,v:0,lbl:'OUT'},{id:'alt_g',cx:650,cy:232,v:0,lbl:'GND'}],removable:false,faulty:false,
+      alternator: {x:155,y:290,w:90,h:90,label:'Alternator',  icon:'⚙️',stroke:'#4ADE80',fill:'#020804',conn:[{id:'alt_o',cx:155,cy:335,v:0,lbl:'OUT'},{id:'alt_g',cx:245,cy:335,v:0,lbl:'GND'}],removable:false,faulty:false,
         inspect:{status:'ok',summary:'Alternator and belt look OK',details:'Drive belt present, correct tension. No fraying. Alternator body intact. Connector seated.',tip:'Alternator only charges with engine running — battery must have charge to start first.'}},
-      earth:      {x:35, y:360,w:90, h:55,label:'Earth Pt',    icon:'⏚', stroke:'#4ADE80',fill:'#020704',conn:[{id:'gnd',cx:80,cy:387,v:0,lbl:'GND'}],removable:false,faulty:false,
+      earth:      {x:160, y:400,w:75, h:50,label:'Earth Pt',    icon:'⏚', stroke:'#4ADE80',fill:'#020704',conn:[{id:'gnd',cx:197,cy:425,v:0,lbl:'GND'}],removable:false,faulty:false,
         inspect:{status:'ok',summary:'Earth strap looks secure',details:'Earth bolt tight. No corrosion at contact point. Cable intact.',tip:'A broken earth can cause complete electrical failure.'}},
     },
     wires:[
@@ -2842,17 +2842,17 @@ const WS_SCENARIOS = {
       note:'After replacing, clear fault codes using Diagnostics panel, then check live data. Coolant temp should read 85–95°C when warm.',
     },
     components:{
-      battery:  {x:35, y:140,w:115,h:85,label:'Battery',      icon:'🔋',stroke:'#60A5FA',fill:'#040d1a',conn:[{id:'bp',cx:80,cy:140,v:12.6,lbl:'B+'},{id:'bn',cx:35,cy:225,v:0,lbl:'B-'}],removable:false,faulty:false,
+      battery:  {x:490, y:370,w:105,h:80,label:'Battery',      icon:'🔋',stroke:'#60A5FA',fill:'#040d1a',conn:[{id:'bp',cx:535,cy:370,v:12.6,lbl:'B+'},{id:'bn',cx:490,cy:450,v:0,lbl:'B-'}],removable:false,faulty:false,
         inspect:{status:'ok',summary:'Battery healthy',details:'Clean terminals, tight clamps, intact casing.',tip:'Battery is not the fault — engine starts and runs normally.'}},
-      ecu:      {x:600,y:280,w:140,h:100,label:'ECU',         icon:'💻',stroke:'#9B6DFF',fill:'#04040e',conn:[{id:'e_cts',cx:600,cy:312,v:4.9,lbl:'CTS'},{id:'e_gnd',cx:740,cy:312,v:0,lbl:'GND'},{id:'e_5v',cx:670,cy:280,v:5.0,lbl:'5V'}],removable:false,faulty:false,
+      ecu:      {x:475,y:260,w:130,h:95,label:'ECU',         icon:'💻',stroke:'#9B6DFF',fill:'#04040e',conn:[{id:'e_cts',cx:600,cy:312,v:4.9,lbl:'CTS'},{id:'e_gnd',cx:740,cy:312,v:0,lbl:'GND'},{id:'e_5v',cx:670,cy:280,v:5.0,lbl:'5V'}],removable:false,faulty:false,
         inspect:{status:'ok',summary:'ECU looks normal',details:'Casing intact. All connectors fully seated with no pushed-back pins. No water ingress or corrosion. No burn smell.',tip:'ECUs rarely fail visually. If connector pins look good, ECU is unlikely to be faulty.'}},
-      cts:      {x:400,y:210,w:110,h:80,label:'Coolant\nTemp Sensor',icon:'🌡',stroke:'#EF4444',fill:'#0e0303',conn:[{id:'cts_s',cx:400,cy:242,v:4.9,lbl:'SIG'},{id:'cts_g',cx:510,cy:242,v:0,lbl:'GND'}],removable:true,faulty:true,
+      cts:      {x:300,y:270,w:100,h:75,label:'Coolant\nTemp Sensor',icon:'🌡',stroke:'#EF4444',fill:'#0e0303',conn:[{id:'cts_s',cx:300,cy:307,v:4.9,lbl:'SIG'},{id:'cts_g',cx:400,cy:307,v:0,lbl:'GND'}],removable:true,faulty:true,
         inspect:{status:'fault',summary:'Connector not fully seated — pins corroded',details:'The CTS connector is slightly loose — not fully clicked. Connector body has minor corrosion on pins. One wire shows cracking in insulation near connector.',tip:'A loose or corroded connector creates open circuit — reads as max temp to ECU. Seat connector fully first; if warning stays, replace sensor.'}},
-      radiator: {x:160,y:30, w:500,h:80,label:'Radiator',     icon:'🔲',stroke:'#334155',fill:'#03030a',conn:[{id:'rad_i',cx:160,cy:70,v:0,lbl:'IN'},{id:'rad_o',cx:660,cy:70,v:0,lbl:'OUT'}],removable:false,faulty:false,
+      radiator: {x:130,y:152, w:500,h:62,label:'Radiator',     icon:'🔲',stroke:'#334155',fill:'#03030a',conn:[{id:'rad_i',cx:130,cy:183,v:0,lbl:'IN'},{id:'rad_o',cx:630,cy:183,v:0,lbl:'OUT'}],removable:false,faulty:false,
         inspect:{status:'ok',summary:'Radiator normal, no leaks',details:'No coolant leaks. Fins undamaged. Hoses connected. Coolant level correct between MIN and MAX.',tip:'No steam or coolant smell confirms engine is NOT actually overheating.'}},
-      thermostat:{x:310,y:320,w:100,h:70,label:'Thermostat',  icon:'♨️',stroke:'#60A5FA',fill:'#03080e',conn:[{id:'th_i',cx:310,cy:352,v:0,lbl:'IN'},{id:'th_o',cx:410,cy:352,v:0,lbl:'OUT'}],removable:false,faulty:false,
+      thermostat:{x:160,y:390,w:90,h:60,label:'Thermostat',  icon:'♨️',stroke:'#60A5FA',fill:'#03080e',conn:[{id:'th_i',cx:160,cy:420,v:0,lbl:'IN'},{id:'th_o',cx:250,cy:420,v:0,lbl:'OUT'}],removable:false,faulty:false,
         inspect:{status:'ok',summary:'Thermostat housing normal',details:'No coolant leaks around housing. Bolts tight. Hoses connected correctly.',tip:'Stuck-closed thermostat causes real overheating. Customer says engine runs normally — thermostat unlikely.'}},
-      earth:    {x:35, y:360,w:90, h:55,label:'Earth Pt',     icon:'⏚', stroke:'#4ADE80',fill:'#020704',conn:[{id:'gnd',cx:80,cy:387,v:0,lbl:'GND'}],removable:false,faulty:false,
+      earth:    {x:160, y:455,w:75, h:50,label:'Earth Pt',     icon:'⏚', stroke:'#4ADE80',fill:'#020704',conn:[{id:'gnd',cx:197,cy:480,v:0,lbl:'GND'}],removable:false,faulty:false,
         inspect:{status:'ok',summary:'Earth connection secure',details:'Earth bolt tight. No corrosion. Cable undamaged.',tip:'A poor sensor earth can cause high voltage reading — check sensor connector first.'}},
     },
     wires:[
@@ -2915,59 +2915,37 @@ function injectWSCSS() {
 .ws-fs-btn:hover { background:rgba(74,222,128,0.15); color:#4ADE80; }
 /* ── Body ── */
 .ws-body { display:flex; flex:1; min-height:0; position:relative; }
-/* ── Left tool rail ── */
-.ws-rail {
-  width:52px; background:#030608;
-  border-right:1px solid #0a1210;
+/* ── Electude-style sidebar ── */
+.ws-sidebar {
+  width:170px; background:#1a1a1a; border-right:1px solid #2a2a2a;
   display:flex; flex-direction:column;
-  align-items:center; padding:6px 0;
-  gap:3px; flex-shrink:0; z-index:20;
-  transition:width 0.22s ease;
+  flex-shrink:0; z-index:20; overflow-y:auto;
 }
-.ws-rail.ws-rail-open { width:160px; align-items:flex-start; padding:6px 8px; }
-.ws-rail-toggle {
-  width:34px; height:28px; border-radius:6px;
-  border:1px solid #0e1a10; background:transparent;
-  color:#2a4a2a; font-size:13px; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  margin-bottom:4px; transition:all 0.15s; flex-shrink:0;
+.ws-sidebar-hdr {
+  padding:10px 14px 8px; border-bottom:1px solid #2a2a2a;
+  background:#141414;
 }
-.ws-rail-toggle:hover { color:#4ADE80; border-color:#1a3a1a; background:rgba(74,222,128,0.05); }
-.ws-rail-btn {
-  display:flex; align-items:center; gap:0;
-  width:36px; height:36px; border-radius:7px;
-  border:1px solid #0a1210; background:transparent;
-  color:#2a4a2a; font-size:17px; cursor:pointer;
-  transition:all 0.15s; position:relative;
-  flex-shrink:0; overflow:hidden;
-  padding:0; justify-content:center;
+.ws-sidebar-divider { height:1px; background:#2a2a2a; margin:4px 0; }
+.ws-sb-btn {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 14px; width:100%;
+  border:none; background:transparent;
+  color:#aaa; cursor:pointer; text-align:left;
+  transition:background 0.12s, color 0.12s;
+  font-family:var(--font-body);
 }
-.ws-rail.ws-rail-open .ws-rail-btn {
-  width:144px; height:34px; justify-content:flex-start;
-  padding:0 10px; gap:9px;
+.ws-sb-btn:hover { background:#2a2a2a; color:#fff; }
+.ws-sb-btn.ws-open { background:#333; color:#fff; }
+.ws-sb-icon {
+  width:18px; height:18px; flex-shrink:0;
+  stroke:currentColor;
 }
-.ws-rail-btn:hover {
-  border-color:#1a3a1a; background:rgba(74,222,128,0.06); color:#3a6a3a;
+.ws-sb-label {
+  font-size:12px; font-weight:400; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis;
 }
-.ws-rail-btn.ws-open {
-  border-color:#1a4a1a; background:rgba(74,222,128,0.1); color:#4ADE80;
-}
-.ws-rail-btn-icon { font-size:16px; flex-shrink:0; line-height:1; }
-.ws-rail-btn-label {
-  font-size:11px; font-weight:600; color:#3a6a3a;
-  white-space:nowrap; overflow:hidden; display:none;
-}
-.ws-rail.ws-rail-open .ws-rail-btn-label { display:block; }
-/* Tooltip on hover when collapsed */
-.ws-rail-btn::after {
-  content: attr(title);
-  position:absolute; left:44px; top:50%; transform:translateY(-50%);
-  background:#0a1210; border:1px solid #1a2a1a; border-radius:5px;
-  padding:3px 8px; font-size:10px; color:#4ADE80; white-space:nowrap;
-  pointer-events:none; opacity:0; transition:opacity 0.15s; z-index:100;
-}
-.ws-rail-btn:hover::after { opacity:1; }
-.ws-rail.ws-rail-open .ws-rail-btn::after { display:none; }
+.ws-sb-return { color:#888; margin-top:2px; }
+.ws-sb-return:hover { background:#222; color:#ddd; }
 /* ── Car viewport ── */
 .ws-viewport {
   flex:1; overflow:hidden; position:relative;
@@ -3177,33 +3155,43 @@ function buildWSHTML(sc) {
       </div>
     </div>
     <div class="ws-body">
-      <div class="ws-rail" id="ws-rail">
-        <button class="ws-rail-toggle" id="ws-rail-toggle" onclick="wsToggleSidebar()" title="Tools">☰</button>
+      <!-- Electude-style left sidebar: always visible, icon + label -->
+      <div class="ws-sidebar" id="ws-sidebar">
+        <div class="ws-sidebar-hdr">
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#2a4a2a">Tools</span>
+        </div>
         ${[
-          {id:'mm',   icon:'🔬', label:'Multimeter'},
-          {id:'osc',  icon:'📈', label:'Oscilloscope'},
-          {id:'dash', icon:'🚗', label:'Dashboard'},
-          {id:'diag', icon:'🔍', label:'Diagnostics'},
-          {id:'wire', icon:'📄', label:'Wiring Diagram'},
-          {id:'inv',  icon:'📋', label:'Invoice'},
-          {id:'sol',  icon:'💡', label:'Solution'},
-        ].map(t => `
-        <button class="ws-rail-btn" id="ws-rb-${t.id}" onclick="wsOpenTool('${t.id}')" title="${t.label}">
-          <span class="ws-rail-btn-icon">${t.icon}</span>
-          <span class="ws-rail-btn-label">${t.label}</span>
+          {id:'dash', svg:'M3 12h1m8-9v1m8 8h1M5.6 5.6l.7.7m12.1-.7-.7.7M9 16a5 5 0 1 1 6 4.9V21H9v-.1A5 5 0 0 1 9 16z', label:'Dashboard'},
+          {id:'mm',   svg:'M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18', label:'Multimeter'},
+          {id:'osc',  svg:'M22 12h-4l-3 9L9 3l-3 9H2', label:'Oscilloscope'},
+          {id:'diag', svg:'M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 6v4l3 3', label:'Diagnostic system'},
+          {id:'fuel', svg:'M3 22V8l9-6 9 6v14M10 22V12h4v10', label:'Fuel pressure gauge'},
+          {id:'jump', svg:'M13 2L3 14h9l-1 8 10-12h-9l1-8z', label:'Jump starter'},
+          {id:'wire', svg:'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 3 3 0 0 1-1.41-1.41 19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 8.73 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L12.09 9.91', label:'Wiring diagram'},
+          {id:'inv',  svg:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8', label:'Invoice'},
+          {id:'sol',  svg:'M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zm0 6v4m0 4v.01', label:'Solution / Help'},
+        ].map(t=>`
+        <button class="ws-sb-btn" id="ws-rb-${t.id}" onclick="wsOpenTool('${t.id}')" title="${t.label}">
+          <svg class="ws-sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="${t.svg}"/>
+          </svg>
+          <span class="ws-sb-label">${t.label}</span>
         </button>`).join('')}
         <div style="flex:1"></div>
-        <button class="ws-rail-btn" id="ws-rb-done" onclick="wsReturnVehicle()" title="Return Vehicle ✅">
-          <span class="ws-rail-btn-icon">✅</span>
-          <span class="ws-rail-btn-label">Return Vehicle</span>
+        <div class="ws-sidebar-divider"></div>
+        <button class="ws-sb-btn ws-sb-return" id="ws-rb-done" onclick="wsReturnVehicle()" title="Return vehicle to customer">
+          <svg class="ws-sb-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+          <span class="ws-sb-label">Return vehicle</span>
         </button>
       </div>
       <div class="ws-viewport" id="ws-viewport">
         <div class="ws-car-layer" id="ws-car"></div>
         <div class="ws-zoom-ctrl">
-          <button onclick="wsZoom(0.2)">+</button>
-          <button onclick="wsZoom(-0.2)">−</button>
-          <button onclick="wsResetZoom()">⊞</button>
+          <button onclick="wsZoom(0.25)" title="Zoom in">+</button>
+          <button onclick="wsZoom(-0.25)" title="Zoom out">−</button>
+          <button onclick="wsResetZoom()" title="Reset view">⊞</button>
         </div>
         <div id="ws-notif-area"></div>
       </div>
@@ -3256,11 +3244,12 @@ function startInvoiceTimer() {
 }
 
 
+
 function renderCar() {
   const sc = WS.sc;
-  const W = 960, H = 560;
+  // Canvas: wide enough for full car top-down view
+  const W = 760, H = 980;
 
-  // Build connector position map
   const connPos = {};
   Object.values(sc.components).forEach(c => {
     (c.conn||[]).forEach(cn => { connPos[cn.id] = {x:cn.cx, y:cn.cy}; });
@@ -3269,315 +3258,433 @@ function renderCar() {
   let svg = `<svg id="ws-svg" viewBox="0 0 ${W} ${H}"
     style="width:${W*WS.zoom}px;height:${H*WS.zoom}px;display:block;transform-origin:0 0">`;
 
-  // ─── DEFS ────────────────────────────────────────────────────────────
+  // ── DEFS ─────────────────────────────────────────────────────────────
   svg += `<defs>
-    <linearGradient id="g-floor" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#0f1812"/>
-      <stop offset="100%" stop-color="#080c0a"/>
+    <radialGradient id="bg-grad" cx="50%" cy="40%">
+      <stop offset="0%" stop-color="#8a8a8a"/>
+      <stop offset="100%" stop-color="#6a6a6a"/>
+    </radialGradient>
+    <linearGradient id="body-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#6b1010"/>
+      <stop offset="20%"  stop-color="#9b1a1a"/>
+      <stop offset="50%"  stop-color="#c02020"/>
+      <stop offset="80%"  stop-color="#9b1a1a"/>
+      <stop offset="100%" stop-color="#6b1010"/>
     </linearGradient>
-    <linearGradient id="g-wing" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"   stop-color="#283025"/>
-      <stop offset="100%" stop-color="#161e14"/>
+    <linearGradient id="bonnet-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#9b1a1a"/>
+      <stop offset="40%"  stop-color="#c02020"/>
+      <stop offset="100%" stop-color="#7a1414"/>
     </linearGradient>
-    <linearGradient id="g-engine" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#1a3050"/>
-      <stop offset="40%"  stop-color="#102040"/>
-      <stop offset="100%" stop-color="#061228"/>
+    <linearGradient id="roof-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#111"/>
+      <stop offset="100%" stop-color="#222"/>
     </linearGradient>
-    <linearGradient id="g-engine-side" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%"   stop-color="#0a1a30"/>
-      <stop offset="100%" stop-color="#061020"/>
+    <linearGradient id="bay-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#181e18"/>
+      <stop offset="100%" stop-color="#0e1210"/>
     </linearGradient>
-    <linearGradient id="g-bat" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#1c2020"/>
-      <stop offset="100%" stop-color="#0a0e0e"/>
+    <linearGradient id="engine-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#2a4060"/>
+      <stop offset="100%" stop-color="#0e2040"/>
     </linearGradient>
-    <linearGradient id="g-bat-top" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#242a2a"/>
-      <stop offset="100%" stop-color="#181e1e"/>
+    <linearGradient id="bat-g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#1a3060"/>
+      <stop offset="100%" stop-color="#0e1e40"/>
     </linearGradient>
-    <linearGradient id="g-rad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#202020"/>
-      <stop offset="50%"  stop-color="#181818"/>
-      <stop offset="100%" stop-color="#101010"/>
+    <linearGradient id="alt-g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#2a2a2a"/>
+      <stop offset="100%" stop-color="#141414"/>
     </linearGradient>
-    <linearGradient id="g-airbox" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"   stop-color="#1a1a1a"/>
-      <stop offset="100%" stop-color="#0a0a0a"/>
+    <linearGradient id="rad-g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#1e1e1e"/>
+      <stop offset="100%" stop-color="#141414"/>
     </linearGradient>
-    <linearGradient id="g-ecu" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%"   stop-color="#28283a"/>
-      <stop offset="100%" stop-color="#14141e"/>
-    </linearGradient>
-    <linearGradient id="g-fusebox" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="fb-g" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%"   stop-color="#1c1c1c"/>
-      <stop offset="100%" stop-color="#0a0a0a"/>
+      <stop offset="100%" stop-color="#141414"/>
     </linearGradient>
-    <linearGradient id="g-coolres" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#0a2040" stop-opacity="0.85"/>
-      <stop offset="100%" stop-color="#061530" stop-opacity="0.9"/>
+    <linearGradient id="hl-l-g" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0%"   stop-color="#10203a"/>
+      <stop offset="100%" stop-color="#0a1628"/>
     </linearGradient>
-    <pattern id="p-rad" x="0" y="0" width="7" height="1" patternUnits="userSpaceOnUse">
-      <rect width="5" height="1" fill="#1a1a1a"/>
-      <rect x="5" width="2" height="1" fill="#2c2c2c"/>
+    <linearGradient id="hl-r-g" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#10203a"/>
+      <stop offset="100%" stop-color="#0a1628"/>
+    </linearGradient>
+    <pattern id="rad-fins" x="0" y="0" width="6" height="1" patternUnits="userSpaceOnUse">
+      <rect width="4.5" height="1" fill="#1a1a1a"/>
+      <rect x="4.5" width="1.5" height="1" fill="#282828"/>
     </pattern>
-    <pattern id="p-fuses" x="0" y="0" width="16" height="13" patternUnits="userSpaceOnUse">
-      <rect width="13" height="10" rx="2" fill="#0f0f0f" stroke="#1e1e1e" stroke-width="0.5"/>
+    <pattern id="fuse-p" x="0" y="0" width="14" height="11" patternUnits="userSpaceOnUse">
+      <rect width="11" height="8" rx="2" fill="#111" stroke="#1e1e1e" stroke-width="0.4"/>
     </pattern>
-    <filter id="f-shadow" x="-10%" y="-10%" width="120%" height="130%">
-      <feDropShadow dx="2" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.8"/>
+    <filter id="shadow" x="-15%" y="-15%" width="130%" height="140%">
+      <feDropShadow dx="1" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.7"/>
     </filter>
-    <filter id="f-glow-r">
-      <feGaussianBlur stdDeviation="3" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter id="inner-shadow">
+      <feOffset dx="0" dy="3"/>
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
     </filter>
-    <filter id="f-glow-g">
-      <feGaussianBlur stdDeviation="2.5" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter id="glow-r">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="f-glow-y">
-      <feGaussianBlur stdDeviation="2" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    <filter id="glow-g">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
+    <clipPath id="bay-clip">
+      <rect x="100" y="95" width="560" height="385" rx="0"/>
+    </clipPath>
   </defs>`;
 
-  // ─── BAY FLOOR ───────────────────────────────────────────────────────
-  svg += `<rect width="${W}" height="${H}" fill="url(#g-floor)"/>`;
-  // subtle scan lines
-  svg += `<g opacity="0.06">`;
-  for(let y=0;y<H;y+=50)
-    svg+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#4ADE80" stroke-width="0.4"/>`;
-  for(let x=0;x<W;x+=80)
-    svg+=`<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="#4ADE80" stroke-width="0.4"/>`;
+  // ── WORKSHOP FLOOR (grey background like Electude) ────────────────────
+  svg += `<rect width="${W}" height="${H}" fill="url(#bg-grad)"/>`;
+  // Floor grid
+  svg += `<g opacity="0.08">`;
+  for(let x=0;x<W;x+=60) svg+=`<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="#000" stroke-width="0.5"/>`;
+  for(let y=0;y<H;y+=60) svg+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="#000" stroke-width="0.5"/>`;
   svg += `</g>`;
 
-  // ─── CAR BODY STRUCTURE ──────────────────────────────────────────────
-  // Front bumper panel
-  svg += `<rect x="0" y="0" width="${W}" height="8" fill="#0d1610" stroke="#162012" stroke-width="0.5"/>`;
-  // Left inner wing (L-shape)
-  svg += `<path d="M0,0 L175,0 L175,140 Q160,158 140,165 L0,168 Z"
-    fill="url(#g-wing)" stroke="#1a2a16" stroke-width="1"/>`;
-  // Right inner wing
-  svg += `<path d="M${W},0 L${W-175},0 L${W-175},140 Q${W-160},158 ${W-140},165 L${W},168 Z"
-    fill="url(#g-wing)" stroke="#1a2a16" stroke-width="1"/>`;
-  // Firewall (back wall)
-  svg += `<rect x="0" y="${H-22}" width="${W}" height="22" fill="#141e10" stroke="#0e1a0a" stroke-width="1"/>`;
-  svg += `<text x="${W/2}" y="${H-8}" text-anchor="middle" fill="#2a4a22"
-    font-size="10" font-family="Arial" letter-spacing="6" font-weight="700">FIREWALL</text>`;
-  // Strut brace
-  svg += `<path d="M50,148 Q${W/2},128 ${W-50},148"
-    fill="none" stroke="#1a3018" stroke-width="4" stroke-linecap="round"/>`;
-  svg += `<circle cx="${W/2}" cy="129" r="7" fill="#0e1a0c" stroke="#1a3018" stroke-width="2"/>`;
-  svg += `<circle cx="52" cy="148" r="7" fill="#0e1a0c" stroke="#1a3018" stroke-width="2"/>`;
-  svg += `<circle cx="${W-52}" cy="148" r="7" fill="#0e1a0c" stroke="#1a3018" stroke-width="2"/>`;
-  // Bonnet latch centre
-  svg += `<rect x="${W/2-18}" y="5" width="36" height="14" rx="4" fill="#161e12" stroke="#2a3a20" stroke-width="1"/>`;
-  svg += `<circle cx="${W/2}" cy="12" r="4" fill="#0a100a" stroke="#2a4a20" stroke-width="1.2"/>`;
+  // ═══════════════════════════════════════════════════════════════════════
+  // FULL CAR BODY — TOP-DOWN VIEW
+  // Matching Electude screenshot proportions
+  // Car: front at top, rear at bottom
+  // ═══════════════════════════════════════════════════════════════════════
 
-  // ─── RADIATOR (front, full width) ────────────────────────────────────
-  svg += `<rect x="160" y="20" width="${W-320}" height="85" rx="5"
-    fill="url(#g-rad)" stroke="#2a2a2a" stroke-width="1.5" filter="url(#f-shadow)"/>`;
-  // Fins
-  svg += `<rect x="180" y="30" width="${W-360}" height="65" fill="url(#p-rad)"/>`;
-  // Header tanks
-  svg += `<rect x="160" y="20" width="${W-320}" height="12" rx="5" fill="#222" stroke="#2a2a2a" stroke-width="0.8"/>`;
-  svg += `<rect x="160" y="93" width="${W-320}" height="12" rx="4" fill="#1c1c1c" stroke="#252525" stroke-width="0.8"/>`;
-  // Upper hose connection stubs
-  svg += `<rect x="200" y="10" width="24" height="14" rx="5" fill="#1a1a1a" stroke="#252525" stroke-width="1"/>`;
-  svg += `<rect x="${W-224}" y="10" width="24" height="14" rx="5" fill="#1a1a1a" stroke="#252525" stroke-width="1"/>`;
-  // Lower hose stubs
-  svg += `<rect x="210" y="101" width="22" height="12" rx="4" fill="#181818" stroke="#222" stroke-width="1"/>`;
-  svg += `<rect x="${W-232}" y="101" width="22" height="12" rx="4" fill="#181818" stroke="#222" stroke-width="1"/>`;
-  svg += `<text x="${W/2}" y="66" text-anchor="middle"
-    fill="#2a2a2a" font-size="12" font-weight="700" font-family="Arial" letter-spacing="5">RADIATOR</text>`;
+  const CX = W/2;   // car centre x = 380
+  const CW = 340;   // car body width
+  const CH = 820;   // car total length
+  const CY = 80;    // top of car (front bumper)
 
-  // ─── COOLING FANS (behind radiator) ──────────────────────────────────
-  const fan = (cx) => {
-    let f = `<circle cx="${cx}" cy="62" r="28" fill="none" stroke="#1a1a1a" stroke-width="2"/>`;
-    f += `<circle cx="${cx}" cy="62" r="5" fill="#1a1a1a" stroke="#222" stroke-width="1.5"/>`;
-    for(let a=0;a<6;a++){
-      const rad=a*60*Math.PI/180;
-      const x1=cx+8*Math.cos(rad), y1=62+8*Math.sin(rad);
-      const x2=cx+24*Math.cos(rad+0.5), y2=62+24*Math.sin(rad+0.5);
-      f+=`<path d="M${x1.toFixed(1)},${y1.toFixed(1)} Q${x2.toFixed(1)},${y2.toFixed(1)} ${cx+24*Math.cos(rad+1.1).toFixed(1)},${(62+24*Math.sin(rad+1.1)).toFixed(1)}" fill="#171717" stroke="#202020" stroke-width="0.5"/>`;
-    }
-    return f;
-  };
-  svg += `<g opacity="0.6">${fan(W/2-70)}${fan(W/2+70)}</g>`;
+  // ── Car body shadow ───────────────────────────────────────────────────
+  svg += `<ellipse cx="${CX}" cy="${CY+CH/2+10}" rx="${CW/2+20}" ry="${CH/2+20}"
+    fill="rgba(0,0,0,0.4)" filter="url(#shadow)"/>`;
 
-  // ─── COOLANT HOSES ───────────────────────────────────────────────────
-  svg += `<path d="M210,24 Q190,120 185,160" fill="none" stroke="#1e3020" stroke-width="14" stroke-linecap="round"/>`;
-  svg += `<path d="M210,24 Q190,120 185,160" fill="none" stroke="#2a4a2a" stroke-width="10" stroke-linecap="round"/>`;
-  svg += `<path d="M${W-210},24 Q${W-190},120 ${W-185},165" fill="none" stroke="#1e3020" stroke-width="14" stroke-linecap="round"/>`;
-  svg += `<path d="M${W-210},24 Q${W-190},120 ${W-185},165" fill="none" stroke="#2a4a2a" stroke-width="10" stroke-linecap="round"/>`;
+  // ── Rear section (passenger cabin) ───────────────────────────────────
+  // Main body
+  svg += `<path d="
+    M${CX-CW/2+20},${CY+480}
+    L${CX-CW/2},${CY+530}
+    L${CX-CW/2},${CY+CH-60}
+    Q${CX-CW/2},${CY+CH} ${CX-CW/2+40},${CY+CH}
+    L${CX+CW/2-40},${CY+CH}
+    Q${CX+CW/2},${CY+CH} ${CX+CW/2},${CY+CH-60}
+    L${CX+CW/2},${CY+530}
+    L${CX+CW/2-20},${CY+480}
+    Z" fill="url(#body-grad)" stroke="#501010" stroke-width="1"/>`;
 
-  // ─── ENGINE BLOCK ────────────────────────────────────────────────────
-  // Main block shadow
-  svg += `<rect x="185" y="162" width="${W-370}" height="255" rx="12"
-    fill="url(#g-engine)" filter="url(#f-shadow)"/>`;
-  // Front cam cover ribs
-  for(let i=0;i<7;i++)
-    svg+=`<line x1="${205+i*82}" y1="170" x2="${205+i*82}" y2="${H-60}"
-      stroke="#061228" stroke-width="2" opacity="0.7"/>`;
-  svg+=`<line x1="195" y1="228" x2="${W-195}" y2="228" stroke="#061228" stroke-width="1.2" opacity="0.5"/>`;
-  svg+=`<line x1="195" y1="288" x2="${W-195}" y2="288" stroke="#061228" stroke-width="1.2" opacity="0.5"/>`;
-  svg+=`<line x1="195" y1="348" x2="${W-195}" y2="348" stroke="#061228" stroke-width="1.2" opacity="0.5"/>`;
-  // Engine label
-  svg+=`<text x="${W/2}" y="195" text-anchor="middle"
-    fill="#1a4060" font-size="13" font-weight="700" font-family="Arial" letter-spacing="4">1.6 VVTi 4-CYLINDER</text>`;
+  // Rear windscreen (dark glass)
+  svg += `<path d="
+    M${CX-120},${CY+640}
+    L${CX-140},${CY+720}
+    L${CX+140},${CY+720}
+    L${CX+120},${CY+640}
+    Z" fill="#111" stroke="#1a1a1a" stroke-width="1"/>`;
 
-  // Valve cover bolts
-  [220,310,400,490,580,670,760].forEach((x) => {
-    svg+=`<circle cx="${x}" cy="175" r="5" fill="#0a1828" stroke="#1a3050" stroke-width="1.2"/>`;
-    svg+=`<circle cx="${x}" cy="${H-65}" r="5" fill="#0a1828" stroke="#1a3050" stroke-width="1.2"/>`;
-  });
+  // Rear roof/boot
+  svg += `<path d="
+    M${CX-140},${CY+720}
+    L${CX-130},${CY+CH-20}
+    L${CX+130},${CY+CH-20}
+    L${CX+140},${CY+720}
+    Z" fill="url(#bonnet-grad)" stroke="#501010" stroke-width="1"/>`;
 
-  // ─── IGNITION COILS (4 cylinders) ────────────────────────────────────
-  const coilXs = [260, 358, 458, 556];
-  coilXs.forEach((cx, i) => {
+  // Rear bumper
+  svg += `<path d="
+    M${CX-CW/2+20},${CY+CH-30}
+    Q${CX-CW/2+10},${CY+CH+10} ${CX-CW/2+50},${CY+CH+20}
+    L${CX+CW/2-50},${CY+CH+20}
+    Q${CX+CW/2-10},${CY+CH+10} ${CX+CW/2-20},${CY+CH-30}
+    Z" fill="#1c1c1c" stroke="#111" stroke-width="1"/>`;
+
+  // Rear lights (left and right)
+  svg += `<path d="M${CX-CW/2+5},${CY+CH-90} L${CX-CW/2+5},${CY+CH-30} L${CX-130},${CY+CH-25} L${CX-110},${CY+CH-95} Z"
+    fill="#cc1010" stroke="#aa0000" stroke-width="1"/>`;
+  svg += `<path d="M${CX+CW/2-5},${CY+CH-90} L${CX+CW/2-5},${CY+CH-30} L${CX+130},${CY+CH-25} L${CX+110},${CY+CH-95} Z"
+    fill="#cc1010" stroke="#aa0000" stroke-width="1"/>`;
+
+  // ── Cabin roof (dark glass from above) ────────────────────────────────
+  svg += `<path d="
+    M${CX-CW/2+20},${CY+480}
+    L${CX-120},${CY+640}
+    L${CX+120},${CY+640}
+    L${CX+CW/2-20},${CY+480}
+    Z" fill="url(#roof-grad)" stroke="#1a1a1a" stroke-width="1"/>`;
+
+  // ── Side mirrors ──────────────────────────────────────────────────────
+  svg += `<path d="
+    M${CX-CW/2},${CY+530}
+    L${CX-CW/2-32},${CY+522}
+    L${CX-CW/2-34},${CY+556}
+    L${CX-CW/2},${CY+550}
+    Z" fill="#8a1414" stroke="#601010" stroke-width="1"/>`;
+  svg += `<path d="
+    M${CX+CW/2},${CY+530}
+    L${CX+CW/2+32},${CY+522}
+    L${CX+CW/2+34},${CY+556}
+    L${CX+CW/2},${CY+550}
+    Z" fill="#8a1414" stroke="#601010" stroke-width="1"/>`;
+  // Mirror glass
+  svg += `<ellipse cx="${CX-CW/2-18}" cy="${CY+538}" rx="10" ry="8" fill="#1a2a3a" stroke="#111" stroke-width="0.5"/>`;
+  svg += `<ellipse cx="${CX+CW/2+18}" cy="${CY+538}" rx="10" ry="8" fill="#1a2a3a" stroke="#111" stroke-width="0.5"/>`;
+
+  // ── Bonnet panels (front body around engine bay) ───────────────────────
+  // Left bonnet panel
+  svg += `<path d="
+    M${CX-CW/2},${CY+480}
+    L${CX-CW/2+20},${CY+480}
+    L${CX-CW/2+20},${CY+530}
+    L${CX-CW/2},${CY+530}
+    Z" fill="url(#bonnet-grad)" stroke="#501010" stroke-width="0.5"/>`;
+  svg += `<path d="
+    M${CX-CW/2+10},${CY+130}
+    L${CX-CW/2+20},${CY+480}
+    L${CX-CW/2},${CY+480}
+    L${CX-CW/2-10},${CY+148}
+    L${CX-CW/2},${CY+130}
+    Z" fill="url(#bonnet-grad)" stroke="#501010" stroke-width="1"/>`;
+  // Right bonnet panel
+  svg += `<path d="
+    M${CX+CW/2},${CY+480}
+    L${CX+CW/2-20},${CY+480}
+    L${CX+CW/2-20},${CY+530}
+    L${CX+CW/2},${CY+530}
+    Z" fill="url(#bonnet-grad)" stroke="#501010" stroke-width="0.5"/>`;
+  svg += `<path d="
+    M${CX+CW/2-10},${CY+130}
+    L${CX+CW/2-20},${CY+480}
+    L${CX+CW/2},${CY+480}
+    L${CX+CW/2+10},${CY+148}
+    L${CX+CW/2},${CY+130}
+    Z" fill="url(#bonnet-grad)" stroke="#501010" stroke-width="1"/>`;
+
+  // ── Front bumper ──────────────────────────────────────────────────────
+  svg += `<path d="
+    M${CX-CW/2+10},${CY+148}
+    Q${CX-CW/2-10},${CY+120} ${CX-CW/2+20},${CY+100}
+    Q${CX-60},${CY+82} ${CX},${CY+80}
+    Q${CX+60},${CY+82} ${CX+CW/2-20},${CY+100}
+    Q${CX+CW/2+10},${CY+120} ${CX+CW/2-10},${CY+148}
+    L${CX+CW/2-10},${CY+130}
+    Q${CX+CW/2},${CY+118} ${CX+CW/2-22},${CY+104}
+    Q${CX+60},${CY+90} ${CX},${CY+88}
+    Q${CX-60},${CY+90} ${CX-CW/2+22},${CY+104}
+    Q${CX-CW/2},${CY+118} ${CX-CW/2+10},${CY+130}
+    Z" fill="#1c1c1c" stroke="#111" stroke-width="1"/>`;
+
+  // ── Headlights (integrated into front) ───────────────────────────────
+  svg += `<path d="
+    M${CX-CW/2+22},${CY+104}
+    Q${CX-CW/2+5},${CY+108} ${CX-CW/2+8},${CY+148}
+    L${CX-CW/2+32},${CY+148}
+    L${CX-CW/2+30},${CY+110}
+    Z" fill="url(#hl-l-g)" stroke="#0e1a30" stroke-width="1"/>`;
+  svg += `<path d="
+    M${CX+CW/2-22},${CY+104}
+    Q${CX+CW/2-5},${CY+108} ${CX+CW/2-8},${CY+148}
+    L${CX+CW/2-32},${CY+148}
+    L${CX+CW/2-30},${CY+110}
+    Z" fill="url(#hl-r-g)" stroke="#0e1a30" stroke-width="1"/>`;
+  // Headlight DRL strips
+  svg += `<rect x="${CX-CW/2+23}" y="${CY+138}" width="18" height="5" rx="2" fill="#60A5FA" opacity="0.5"/>`;
+  svg += `<rect x="${CX+CW/2-41}" y="${CY+138}" width="18" height="5" rx="2" fill="#60A5FA" opacity="0.5"/>`;
+
+  // ── ENGINE BAY OPENING ────────────────────────────────────────────────
+  // The bonnet has been opened/removed — dark bay visible
+  svg += `<path d="
+    M${CX-CW/2+28},${CY+148}
+    L${CX-CW/2+22},${CY+476}
+    L${CX+CW/2-22},${CY+476}
+    L${CX+CW/2-28},${CY+148}
+    Z" fill="url(#bay-grad)"/>`;
+
+  // Bay inner edge highlight (metal rim)
+  svg += `<path d="
+    M${CX-CW/2+28},${CY+148}
+    L${CX-CW/2+22},${CY+476}
+    L${CX+CW/2-22},${CY+476}
+    L${CX+CW/2-28},${CY+148}
+    Z" fill="none" stroke="#1e2a1e" stroke-width="3"/>`;
+
+  // ── ENGINE BAY CONTENTS ───────────────────────────────────────────────
+  // Strut towers (two circles either side at front of bay)
+  svg += `<circle cx="${CX-CW/2+55}" cy="${CY+200}" r="28" fill="#1a1a1a" stroke="#252525" stroke-width="2"/>`;
+  svg += `<circle cx="${CX-CW/2+55}" cy="${CY+200}" r="18" fill="#141414" stroke="#1e1e1e" stroke-width="1.5"/>`;
+  svg += `<circle cx="${CX-CW/2+55}" cy="${CY+200}" r="7" fill="#0e0e0e" stroke="#1a1a1a" stroke-width="1"/>`;
+  svg += `<circle cx="${CX+CW/2-55}" cy="${CY+200}" r="28" fill="#1a1a1a" stroke="#252525" stroke-width="2"/>`;
+  svg += `<circle cx="${CX+CW/2-55}" cy="${CY+200}" r="18" fill="#141414" stroke="#1e1e1e" stroke-width="1.5"/>`;
+  svg += `<circle cx="${CX+CW/2-55}" cy="${CY+200}" r="7" fill="#0e0e0e" stroke="#1a1a1a" stroke-width="1"/>`;
+
+  // Radiator (top of bay, full width)
+  svg += `<rect x="${CX-CW/2+30}" y="${CY+152}" width="${CW-60}" height="62" rx="4"
+    fill="url(#rad-g)" stroke="#252525" stroke-width="1.5"/>`;
+  svg += `<rect x="${CX-CW/2+36}" y="${CY+158}" width="${CW-72}" height="50" fill="url(#rad-fins)"/>`;
+  svg += `<rect x="${CX-CW/2+30}" y="${CY+152}" width="${CW-60}" height="10" rx="4" fill="#222" stroke="#2a2a2a" stroke-width="0.8"/>`;
+  svg += `<rect x="${CX-CW/2+30}" y="${CY+204}" width="${CW-60}" height="10" rx="3" fill="#1e1e1e" stroke="#252525" stroke-width="0.8"/>`;
+  svg += `<text x="${CX}" y="${CY+185}" text-anchor="middle" fill="#1e1e1e"
+    font-size="10" font-weight="700" font-family="Arial" letter-spacing="5">RADIATOR</text>`;
+
+  // Coolant hoses left and right from radiator
+  svg += `<path d="M${CX-CW/2+50},${CY+185} Q${CX-CW/2+40},${CY+230} ${CX-CW/2+55},${CY+270}"
+    fill="none" stroke="#1e3a20" stroke-width="12" stroke-linecap="round"/>`;
+  svg += `<path d="M${CX-CW/2+50},${CY+185} Q${CX-CW/2+40},${CY+230} ${CX-CW/2+55},${CY+270}"
+    fill="none" stroke="#2a4a28" stroke-width="8" stroke-linecap="round"/>`;
+  svg += `<path d="M${CX+CW/2-50},${CY+185} Q${CX+CW/2-40},${CY+230} ${CX+CW/2-55},${CY+270}"
+    fill="none" stroke="#1e3a20" stroke-width="12" stroke-linecap="round"/>`;
+  svg += `<path d="M${CX+CW/2-50},${CY+185} Q${CX+CW/2-40},${CY+230} ${CX+CW/2-55},${CY+270}"
+    fill="none" stroke="#2a4a28" stroke-width="8" stroke-linecap="round"/>`;
+
+  // ── ENGINE BLOCK (centre of bay) ──────────────────────────────────────
+  svg += `<rect x="${CX-130}" y="${CY+240}" width="260" height="200" rx="10"
+    fill="url(#engine-top)" stroke="#1a3050" stroke-width="1.5" filter="url(#shadow)"/>`;
+  // Cam cover ribs
+  for(let i=0;i<6;i++)
+    svg+=`<line x1="${CX-120+i*50}" y1="${CY+248}" x2="${CX-120+i*50}" y2="${CY+432}"
+      stroke="#0a1828" stroke-width="1.5" opacity="0.8"/>`;
+  svg+=`<line x1="${CX-128}" y1="${CY+300}" x2="${CX+128}" y2="${CY+300}" stroke="#0a1828" stroke-width="1" opacity="0.5"/>`;
+  svg+=`<line x1="${CX-128}" y1="${CY+360}" x2="${CX+128}" y2="${CY+360}" stroke="#0a1828" stroke-width="1" opacity="0.5"/>`;
+  svg+=`<text x="${CX}" y="${CY+265}" text-anchor="middle"
+    fill="#1a4060" font-size="11" font-weight="700" font-family="Arial" letter-spacing="3">1.6L VVTi</text>`;
+
+  // ── IGNITION COILS (4, in a row on engine) ────────────────────────────
+  const coilX = [CX-90, CX-30, CX+30, CX+90];
+  coilX.forEach((cx2, i) => {
     // Coil body
-    svg+=`<rect x="${cx-22}" y="205" width="44" height="52" rx="6"
-      fill="#0a0a14" stroke="#2a2a4a" stroke-width="1.5" filter="url(#f-shadow)"/>`;
-    // Coil connector
-    svg+=`<rect x="${cx-12}" y="200" width="24" height="12" rx="3"
-      fill="#0e0e1e" stroke="#2a2a4a" stroke-width="1"/>`;
-    // HT lead
-    svg+=`<line x1="${cx}" y1="257" x2="${cx}" y2="285" stroke="#cc2800" stroke-width="6" stroke-linecap="round"/>`;
-    svg+=`<line x1="${cx}" y1="257" x2="${cx}" y2="285" stroke="#ee3500" stroke-width="3" stroke-linecap="round" opacity="0.5"/>`;
-    // Spark plug at bottom
-    svg+=`<rect x="${cx-8}" y="283" width="16" height="24" rx="4"
+    svg+=`<rect x="${cx2-20}" y="${CY+270}" width="40" height="55" rx="6"
+      fill="#0a0a18" stroke="#2a2a4a" stroke-width="1.5" filter="url(#shadow)"/>`;
+    // Connector on top
+    svg+=`<rect x="${cx2-10}" y="${CY+264}" width="20" height="10" rx="3"
+      fill="#0e0e1e" stroke="#2a2a40" stroke-width="1"/>`;
+    // HT lead down to plug
+    svg+=`<line x1="${cx2}" y1="${CY+325}" x2="${cx2}" y2="${CY+355}"
+      stroke="#cc2800" stroke-width="7" stroke-linecap="round"/>`;
+    svg+=`<line x1="${cx2}" y1="${CY+325}" x2="${cx2}" y2="${CY+355}"
+      stroke="#ee4400" stroke-width="4" stroke-linecap="round" opacity="0.5"/>`;
+    // Spark plug
+    svg+=`<rect x="${cx2-7}" y="${CY+355}" width="14" height="20" rx="4"
       fill="#181818" stroke="#2a2a2a" stroke-width="1"/>`;
-    svg+=`<circle cx="${cx}" cy="296" r="4" fill="#101010" stroke="#1c1c1c" stroke-width="1"/>`;
-    svg+=`<text x="${cx}" y="${H-42}" text-anchor="middle"
-      fill="#1a1a2a" font-size="8" font-family="Arial">CYL ${i+1}</text>`;
+    svg+=`<text x="${cx2}" y="${CY+415}" text-anchor="middle"
+      fill="#0e1828" font-size="8" font-family="Arial">${i+1}</text>`;
   });
-  svg+=`<text x="408" y="390" text-anchor="middle"
-    fill="#1a2a3a" font-size="9" font-family="Arial" letter-spacing="2">IGNITION COILS</text>`;
+  svg+=`<text x="${CX}" y="${CY+432}" text-anchor="middle"
+    fill="#1a2a3a" font-size="8" font-family="Arial" letter-spacing="2">IGNITION COILS</text>`;
 
-  // ─── INTAKE / THROTTLE BODY ───────────────────────────────────────────
-  svg+=`<rect x="620" y="168" width="110" height="60" rx="8"
-    fill="#0e1830" stroke="#1a3050" stroke-width="1.5" filter="url(#f-shadow)"/>`;
-  svg+=`<ellipse cx="700" cy="198" rx="28" ry="26"
-    fill="#06101c" stroke="#1a2a40" stroke-width="1.5"/>`;
-  svg+=`<ellipse cx="700" cy="198" rx="16" ry="15"
-    fill="#040c14" stroke="#0e1e30" stroke-width="1"/>`;
-  svg+=`<text x="660" y="242" text-anchor="middle"
-    fill="#1a3050" font-size="8" font-family="Arial">THROTTLE</text>`;
+  // ── THROTTLE BODY / INTAKE (right side of engine top) ─────────────────
+  svg+=`<rect x="${CX+80}" y="${CY+240}" width="50" height="45" rx="7"
+    fill="#0a1428" stroke="#1a2a40" stroke-width="1.5"/>`;
+  svg+=`<ellipse cx="${CX+105}" cy="${CY+262}" rx="16" ry="15"
+    fill="#060c14" stroke="#0e1828" stroke-width="1.2"/>`;
+  svg+=`<ellipse cx="${CX+105}" cy="${CY+262}" rx="8" ry="8"
+    fill="#040810" stroke="#081018" stroke-width="0.8"/>`;
+  svg+=`<text x="${CX+105}" y="${CY+298}" text-anchor="middle"
+    fill="#1a2a3a" font-size="7" font-family="Arial">THROTTLE</text>`;
 
-  // ─── OIL FILLER CAP ──────────────────────────────────────────────────
-  svg+=`<circle cx="720" cy="175" r="15" fill="#181818" stroke="#303030" stroke-width="2"/>`;
-  svg+=`<circle cx="720" cy="175" r="9" fill="#0e0e0e" stroke="#252525" stroke-width="1.2"/>`;
-  svg+=`<text x="720" y="179" text-anchor="middle"
-    fill="#3a3a3a" font-size="7" font-weight="700" font-family="Arial">OIL</text>`;
+  // ── OIL FILLER CAP ────────────────────────────────────────────────────
+  svg+=`<circle cx="${CX-105}" cy="${CY+258}" r="13" fill="#181818" stroke="#2c2c2c" stroke-width="2"/>`;
+  svg+=`<circle cx="${CX-105}" cy="${CY+258}" r="8" fill="#0e0e0e" stroke="#222" stroke-width="1.2"/>`;
+  svg+=`<text x="${CX-105}" y="${CY+262}" text-anchor="middle"
+    fill="#333" font-size="7" font-weight="700" font-family="Arial">OIL</text>`;
 
-  // ─── ALTERNATOR (left side of engine) ────────────────────────────────
-  svg+=`<ellipse cx="210" cy="290" rx="42" ry="42"
-    fill="#0e1e0e" stroke="#1a3a1a" stroke-width="2" filter="url(#f-shadow)"/>`;
-  svg+=`<ellipse cx="210" cy="290" rx="28" ry="28"
-    fill="#0a1a0a" stroke="#142814" stroke-width="1.5"/>`;
-  svg+=`<ellipse cx="210" cy="290" rx="10" ry="10"
-    fill="#060e06" stroke="#102010" stroke-width="1"/>`;
-  // Cooling fins on alternator
+  // ── ALTERNATOR (left side of engine) ─────────────────────────────────
+  svg+=`<ellipse cx="${CX-CW/2+80}" cy="${CY+330}" rx="38" ry="38"
+    fill="url(#alt-g)" stroke="#1a2a1a" stroke-width="2" filter="url(#shadow)"/>`;
+  svg+=`<ellipse cx="${CX-CW/2+80}" cy="${CY+330}" rx="26" ry="26"
+    fill="#0e180e" stroke="#162216" stroke-width="1.5"/>`;
+  svg+=`<ellipse cx="${CX-CW/2+80}" cy="${CY+330}" rx="9" ry="9"
+    fill="#060c06" stroke="#0e1a0e" stroke-width="1"/>`;
   for(let a=0;a<8;a++){
     const ang=a*45*Math.PI/180;
-    const x1=210+18*Math.cos(ang), y1=290+18*Math.sin(ang);
-    const x2=210+38*Math.cos(ang), y2=290+38*Math.sin(ang);
-    svg+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"
-      stroke="#1a3a1a" stroke-width="1.5" opacity="0.6"/>`;
+    svg+=`<line x1="${CX-CW/2+80+16*Math.cos(ang)}" y1="${CY+330+16*Math.sin(ang)}"
+      x2="${CX-CW/2+80+34*Math.cos(ang)}" y2="${CY+330+34*Math.sin(ang)}"
+      stroke="#1a2a1a" stroke-width="2" opacity="0.6"/>`;
   }
-  svg+=`<text x="210" y="294" text-anchor="middle"
-    fill="#1a4a1a" font-size="9" font-weight="700" font-family="Arial">ALT</text>`;
+  svg+=`<text x="${CX-CW/2+80}" y="${CY+334}" text-anchor="middle"
+    fill="#1a3a1a" font-size="9" font-weight="700" font-family="Arial">ALT</text>`;
+
   // Drive belt
-  svg+=`<path d="M210,248 Q340,220 660,205 Q720,200 730,215"
-    fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linecap="round"/>`;
-  svg+=`<path d="M210,248 Q340,220 660,205 Q720,200 730,215"
-    fill="none" stroke="#282828" stroke-width="5" stroke-linecap="round" stroke-dasharray="12,4"/>`;
-  svg+=`<text x="420" y="218" text-anchor="middle"
-    fill="#181818" font-size="8" font-family="Arial">DRIVE BELT</text>`;
+  svg+=`<path d="M${CX-CW/2+80},${CY+292} Q${CX-60},${CY+255} ${CX+80},${CY+262}"
+    fill="none" stroke="#181818" stroke-width="9" stroke-linecap="round"/>`;
+  svg+=`<path d="M${CX-CW/2+80},${CY+292} Q${CX-60},${CY+255} ${CX+80},${CY+262}"
+    fill="none" stroke="#222" stroke-width="6" stroke-linecap="round" stroke-dasharray="10,4"/>`;
 
-  // ─── AIR FILTER BOX ──────────────────────────────────────────────────
-  svg+=`<rect x="660" y="165" width="130" height="100" rx="8"
-    fill="url(#g-airbox)" stroke="#1a1a1a" stroke-width="1.5" filter="url(#f-shadow)"/>`;
-  // intake snorkel
-  svg+=`<rect x="778" y="178" width="60" height="22" rx="6"
-    fill="#0e0e0e" stroke="#181818" stroke-width="1.2"/>`;
-  svg+=`<rect x="820" y="166" width="22" height="46" rx="6"
-    fill="#0c0c0c" stroke="#181818" stroke-width="1.2"/>`;
+  // ── AIR FILTER BOX (right side) ───────────────────────────────────────
+  svg+=`<rect x="${CX+CW/2-130}" y="${CY+240}" width="100" height="85" rx="8"
+    fill="#111" stroke="#1a1a1a" stroke-width="1.5" filter="url(#shadow)"/>`;
+  // Intake snorkel
+  svg+=`<path d="M${CX+CW/2-40},${CY+268} Q${CX+CW/2-30},${CY+265} ${CX+CW/2-28},${CY+250}"
+    fill="none" stroke="#0e0e0e" stroke-width="16" stroke-linecap="round"/>`;
+  svg+=`<path d="M${CX+CW/2-40},${CY+268} Q${CX+CW/2-30},${CY+265} ${CX+CW/2-28},${CY+250}"
+    fill="none" stroke="#1a1a1a" stroke-width="11" stroke-linecap="round"/>`;
   // Filter lid clips
-  svg+=`<rect x="664" y="163" width="122" height="8" rx="3" fill="#1a1a1a" stroke="#222" stroke-width="0.8"/>`;
-  [680,730,780].forEach(bx=>{
-    svg+=`<rect x="${bx}" y="160" width="10" height="7" rx="2" fill="#202020" stroke="#2a2a2a" stroke-width="0.5"/>`;
-  });
-  // MAF sensor on intake pipe
-  svg+=`<rect x="782" y="176" width="18" height="18" rx="3"
-    fill="#0e0e18" stroke="#2a2a40" stroke-width="1.5"/>`;
-  svg+=`<circle cx="791" cy="185" r="5" fill="#080810" stroke="#1a1a30" stroke-width="1"/>`;
-  svg+=`<text x="791" y="206" text-anchor="middle" fill="#1a1a30" font-size="7" font-family="Arial">MAF</text>`;
-  svg+=`<text x="725" y="222" text-anchor="middle"
-    fill="#1c1c1c" font-size="9" font-weight="700" font-family="Arial" letter-spacing="2">AIR FILTER</text>`;
+  for(let cx3=CX+CW/2-118;cx3<CX+CW/2-40;cx3+=22)
+    svg+=`<rect x="${cx3}" y="${CY+238}" width="10" height="7" rx="2"
+      fill="#1e1e1e" stroke="#252525" stroke-width="0.5"/>`;
+  // MAF sensor
+  svg+=`<rect x="${CX+CW/2-120}" y="${CY+262}" width="16" height="16" rx="3"
+    fill="#0e0e1a" stroke="#2a2a3a" stroke-width="1.2"/>`;
+  svg+=`<circle cx="${CX+CW/2-112}" cy="${CY+270}" r="4" fill="#060610" stroke="#181828" stroke-width="0.8"/>`;
+  svg+=`<text x="${CX+CW/2-80}" y="${CY+342}" text-anchor="middle"
+    fill="#1a1a1a" font-size="8" font-family="Arial" font-weight="700">AIR FILTER</text>`;
 
-  // ─── COOLANT RESERVOIR ───────────────────────────────────────────────
-  svg+=`<rect x="760" y="285" width="75" height="95" rx="7"
-    fill="url(#g-coolres)" stroke="#1a3050" stroke-width="1.5" filter="url(#f-shadow)"/>`;
-  // Coolant level marks
-  svg+=`<line x1="768" y1="310" x2="827" y2="310" stroke="#1a3050" stroke-width="0.8" stroke-dasharray="4,2"/>`;
-  svg+=`<line x1="768" y1="340" x2="827" y2="340" stroke="#1a3050" stroke-width="0.8" stroke-dasharray="4,2"/>`;
-  svg+=`<text x="830" y="313" fill="#1a3050" font-size="7" font-family="Arial">MAX</text>`;
-  svg+=`<text x="830" y="343" fill="#1a3050" font-size="7" font-family="Arial">MIN</text>`;
-  // Coolant level (bluish fluid)
-  svg+=`<rect x="768" y="325" width="55" height="48" rx="3" fill="rgba(30,100,180,0.18)" stroke="none"/>`;
-  // Cap
-  svg+=`<circle cx="797" cy="285" r="10" fill="#0e1e30" stroke="#1a3050" stroke-width="1.5"/>`;
-  svg+=`<circle cx="797" cy="285" r="6" fill="#080e18" stroke="#122040" stroke-width="1"/>`;
-  svg+=`<text x="797" y="392" text-anchor="middle"
-    fill="#1a3050" font-size="8" font-family="Arial">COOLANT RES.</text>`;
+  // ── COOLANT RESERVOIR ─────────────────────────────────────────────────
+  svg+=`<rect x="${CX+CW/2-130}" y="${CY+345}" width="60" height="80" rx="6"
+    fill="rgba(14,32,60,0.85)" stroke="#1a3050" stroke-width="1.5"/>`;
+  svg+=`<line x1="${CX+CW/2-124}" y1="${CY+370}" x2="${CX+CW/2-76}" y2="${CY+370}"
+    stroke="#1a3050" stroke-width="0.8" stroke-dasharray="4,2"/>`;
+  svg+=`<line x1="${CX+CW/2-124}" y1="${CY+395}" x2="${CX+CW/2-76}" y2="${CY+395}"
+    stroke="#1a3050" stroke-width="0.8" stroke-dasharray="4,2"/>`;
+  svg+=`<rect x="${CX+CW/2-122}" y="${CY+400}" width="44" height="22" rx="2"
+    fill="rgba(20,80,160,0.25)"/>`;
+  svg+=`<text x="${CX+CW/2-126}" y="${CY+374}" font-size="6" fill="#1a3050" font-family="Arial">MAX</text>`;
+  svg+=`<text x="${CX+CW/2-126}" y="${CY+398}" font-size="6" fill="#1a3050" font-family="Arial">MIN</text>`;
+  svg+=`<circle cx="${CX+CW/2-100}" cy="${CY+345}" r="10" fill="#0e1828" stroke="#1a3050" stroke-width="1.5"/>`;
+  svg+=`<circle cx="${CX+CW/2-100}" cy="${CY+345}" r="6" fill="#080e18" stroke="#122040" stroke-width="1"/>`;
+  svg+=`<text x="${CX+CW/2-100}" y="${CY+440}" text-anchor="middle"
+    fill="#1a3050" font-size="7" font-family="Arial">COOLANT</text>`;
 
-  // ─── POWER STEERING RESERVOIR (if space) ─────────────────────────────
-  svg+=`<rect x="850" y="290" width="50" height="60" rx="5"
-    fill="#0a0e0a" stroke="#1a2a1a" stroke-width="1.2"/>`;
-  svg+=`<circle cx="875" cy="289" r="8" fill="#0a100a" stroke="#1a2a1a" stroke-width="1.2"/>`;
-  svg+=`<text x="875" y="364" text-anchor="middle"
-    fill="#142014" font-size="7" font-family="Arial">P/S RES.</text>`;
+  // ── BRAKE FLUID RESERVOIR ─────────────────────────────────────────────
+  svg+=`<rect x="${CX-CW/2+38}" y="${CY+390}" width="52" height="60" rx="5"
+    fill="#0e0608" stroke="#1e1020" stroke-width="1.2"/>`;
+  svg+=`<rect x="${CX-CW/2+42}" y="${CY+410}" width="44" height="28" rx="2"
+    fill="rgba(180,140,60,0.15)"/>`;
+  svg+=`<circle cx="${CX-CW/2+64}" cy="${CY+390}" r="9" fill="#0a0608" stroke="#161020" stroke-width="1.2"/>`;
+  svg+=`<text x="${CX-CW/2+64}" y="${CY+462}" text-anchor="middle"
+    fill="#1a1020" font-size="7" font-family="Arial">BRAKE FL.</text>`;
 
-  // ─── BRAKE FLUID RESERVOIR ────────────────────────────────────────────
-  svg+=`<rect x="85" y="290" width="60" height="70" rx="5"
-    fill="#0e0608" stroke="#2a1020" stroke-width="1.2"/>`;
-  svg+=`<line x1="92" y1="318" x2="137" y2="318" stroke="#1a1020" stroke-width="0.8" stroke-dasharray="3,2"/>`;
-  svg+=`<rect x="92" y="330" width="45" height="28" rx="2" fill="rgba(180,160,80,0.1)"/>`;
-  svg+=`<circle cx="115" cy="289" r="9" fill="#0c0608" stroke="#1c0e18" stroke-width="1.2"/>`;
-  svg+=`<text x="115" y="374" text-anchor="middle"
-    fill="#1a1020" font-size="7" font-family="Arial">BRAKE FLUID</text>`;
+  // ── WIRING HARNESS TRUNKS ─────────────────────────────────────────────
+  // Main loom from firewall
+  svg+=`<path d="M${CX-50},${CY+476} Q${CX-40},${CY+440} ${CX-130},${CY+380}"
+    fill="none" stroke="#1a1a1a" stroke-width="10" stroke-linecap="round"/>`;
+  svg+=`<path d="M${CX+50},${CY+476} Q${CX+40},${CY+440} ${CX+130},${CY+380}"
+    fill="none" stroke="#1a1a1a" stroke-width="8" stroke-linecap="round"/>`;
+  // Firewall cable entry
+  svg+=`<rect x="${CX-60}" y="${CY+466}" width="120" height="16" rx="4"
+    fill="#141414" stroke="#1e1e1e" stroke-width="1"/>`;
+  svg+=`<text x="${CX}" y="${CY+492}" text-anchor="middle"
+    fill="#161616" font-size="9" font-family="Arial" letter-spacing="4">FIREWALL</text>`;
 
-  // ─── WASHER FLUID BOTTLE ─────────────────────────────────────────────
-  svg+=`<rect x="58" y="370" width="58" height="80" rx="6"
-    fill="rgba(20,40,80,0.7)" stroke="#1a304a" stroke-width="1.2"/>`;
-  // Blue fluid
-  svg+=`<rect x="62" y="400" width="50" height="48" rx="4" fill="rgba(30,80,200,0.2)"/>`;
-  svg+=`<circle cx="87" cy="369" r="8" fill="#0e1828" stroke="#1a304a" stroke-width="1.2"/>`;
-  svg+=`<text x="87" y="462" text-anchor="middle"
-    fill="#1a304a" font-size="7" font-family="Arial">WASHER FL.</text>`;
+  // ── WIRING (scenario-specific) ────────────────────────────────────────
+  const connPosMap = {};
+  Object.values(sc.components).forEach(c2 => (c2.conn||[]).forEach(cn => connPosMap[cn.id]={x:cn.cx,y:cn.cy}));
 
-  // ─── WIRING HARNESSES (before specific component overlays) ───────────
   sc.wires.forEach(w => {
-    const a=connPos[w.a], b=connPos[w.b]; if(!a||!b) return;
+    const a=connPosMap[w.a], b=connPosMap[w.b]; if(!a||!b) return;
     if(WS.removed[wsCompOfConn(w.a)]||WS.removed[wsCompOfConn(w.b)]) return;
     const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
-    const col = w.broken ? '#EF4444' : (w.color||'#2a2a2a');
-    const ww  = w.w||2;
-    if(ww>=4){
+    const col=w.broken?'#EF4444':(w.color||'#1a1a1a');
+    if((w.w||2)>=4){
       svg+=`<path d="M${a.x},${a.y} C${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}"
-        fill="none" stroke="#000" stroke-width="${ww+5}" stroke-linecap="round" opacity="0.5"/>`;
+        fill="none" stroke="#000" stroke-width="${(w.w||2)+4}" stroke-linecap="round" opacity="0.5"/>`;
     }
     svg+=`<path d="M${a.x},${a.y} C${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}"
-      fill="none" stroke="${col}" stroke-width="${ww}" stroke-linecap="round"
+      fill="none" stroke="${col}" stroke-width="${w.w||2}" stroke-linecap="round"
       ${w.broken?'stroke-dasharray="6,4"':''}/>`;
-    if(ww>=4){
-      svg+=`<path d="M${a.x},${a.y} C${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}"
-        fill="none" stroke="${col}" stroke-width="${Math.max(1,ww-3)}" stroke-linecap="round" opacity="0.35"/>`;
-    }
   });
 
-  // ─── COMPONENT-SPECIFIC RENDERING ────────────────────────────────────
+  // ── SCENARIO COMPONENTS ───────────────────────────────────────────────
   Object.entries(sc.components).forEach(([cid, comp]) => {
     if(WS.removed[cid]) return;
     const isFaulty   = comp.faulty && !WS.replaced[cid];
@@ -3587,13 +3694,12 @@ function renderCar() {
     svg += drawComponent(cid, comp, isFaulty, isSelected);
     if(isFaulty)
       svg+=`<rect x="${comp.x-3}" y="${comp.y-3}" width="${comp.w+6}" height="${comp.h+6}"
-        rx="10" fill="none" stroke="#EF4444" stroke-width="2.5" opacity="0.7"
-        filter="url(#f-glow-r)" style="pointer-events:none"/>`;
+        rx="9" fill="none" stroke="#EF4444" stroke-width="2.5" opacity="0.7"
+        filter="url(#glow-r)" style="pointer-events:none"/>`;
     if(isSelected)
       svg+=`<rect x="${comp.x-3}" y="${comp.y-3}" width="${comp.w+6}" height="${comp.h+6}"
-        rx="10" fill="none" stroke="#4ADE80" stroke-width="2.5" opacity="0.9"
-        filter="url(#f-glow-g)" style="pointer-events:none"/>`;
-    // Connector probe dots
+        rx="9" fill="none" stroke="#4ADE80" stroke-width="2.5" opacity="0.9"
+        filter="url(#glow-g)" style="pointer-events:none"/>`;
     (comp.conn||[]).forEach(cn => {
       const isR=WS.mm.redProbe===cn.id, isB=WS.mm.blueProbe===cn.id;
       const col=isR?'#EF4444':isB?'#4F8EF7':'#4ADE80';
@@ -3604,23 +3710,23 @@ function renderCar() {
           fill="${fill}" stroke="${col}" stroke-width="${isR||isB?2.5:1.5}"/>
         <circle cx="${cn.cx}" cy="${cn.cy}" r="3" fill="${col}" opacity="${isR||isB?1:0.7}"/>
         <text x="${cn.cx}" y="${cn.cy+15}" text-anchor="middle"
-          fill="${col}" font-size="8" font-family="Arial"
-          font-weight="${isR||isB?'bold':'normal'}">${cn.lbl}</text>
+          fill="${col}" font-size="8" font-family="Arial">${cn.lbl}</text>
       </g>`;
     });
     svg += `</g>`;
   });
 
-  svg += `<text x="8" y="${H-8}" fill="#1a3020" font-size="9" font-family="Arial" opacity="0.6">
-    SCROLL: zoom  |  DRAG: pan  |  DBL-CLICK: zoom to part  |  RIGHT-CLICK: inspect</text>`;
+  svg += `<text x="8" y="${H-8}" fill="#555" font-size="9" font-family="Arial">
+    scroll to zoom  ·  drag to pan  ·  double-click to zoom in  ·  click component to inspect</text>`;
   svg += `</svg>`;
 
-  const car = document.getElementById('ws-car');
+  const car=document.getElementById('ws-car');
   if(car){
-    car.innerHTML = svg;
-    car.style.transform = `translate(${WS.panX}px,${WS.panY}px)`;
+    car.innerHTML=svg;
+    car.style.transform=`translate(${WS.panX}px,${WS.panY}px)`;
   }
 }
+
 
 function drawComponent(cid, c, isFaulty, isSelected) {
   const {x,y,w,h} = c;
@@ -4024,13 +4130,13 @@ window.wsOpenTool = function(toolId) {
   const rb=document.getElementById('ws-rb-'+toolId);
   if(WS.panels[toolId]) { // toggle close
     WS.panels[toolId].remove(); delete WS.panels[toolId];
-    if(rb) rb.classList.remove('ws-open');
+    if(rb) rb.classList.remove('ws-open','ws-open');
     if(toolId==='osc'&&WS.osc.animId){cancelAnimationFrame(WS.osc.animId);WS.osc.animId=null;}
     if(toolId==='osc'&&WS.osc.animId){cancelAnimationFrame(WS.osc.animId);WS.osc.animId=null;}
     return;
   }
   if(rb) rb.classList.add('ws-open');
-  const positions={mm:{x:60,y:50},osc:{x:60,y:50},dash:{x:200,y:50},diag:{x:60,y:50},wire:{x:200,y:50},inv:{x:350,y:50},sol:{x:60,y:50}};
+  const positions={mm:{x:180,y:50},osc:{x:180,y:50},dash:{x:300,y:50},diag:{x:180,y:50},fuel:{x:300,y:50},jump:{x:300,y:50},wire:{x:180,y:50},inv:{x:300,y:50},sol:{x:180,y:50}};
   const pos=positions[toolId]||{x:80,y:60};
   const panel=document.createElement('div');
   panel.className='ws-panel'; panel.id='ws-panel-'+toolId;
@@ -4038,16 +4144,18 @@ window.wsOpenTool = function(toolId) {
 
   let inner='';
   switch(toolId) {
-    case 'mm': inner=buildMMPanel(); break;
-    case 'osc': inner=buildOscPanel(); break;
+    case 'mm':   inner=buildMMPanel(); break;
+    case 'osc':  inner=buildOscPanel(); break;
     case 'dash': inner=buildDashPanel(); break;
     case 'diag': inner=buildDiagPanel(); break;
+    case 'fuel': inner=buildFuelGaugePanel(); break;
+    case 'jump': inner=buildJumpStarterPanel(); break;
     case 'wire': inner=buildWirePanel(); break;
-    case 'inv': inner=buildInvPanel(); break;
-    case 'sol': inner=buildSolutionPanel(); break;
+    case 'inv':  inner=buildInvPanel(); break;
+    case 'sol':  inner=buildSolutionPanel(); break;
   }
-  const icons={mm:'🔬',osc:'📈',dash:'🚗',diag:'🔍',wire:'📄',inv:'📋',sol:'💡'};
-  const titles={mm:'Multimeter',osc:'Oscilloscope',dash:'Instrument Panel',diag:'Diagnostic System',wire:'Wiring Diagram',inv:'Invoice',sol:'Solution Guide'};
+  const icons={mm:'⚡',osc:'〰',dash:'🚗',diag:'💻',fuel:'🔧',jump:'⚡',wire:'📋',inv:'$',sol:'?'};
+  const titles={mm:'Multimeter',osc:'Oscilloscope',dash:'Instrument Panel',diag:'Diagnostic System',fuel:'Fuel Pressure Gauge',jump:'Jump Starter',wire:'Wiring Diagram',inv:'Invoice',sol:'Solution Guide'};
   panel.innerHTML=`
     <div class="ws-panel-hdr" onmousedown="wsDragPanel(event,'${toolId}')">
       <span style="font-size:14px">${icons[toolId]}</span>
@@ -4326,26 +4434,21 @@ window.wsDiagAction=function(action){
 
 // ── Wiring diagram panel ──────────────────────────────────────────────────
 function buildWirePanel(){
-  const sc=WS.sc;
-  const connPos={};
-  Object.values(sc.components).forEach(c=>(c.conn||[]).forEach(cn=>connPos[cn.id]={x:cn.cx,y:cn.cy}));
-  let wsvg=`<svg viewBox="0 0 680 290" class="ws-wiring-svg" style="height:220px">`;
-  wsvg+=`<rect width="680" height="290" fill="#030608"/>`;
-  sc.wires.forEach(w=>{
-    const a=connPos[w.a],b=connPos[w.b]; if(!a||!b) return;
-    wsvg+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${w.broken?'#EF4444':'#1a3a1a'}" stroke-width="2"/>`;
-    if(w.broken) wsvg+=`<text x="${(a.x+b.x)/2}" y="${(a.y+b.y)/2-6}" text-anchor="middle" fill="#EF4444" font-size="10" font-family="Arial">✕ BROKEN</text>`;
-  });
-  Object.entries(sc.components).forEach(([cid,c])=>{
-    wsvg+=`<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${c.h}" rx="5" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1"/>`;
-    wsvg+=`<text x="${c.x+c.w/2}" y="${c.y+c.h/2+4}" text-anchor="middle" fill="${c.stroke}" font-size="9" font-family="Arial">${c.label.replace('\n',' ')}</text>`;
-    (c.conn||[]).forEach(cn=>{
-      wsvg+=`<circle cx="${cn.cx}" cy="${cn.cy}" r="4" fill="rgba(74,222,128,0.2)" stroke="#4ADE80" stroke-width="1"/>`;
-      wsvg+=`<text x="${cn.cx+6}" y="${cn.cy+3}" fill="#2a5a2a" font-size="7" font-family="Arial">${cn.lbl}</text>`;
-    });
-  });
-  wsvg+=`</svg>`;
-  return wsvg+'<div style="font-size:10px;color:#1a3a1a;margin-top:6px">Click a wire in the main diagram to replace it.</div>';
+  const sc = WS.sc;
+  const diagrams = {
+    blown_fuse_headlight: '\n    <!-- Blown fuse headlight wiring diagram — standard automotive schematic -->\n    <svg viewBox="0 0 520 320" style="width:100%;background:#fafaf8;border-radius:6px;display:block">\n      <defs>\n        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">\n          <path d="M0,0 L0,6 L8,3 z" fill="#333"/>\n        </marker>\n      </defs>\n      <!-- Title -->\n      <text x="260" y="18" text-anchor="middle" font-size="11" font-weight="700" font-family="Arial" fill="#333">HEADLIGHT CIRCUIT — WIRING DIAGRAM</text>\n      <!-- Battery symbol -->\n      <line x1="30" y1="50" x2="30" y2="120" stroke="#333" stroke-width="1.5"/>\n      <line x1="20" y1="65" x2="40" y2="65" stroke="#333" stroke-width="3"/>\n      <line x1="24" y1="75" x2="36" y2="75" stroke="#333" stroke-width="1.5"/>\n      <line x1="20" y1="85" x2="40" y2="85" stroke="#333" stroke-width="3"/>\n      <line x1="24" y1="95" x2="36" y2="95" stroke="#333" stroke-width="1.5"/>\n      <text x="30" y="140" text-anchor="middle" font-size="9" font-family="Arial" fill="#333">BATTERY</text>\n      <text x="30" y="150" text-anchor="middle" font-size="9" font-family="Arial" fill="#333">12V</text>\n      <!-- B+ wire red to fuse -->\n      <line x1="30" y1="50" x2="30" y2="40" stroke="#cc0000" stroke-width="2"/>\n      <line x1="30" y1="40" x2="140" y2="40" stroke="#cc0000" stroke-width="2"/>\n      <!-- Fuse symbol -->\n      <line x1="140" y1="40" x2="160" y2="40" stroke="#cc0000" stroke-width="2"/>\n      <rect x="160" y="33" width="40" height="14" rx="3" fill="none" stroke="#333" stroke-width="1.5"/>\n      <line x1="170" y1="40" x2="190" y2="40" stroke="#333" stroke-width="1.5" stroke-dasharray="3,2"/>\n      <line x1="200" y1="40" x2="220" y2="40" stroke="#cc0000" stroke-width="2"/>\n      <text x="180" y="26" text-anchor="middle" font-size="9" font-family="Arial" fill="#333">F3 15A</text>\n      <text x="180" y="60" text-anchor="middle" font-size="8" font-family="Arial" fill="#888">FUSE</text>\n      <!-- Fuse to relay terminal 30 -->\n      <line x1="220" y1="40" x2="280" y2="40" stroke="#cc0000" stroke-width="2"/>\n      <!-- Relay box -->\n      <rect x="280" y="20" width="80" height="90" rx="4" fill="none" stroke="#333" stroke-width="1.5"/>\n      <text x="320" y="35" text-anchor="middle" font-size="8" font-weight="700" font-family="Arial" fill="#333">RELAY</text>\n      <!-- Relay coil (85/86) -->\n      <line x1="285" y1="60" x2="305" y2="60" stroke="#666" stroke-width="1.2"/>\n      <path d="M305,55 Q310,50 315,55 Q320,60 325,55 Q330,50 335,55 Q340,60 345,55 Q350,50 355,55" fill="none" stroke="#666" stroke-width="1.2"/>\n      <line x1="355" y1="55" x2="355" y2="60" stroke="#666" stroke-width="1.2"/>\n      <text x="285" y="78" font-size="7" font-family="Arial" fill="#666">85</text>\n      <text x="350" y="78" font-size="7" font-family="Arial" fill="#666">86</text>\n      <!-- Relay contacts (30/87) -->\n      <line x1="285" y1="95" x2="295" y2="95" stroke="#cc0000" stroke-width="1.5"/>\n      <circle cx="298" cy="95" r="2.5" fill="#333"/>\n      <line x1="345" y1="95" x2="355" y2="95" stroke="#cc0000" stroke-width="1.5"/>\n      <circle cx="342" cy="95" r="2.5" fill="#333"/>\n      <line x1="300" y1="95" x2="338" y2="88" stroke="#333" stroke-width="1.5"/>\n      <text x="285" y="109" font-size="7" font-family="Arial" fill="#333">30</text>\n      <text x="350" y="109" font-size="7" font-family="Arial" fill="#333">87</text>\n      <!-- Relay terminal 30 wire in -->\n      <line x1="280" y1="95" x2="280" y2="40" stroke="#cc0000" stroke-width="2"/>\n      <!-- Relay 87 out to headlights -->\n      <line x1="360" y1="95" x2="390" y2="95" stroke="#cc0000" stroke-width="2"/>\n      <line x1="390" y1="95" x2="390" y2="60" stroke="#cc0000" stroke-width="2"/>\n      <line x1="390" y1="60" x2="430" y2="60" stroke="#cc0000" stroke-width="2"/>\n      <line x1="390" y1="95" x2="430" y2="95" stroke="#cc0000" stroke-width="2"/>\n      <!-- Left headlight bulb -->\n      <circle cx="450" cy="60" r="14" fill="none" stroke="#F59E0B" stroke-width="1.5"/>\n      <line x1="443" y1="53" x2="457" y2="67" stroke="#F59E0B" stroke-width="1.5"/>\n      <line x1="457" y1="53" x2="443" y2="67" stroke="#F59E0B" stroke-width="1.5"/>\n      <text x="450" y="82" text-anchor="middle" font-size="8" font-family="Arial" fill="#666">L.H/LIGHT</text>\n      <!-- Right headlight bulb -->\n      <circle cx="450" cy="107" r="14" fill="none" stroke="#F59E0B" stroke-width="1.5"/>\n      <line x1="443" y1="100" x2="457" y2="114" stroke="#F59E0B" stroke-width="1.5"/>\n      <line x1="457" y1="100" x2="443" y2="114" stroke="#F59E0B" stroke-width="1.5"/>\n      <text x="450" y="130" text-anchor="middle" font-size="8" font-family="Arial" fill="#666">R.H/LIGHT</text>\n      <!-- Switch (85 coil feed via switch) -->\n      <line x1="180" y1="165" x2="180" y2="130" stroke="#666" stroke-width="1.5"/>\n      <line x1="180" y1="130" x2="285" y2="130" stroke="#666" stroke-width="1.5"/>\n      <line x1="285" y1="130" x2="285" y2="60" stroke="#666" stroke-width="1.5"/>\n      <!-- Switch symbol -->\n      <circle cx="165" cy="173" r="3" fill="#333"/>\n      <circle cx="180" cy="173" r="3" fill="#333"/>\n      <line x1="168" y1="173" x2="178" y2="166" stroke="#333" stroke-width="1.5"/>\n      <line x1="140" y1="173" x2="165" y2="173" stroke="#666" stroke-width="1.5"/>\n      <text x="162" y="190" text-anchor="middle" font-size="8" font-family="Arial" fill="#333">H/LIGHT SWITCH</text>\n      <!-- Switch feed from B+ -->\n      <line x1="140" y1="173" x2="110" y2="173" stroke="#666" stroke-width="1.5"/>\n      <line x1="110" y1="173" x2="110" y2="40" stroke="#666" stroke-width="1.5"/>\n      <line x1="110" y1="40" x2="140" y2="40" stroke="#cc0000" stroke-width="2"/>\n      <!-- Earth (86 and bulb returns) -->\n      <line x1="360" y1="60" x2="490" y2="60" stroke="#333" stroke-width="1.5"/>\n      <line x1="464" y1="60" x2="464" y2="107" stroke="#333" stroke-width="1.5"/>\n      <line x1="464" y1="107" x2="464" y2="200" stroke="#222" stroke-width="2"/>\n      <line x1="355" y1="60" x2="355" y2="200" stroke="#222" stroke-width="2"/>\n      <line x1="355" y1="200" x2="464" y2="200" stroke="#222" stroke-width="2"/>\n      <line x1="409" y1="200" x2="409" y2="230" stroke="#222" stroke-width="2"/>\n      <!-- Earth symbol -->\n      <line x1="395" y1="230" x2="423" y2="230" stroke="#222" stroke-width="2.5"/>\n      <line x1="400" y1="237" x2="418" y2="237" stroke="#222" stroke-width="2"/>\n      <line x1="405" y1="244" x2="413" y2="244" stroke="#222" stroke-width="1.5"/>\n      <text x="409" y="258" text-anchor="middle" font-size="8" font-family="Arial" fill="#333">EARTH (GND)</text>\n      <!-- Battery negative -->\n      <line x1="30" y1="120" x2="30" y2="255" stroke="#222" stroke-width="2"/>\n      <line x1="30" y1="255" x2="409" y2="255" stroke="#222" stroke-width="2"/>\n      <line x1="409" y1="255" x2="409" y2="244" stroke="#222" stroke-width="2"/>\n      <!-- Legend -->\n      <rect x="10" y="275" width="500" height="38" rx="3" fill="#f5f5f0" stroke="#ccc" stroke-width="0.5"/>\n      <line x1="20" y1="288" x2="50" y2="288" stroke="#cc0000" stroke-width="2"/>\n      <text x="55" y="292" font-size="9" font-family="Arial" fill="#333">Live (B+)</text>\n      <line x1="110" y1="288" x2="140" y2="288" stroke="#222" stroke-width="2"/>\n      <text x="145" y="292" font-size="9" font-family="Arial" fill="#333">Earth (GND)</text>\n      <line x1="215" y1="288" x2="245" y2="288" stroke="#666" stroke-width="1.5"/>\n      <text x="250" y="292" font-size="9" font-family="Arial" fill="#333">Signal/Control</text>\n      <rect x="340" y="283" width="20" height="10" rx="2" fill="none" stroke="#333" stroke-width="1.2"/>\n      <text x="365" y="292" font-size="9" font-family="Arial" fill="#333">Fuse</text>\n      <circle cx="430" cy="288" r="7" fill="none" stroke="#F59E0B" stroke-width="1.2"/>\n      <text x="442" y="292" font-size="9" font-family="Arial" fill="#333">Bulb</text>\n    </svg>',
+    dead_battery:         '\n    <svg viewBox="0 0 520 300" style="width:100%;background:#fafaf8;border-radius:6px;display:block">\n      <text x="260" y="18" text-anchor="middle" font-size="11" font-weight="700" font-family="Arial" fill="#333">CHARGING SYSTEM — WIRING DIAGRAM</text>\n      <!-- Battery -->\n      <line x1="40" y1="50" x2="40" y2="130" stroke="#333" stroke-width="1.5"/>\n      <line x1="28" y1="65" x2="52" y2="65" stroke="#333" stroke-width="3.5"/>\n      <line x1="32" y1="77" x2="48" y2="77" stroke="#333" stroke-width="1.5"/>\n      <line x1="28" y1="89" x2="52" y2="89" stroke="#333" stroke-width="3.5"/>\n      <line x1="32" y1="101" x2="48" y2="101" stroke="#333" stroke-width="1.5"/>\n      <line x1="28" y1="113" x2="52" y2="113" stroke="#333" stroke-width="3.5"/>\n      <text x="25" y="148" font-size="9" font-family="Arial" fill="#333">BATTERY</text>\n      <text x="25" y="158" font-size="8" font-family="Arial" fill="#c00">3.8V (FLAT!)</text>\n      <!-- B+ wire up to junction -->\n      <line x1="40" y1="50" x2="40" y2="35" stroke="#cc0000" stroke-width="2"/>\n      <line x1="40" y1="35" x2="200" y2="35" stroke="#cc0000" stroke-width="2"/>\n      <!-- Main 60A fuse -->\n      <line x1="200" y1="35" x2="220" y2="35" stroke="#cc0000" stroke-width="2"/>\n      <rect x="220" y="27" width="50" height="16" rx="3" fill="none" stroke="#333" stroke-width="1.5"/>\n      <line x1="230" y1="35" x2="260" y2="35" stroke="#333" stroke-width="1.5" stroke-dasharray="4,2"/>\n      <line x1="270" y1="35" x2="290" y2="35" stroke="#cc0000" stroke-width="2"/>\n      <text x="245" y="22" text-anchor="middle" font-size="9" font-family="Arial" fill="#333">MAIN 60A</text>\n      <!-- Main fuse to ignition and fuse box -->\n      <line x1="290" y1="35" x2="400" y2="35" stroke="#cc0000" stroke-width="2"/>\n      <line x1="350" y1="35" x2="350" y2="55" stroke="#cc0000" stroke-width="2"/>\n      <!-- Ignition switch -->\n      <circle cx="335" cy="63" r="3" fill="#333"/>\n      <circle cx="350" cy="63" r="3" fill="#333"/>\n      <line x1="338" y1="63" x2="348" y2="56" stroke="#333" stroke-width="1.5"/>\n      <line x1="310" y1="63" x2="335" y2="63" stroke="#666" stroke-width="1.5"/>\n      <line x1="310" y1="63" x2="310" y2="105" stroke="#666" stroke-width="1.5"/>\n      <text x="330" y="82" font-size="8" font-family="Arial" fill="#333">IGNITION SW</text>\n      <!-- Fuse box -->\n      <rect x="380" y="22" width="60" height="30" rx="3" fill="none" stroke="#F59E0B" stroke-width="1.5"/>\n      <text x="410" y="38" text-anchor="middle" font-size="8" font-family="Arial" fill="#F59E0B">FUSE BOX</text>\n      <!-- Alternator circle -->\n      <circle cx="410" cy="130" r="32" fill="none" stroke="#4ADE80" stroke-width="1.5"/>\n      <text x="410" y="126" text-anchor="middle" font-size="10" font-weight="700" font-family="Arial" fill="#4ADE80">G</text>\n      <text x="410" y="140" text-anchor="middle" font-size="8" font-family="Arial" fill="#4ADE80">ALTERNATOR</text>\n      <text x="410" y="152" text-anchor="middle" font-size="7" font-family="Arial" fill="#888">14V output</text>\n      <!-- Alternator output wire -->\n      <line x1="410" y1="98" x2="410" y2="52" stroke="#cc0000" stroke-width="2"/>\n      <line x1="410" y1="52" x2="440" y2="52" stroke="#cc0000" stroke-width="2"/>\n      <line x1="440" y1="35" x2="440" y2="52" stroke="#cc0000" stroke-width="2"/>\n      <!-- D+ (charge warning light) -->\n      <line x1="350" y1="63" x2="370" y2="63" stroke="#888" stroke-width="1.2"/>\n      <circle cx="373" cy="63" r="6" fill="none" stroke="#cc0000" stroke-width="1.2"/>\n      <line x1="369" y1="59" x2="377" y2="67" stroke="#cc0000" stroke-width="1"/>\n      <line x1="377" y1="59" x2="369" y2="67" stroke="#cc0000" stroke-width="1"/>\n      <text x="373" y="48" text-anchor="middle" font-size="7" font-family="Arial" fill="#cc0000">BAT WARN</text>\n      <line x1="379" y1="63" x2="410" y2="63" stroke="#888" stroke-width="1.2"/>\n      <line x1="410" y1="63" x2="410" y2="98" stroke="#888" stroke-width="1.2"/>\n      <!-- Earth -->\n      <line x1="40" y1="130" x2="40" y2="250" stroke="#222" stroke-width="2"/>\n      <line x1="40" y1="250" x2="375" y2="250" stroke="#222" stroke-width="2"/>\n      <line x1="375" y1="250" x2="375" y2="162" stroke="#222" stroke-width="2"/>\n      <line x1="310" y1="105" x2="310" y2="250" stroke="#222" stroke-width="1.5"/>\n      <line x1="375" y1="250" x2="375" y2="260" stroke="#222" stroke-width="2"/>\n      <line x1="360" y1="260" x2="390" y2="260" stroke="#222" stroke-width="2.5"/>\n      <line x1="365" y1="268" x2="385" y2="268" stroke="#222" stroke-width="2"/>\n      <line x1="370" y1="276" x2="380" y2="276" stroke="#222" stroke-width="1.5"/>\n      <text x="375" y="290" text-anchor="middle" font-size="8" font-family="Arial" fill="#333">EARTH</text>\n      <!-- Starter motor -->\n      <circle cx="155" cy="130" r="26" fill="none" stroke="#9B6DFF" stroke-width="1.5"/>\n      <text x="155" y="127" text-anchor="middle" font-size="9" font-weight="700" font-family="Arial" fill="#9B6DFF">M</text>\n      <text x="155" y="140" text-anchor="middle" font-size="8" font-family="Arial" fill="#9B6DFF">STARTER</text>\n      <line x1="155" y1="104" x2="155" y2="35" stroke="#cc0000" stroke-width="2"/>\n      <line x1="155" y1="35" x2="200" y2="35" stroke="#cc0000" stroke-width="2"/>\n      <line x1="155" y1="156" x2="155" y2="250" stroke="#222" stroke-width="2"/>\n      <!-- Legend -->\n      <rect x="10" y="270" width="500" height="25" rx="3" fill="#f5f5f0" stroke="#ccc" stroke-width="0.5"/>\n      <line x1="20" y1="283" x2="50" y2="283" stroke="#cc0000" stroke-width="2"/>\n      <text x="55" y="287" font-size="9" font-family="Arial" fill="#333">B+ Supply</text>\n      <line x1="120" y1="283" x2="150" y2="283" stroke="#222" stroke-width="2"/>\n      <text x="155" y="287" font-size="9" font-family="Arial" fill="#333">Earth (GND)</text>\n      <line x1="225" y1="283" x2="255" y2="283" stroke="#4ADE80" stroke-width="1.5"/>\n      <text x="260" y="287" font-size="9" font-family="Arial" fill="#333">Charging output</text>\n      <line x1="360" y1="283" x2="390" y2="283" stroke="#888" stroke-width="1.2"/>\n      <text x="395" y="287" font-size="9" font-family="Arial" fill="#333">Warning/Signal</text>\n    </svg>',
+    coolant_sensor_fault: '\n    <svg viewBox="0 0 520 300" style="width:100%;background:#fafaf8;border-radius:6px;display:block">\n      <text x="260" y="18" text-anchor="middle" font-size="11" font-weight="700" font-family="Arial" fill="#333">COOLANT TEMPERATURE SENSOR — CIRCUIT DIAGRAM</text>\n      <!-- ECU box -->\n      <rect x="30" y="60" width="120" height="140" rx="5" fill="none" stroke="#9B6DFF" stroke-width="1.5"/>\n      <text x="90" y="78" text-anchor="middle" font-size="9" font-weight="700" font-family="Arial" fill="#9B6DFF">ECU</text>\n      <text x="90" y="90" text-anchor="middle" font-size="8" font-family="Arial" fill="#888">(Engine Control Unit)</text>\n      <!-- 5V reference output -->\n      <line x1="150" y1="100" x2="200" y2="100" stroke="#4ADE80" stroke-width="1.5"/>\n      <text x="50" y="104" font-size="8" font-family="Arial" fill="#333">5V REF</text>\n      <line x1="100" y1="100" x2="150" y2="100" stroke="#4ADE80" stroke-width="1.5"/>\n      <!-- CTS signal input -->\n      <line x1="150" y1="140" x2="200" y2="140" stroke="#9B6DFF" stroke-width="1.5"/>\n      <text x="50" y="144" font-size="8" font-family="Arial" fill="#9B6DFF">SIG IN</text>\n      <line x1="100" y1="140" x2="150" y2="140" stroke="#9B6DFF" stroke-width="1.5"/>\n      <!-- ECU GND -->\n      <line x1="90" y1="200" x2="90" y2="240" stroke="#222" stroke-width="1.5"/>\n      <text x="50" y="204" font-size="8" font-family="Arial" fill="#333">GND</text>\n      <line x1="80" y1="200" x2="90" y2="200" stroke="#222" stroke-width="1.5"/>\n      <!-- Pull-up resistor (inside ECU) -->\n      <text x="90" y="127" text-anchor="middle" font-size="8" font-family="Arial" fill="#9B6DFF">4.7kΩ</text>\n      <text x="90" y="137" text-anchor="middle" font-size="7" font-family="Arial" fill="#888">pull-up</text>\n      <line x1="90" y1="100" x2="90" y2="120" stroke="#9B6DFF" stroke-width="1"/>\n      <path d="M85,120 Q90,124 95,120 Q100,116 105,120 Q110,124 115,120" fill="none" stroke="#9B6DFF" stroke-width="1.2"/>\n      <line x1="90" y1="140" x2="90" y2="130" stroke="#9B6DFF" stroke-width="1"/>\n      <!-- CTS Sensor NTC symbol -->\n      <rect x="280" y="105" width="80" height="70" rx="5" fill="none" stroke="#EF4444" stroke-width="1.5"/>\n      <text x="320" y="122" text-anchor="middle" font-size="8" font-weight="700" font-family="Arial" fill="#EF4444">CTS</text>\n      <!-- NTC symbol -->\n      <line x1="300" y1="140" x2="340" y2="140" stroke="#EF4444" stroke-width="1.2"/>\n      <path d="M305,140 Q310,132 315,140 Q320,148 325,140 Q330,132 335,140" fill="none" stroke="#EF4444" stroke-width="1.5"/>\n      <line x1="310" y1="150" x2="335" y2="128" stroke="#EF4444" stroke-width="1" stroke-dasharray="2,1"/>\n      <text x="350" y="144" font-size="7" font-family="Arial" fill="#EF4444">NTC</text>\n      <text x="320" y="165" text-anchor="middle" font-size="8" font-family="Arial" fill="#888">SENSOR</text>\n      <!-- 5V wire from ECU to CTS -->\n      <line x1="200" y1="100" x2="200" y2="120" stroke="#4ADE80" stroke-width="1.5"/>\n      <line x1="200" y1="120" x2="280" y2="120" stroke="#4ADE80" stroke-width="1.5"/>\n      <!-- SIG wire from CTS back to ECU -->\n      <line x1="200" y1="140" x2="280" y2="140" stroke="#9B6DFF" stroke-width="1.5"/>\n      <!-- CTS to earth -->\n      <line x1="320" y1="175" x2="320" y2="240" stroke="#222" stroke-width="1.5"/>\n      <!-- Junction node -->\n      <circle cx="200" cy="120" r="3" fill="#4ADE80"/>\n      <circle cx="200" cy="140" r="3" fill="#9B6DFF"/>\n      <!-- Voltage annotation FAULT -->\n      <rect x="185" y="148" width="70" height="20" rx="3" fill="#FFF3CD" stroke="#F59E0B" stroke-width="1"/>\n      <text x="220" y="160" text-anchor="middle" font-size="8" font-family="Arial" fill="#cc6600">FAULT: 4.9V</text>\n      <text x="220" y="195" text-anchor="middle" font-size="7" font-family="Arial" fill="#888">(open circuit)</text>\n      <text x="220" y="206" text-anchor="middle" font-size="7" font-family="Arial" fill="#888">normal = 2.2V at 90°C</text>\n      <!-- Shared earth bus -->\n      <line x1="90" y1="240" x2="320" y2="240" stroke="#222" stroke-width="2"/>\n      <line x1="205" y1="240" x2="205" y2="255" stroke="#222" stroke-width="2"/>\n      <line x1="188" y1="255" x2="222" y2="255" stroke="#222" stroke-width="2.5"/>\n      <line x1="193" y1="263" x2="217" y2="263" stroke="#222" stroke-width="2"/>\n      <line x1="198" y1="271" x2="212" y2="271" stroke="#222" stroke-width="1.5"/>\n      <text x="205" y="285" text-anchor="middle" font-size="8" font-family="Arial" fill="#333">CHASSIS EARTH</text>\n      <!-- Battery supply to ECU -->\n      <line x1="30" y1="90" x2="15" y2="90" stroke="#cc0000" stroke-width="1.5"/>\n      <line x1="15" y1="90" x2="15" y2="35" stroke="#cc0000" stroke-width="1.5"/>\n      <line x1="15" y1="35" x2="260" y2="35" stroke="#cc0000" stroke-width="1.5"/>\n      <text x="137" y="30" text-anchor="middle" font-size="8" font-family="Arial" fill="#cc0000">12V SUPPLY (via fuse)</text>\n      <!-- Legend -->\n      <rect x="350" y="80" width="155" height="110" rx="4" fill="#f9f9f7" stroke="#ccc" stroke-width="0.8"/>\n      <text x="427" y="96" text-anchor="middle" font-size="9" font-weight="700" font-family="Arial" fill="#333">LEGEND</text>\n      <line x1="360" y1="108" x2="385" y2="108" stroke="#cc0000" stroke-width="2"/>\n      <text x="390" y="112" font-size="8" font-family="Arial" fill="#333">12V supply</text>\n      <line x1="360" y1="122" x2="385" y2="122" stroke="#222" stroke-width="2"/>\n      <text x="390" y="126" font-size="8" font-family="Arial" fill="#333">Earth / GND</text>\n      <line x1="360" y1="136" x2="385" y2="136" stroke="#9B6DFF" stroke-width="1.5"/>\n      <text x="390" y="140" font-size="8" font-family="Arial" fill="#333">Signal wire</text>\n      <line x1="360" y1="150" x2="385" y2="150" stroke="#4ADE80" stroke-width="1.5"/>\n      <text x="390" y="154" font-size="8" font-family="Arial" fill="#333">5V reference</text>\n      <path d="M360,162 Q365,158 370,162 Q375,166 380,162" fill="none" stroke="#EF4444" stroke-width="1.5"/>\n      <text x="390" y="167" font-size="8" font-family="Arial" fill="#333">NTC sensor</text>\n      <rect x="392" y="175" width="20" height="10" rx="2" fill="#FFF3CD" stroke="#F59E0B" stroke-width="1"/>\n      <text x="416" y="184" font-size="8" font-family="Arial" fill="#333">Fault voltage</text>\n    </svg>',
+  };
+  const key = Object.keys(WS_SCENARIOS).find(k => WS_SCENARIOS[k] === sc) || 'blown_fuse_headlight';
+  const diagramHTML = diagrams[key] || diagrams.blown_fuse_headlight;
+  return `<div style="overflow-y:auto;max-height:380px">${diagramHTML}</div>
+    <div style="margin-top:8px;padding:8px 10px;background:rgba(79,142,247,0.06);border:1px solid rgba(79,142,247,0.15);border-radius:5px;font-size:10px;color:#4a6a8a;line-height:1.6">
+      <strong style="color:var(--blue)">Reading this diagram:</strong>
+      Red wires = positive supply (12V). Black wires = earth/ground.
+      Coloured wires = signal or control. Fuses shown as rectangles with dashed line inside.
+      Bulbs shown as circles with X. Relays shown as a box with coil + contacts.
+    </div>`;
 }
 
 // ── Invoice panel ─────────────────────────────────────────────────────────
@@ -4393,6 +4496,137 @@ function buildInvPanel(){
   <div class="ws-inv-total"><span>TOTAL</span><span id="ws-inv-total">${WS.invoice.parts.reduce((a,p)=>a+(p.cost_val||0),0)} UGX</span></div>
   <div style="margin-top:10px;font-size:9px;color:#1a2a1a;line-height:1.6">Parts cost and time tracked automatically.</div>`;
 }
+
+function buildFuelGaugePanel(){
+  return `
+    <div style="text-align:center;margin-bottom:10px">
+      <canvas id="ws-fuel-canvas" width="200" height="200"
+        style="background:#050909;border-radius:50%;display:inline-block;border:2px solid #0e1a18"></canvas>
+    </div>
+    <div id="ws-fuel-reading" style="text-align:center;font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:#4ADE80;margin-bottom:6px">--- kPa</div>
+    <div style="font-size:10px;color:#2a5a3a;text-align:center;margin-bottom:10px">Click battery B+ then Connect</div>
+    <button onclick="wsFuelConnect()" style="width:100%;padding:7px;border-radius:5px;border:1px solid #1a3a1a;background:rgba(74,222,128,0.08);color:#4ADE80;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font-body)">Connect Gauge</button>
+    <div style="margin-top:8px;padding:8px 10px;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.15);border-radius:5px;font-size:10px;color:#c8a060;line-height:1.6">
+      <strong style="color:#f5a623">Normal range:</strong> 250–400 kPa at idle.<br>
+      Low pressure = weak pump or blocked filter.<br>High pressure = regulator fault.
+    </div>`;
+}
+
+window.wsFuelConnect = function(){
+  const canvas = document.getElementById('ws-fuel-canvas'); if(!canvas) return;
+  const sc = WS.sc;
+  // Determine pressure based on scenario
+  const pressure = sc.fault_comp === 'battery' ? 0 : 310 + Math.round(Math.random()*20-10);
+  const ctx = canvas.getContext('2d');
+  const W=200,H=200,cx=100,cy=110,r=80;
+  ctx.clearRect(0,0,W,H);
+  // Background
+  ctx.fillStyle='#050909'; ctx.beginPath(); ctx.arc(cx,cy,r+8,0,Math.PI*2); ctx.fill();
+  // Gauge arc
+  const startA = Math.PI*0.75, endA = Math.PI*2.25, sweep = endA-startA;
+  ctx.beginPath(); ctx.arc(cx,cy,r,startA,endA); ctx.strokeStyle='#0e2018'; ctx.lineWidth=16; ctx.stroke();
+  // Green zone (250-400)
+  const greenS = startA + (250/600)*sweep;
+  const greenE = startA + (400/600)*sweep;
+  ctx.beginPath(); ctx.arc(cx,cy,r,greenS,greenE); ctx.strokeStyle='rgba(74,222,128,0.3)'; ctx.lineWidth=16; ctx.stroke();
+  // Value arc
+  const valA = startA + Math.min(1,(pressure/500))*sweep;
+  ctx.beginPath(); ctx.arc(cx,cy,r,startA,valA);
+  ctx.strokeStyle = pressure < 200 ? '#EF4444' : pressure > 420 ? '#F59E0B' : '#4ADE80';
+  ctx.lineWidth=14; ctx.shadowColor=ctx.strokeStyle; ctx.shadowBlur=8; ctx.stroke(); ctx.shadowBlur=0;
+  // Needle
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(startA+Math.min(1,(pressure/500))*sweep);
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.moveTo(-3,0); ctx.lineTo(0,-72); ctx.lineTo(3,0); ctx.fill();
+  ctx.restore();
+  // Centre
+  ctx.beginPath(); ctx.arc(cx,cy,10,0,Math.PI*2); ctx.fillStyle='#0e1e18'; ctx.fill();
+  ctx.strokeStyle='#4ADE80'; ctx.lineWidth=2; ctx.stroke();
+  // Labels
+  ctx.fillStyle='#2a4a3a'; ctx.font='9px Arial'; ctx.textAlign='center';
+  ['0','100','200','300','400','500'].forEach((lbl,i)=>{
+    const ang=startA+(i/5)*sweep;
+    const lx=cx+(r+18)*Math.cos(ang), ly=cy+(r+18)*Math.sin(ang);
+    ctx.fillText(lbl,lx,ly);
+  });
+  ctx.font='9px Arial'; ctx.fillStyle='#2a4a3a'; ctx.fillText('kPa',cx,cy-20);
+  const el=document.getElementById('ws-fuel-reading');
+  if(el){ el.textContent=pressure+' kPa'; el.style.color=pressure<200?'#EF4444':pressure>420?'#F59E0B':'#4ADE80'; }
+  wsLog('fuel_gauge','connected');
+  wsNotif('Fuel pressure: '+pressure+' kPa'+(pressure<200?' — LOW PRESSURE!':pressure>420?' — HIGH!':' — Normal'),'info');
+};
+// Draw idle state
+setTimeout(()=>{
+  const canvas=document.getElementById('ws-fuel-canvas'); if(!canvas) return;
+  const ctx=canvas.getContext('2d'); const W=200,H=200,cx=100,cy=110,r=80;
+  ctx.fillStyle='#050909'; ctx.beginPath(); ctx.arc(cx,cy,r+8,0,Math.PI*2); ctx.fill();
+  const startA=Math.PI*0.75,endA=Math.PI*2.25;
+  ctx.beginPath(); ctx.arc(cx,cy,r,startA,endA); ctx.strokeStyle='#0e2018'; ctx.lineWidth=16; ctx.stroke();
+  ctx.fillStyle='#1a3a2a'; ctx.font='bold 14px Courier New'; ctx.textAlign='center'; ctx.fillText('FUEL',cx,cy+4);
+  ctx.font='10px Arial'; ctx.fillStyle='#0e2018'; ctx.fillText('GAUGE',cx,cy+18);
+},100);
+
+function buildJumpStarterPanel(){
+  return `
+    <div style="background:#0a0a0a;border:2px solid #1a1a1a;border-radius:10px;padding:14px;margin-bottom:10px">
+      <div style="text-align:center;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#333;margin-bottom:12px">JUMP STARTER</div>
+      <div style="display:flex;justify-content:space-around;margin-bottom:12px">
+        <div style="text-align:center">
+          <div style="width:20px;height:20px;border-radius:50%;background:#440000;border:2px solid #cc1010;margin:0 auto 4px;box-shadow:0 0 8px rgba(204,16,16,0.4)"></div>
+          <div style="font-size:9px;color:#cc1010;font-weight:700">RED (+)</div>
+          <div style="font-size:8px;color:#333">Connect to B+</div>
+        </div>
+        <div style="text-align:center;padding-top:4px">
+          <div style="font-size:20px" id="ws-jump-icon">🔌</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:20px;height:20px;border-radius:50%;background:#1a1a1a;border:2px solid #444;margin:0 auto 4px"></div>
+          <div style="font-size:9px;color:#666;font-weight:700">BLACK (−)</div>
+          <div style="font-size:8px;color:#333">Earth point</div>
+        </div>
+      </div>
+      <div style="background:#0e0e0e;border:1px solid #1a1a1a;border-radius:6px;padding:8px;margin-bottom:10px;text-align:center">
+        <div style="font-family:'Courier New',monospace;font-size:14px;color:#4ADE80" id="ws-jump-status">READY — Not connected</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="wsJumpConnect()" style="flex:1;padding:8px;border-radius:5px;border:1px solid #1a3a1a;background:rgba(74,222,128,0.08);color:#4ADE80;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-body)">⚡ CONNECT</button>
+        <button onclick="wsJumpBoost()" id="ws-jump-boost" style="flex:1;padding:8px;border-radius:5px;border:1px solid #0e1810;background:transparent;color:#2a4a2a;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--font-body)" disabled>▶ BOOST</button>
+      </div>
+    </div>
+    <div style="padding:8px 10px;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.15);border-radius:5px;font-size:10px;color:#c8a060;line-height:1.7">
+      <strong style="color:#f5a623">How to use:</strong><br>
+      1. Connect RED clamp to battery positive (+)<br>
+      2. Connect BLACK clamp to earth point<br>
+      3. Press BOOST to provide starting power<br>
+      4. ⚠ Never connect to a running alternator
+    </div>`;
+}
+
+window.wsJumpConnect = function(){
+  const sc=WS.sc;
+  const hasBat = sc.components.battery;
+  const st=document.getElementById('ws-jump-status');
+  const icon=document.getElementById('ws-jump-icon');
+  const boostBtn=document.getElementById('ws-jump-boost');
+  if(st){st.textContent='CONNECTED — Clamps on battery'; st.style.color='#F59E0B';}
+  if(icon) icon.textContent='⚡';
+  if(boostBtn){boostBtn.disabled=false;boostBtn.style.borderColor='#1a3a1a';boostBtn.style.color='#4ADE80';boostBtn.style.background='rgba(74,222,128,0.06)';}
+  wsLog('jump_connect','battery');
+  wsNotif('Jump starter connected','info');
+};
+
+window.wsJumpBoost = function(){
+  const sc=WS.sc;
+  const st=document.getElementById('ws-jump-status');
+  const isDeadBat = sc.fault_comp === 'battery';
+  if(isDeadBat){
+    if(st){st.textContent='BOOSTING... Engine started ✓'; st.style.color='#4ADE80';}
+    wsNotif('Jump start successful — engine running. Battery needs charging or replacement.','ok');
+  } else {
+    if(st){st.textContent='Engine already has power'; st.style.color='#888';}
+    wsNotif('Jump starter not needed — battery is good ('+sc.live?.battery+')','warn');
+  }
+  wsLog('jump_boost', isDeadBat ? 'success' : 'not_needed');
+};
 
 // (startInvoiceTimer defined above)
 
@@ -4681,13 +4915,8 @@ window.wsDragPanel=function(e,toolId){
 };
 
 // ── Sidebar toggle ────────────────────────────────────────────────────────
-window.wsToggleSidebar=function(){
-  WS.sidebarOpen=!WS.sidebarOpen;
-  const r=document.getElementById('ws-rail'); if(!r) return;
-  r.classList.toggle('ws-rail-open', WS.sidebarOpen);
-  const tog=document.getElementById('ws-rail-toggle');
-  if(tog) tog.textContent = WS.sidebarOpen ? '✕' : '☰';
-};
+window.wsToggleSidebar=function(){}; // sidebar always visible
+
 
 // ── Context menu for component (right-click) ──────────────────────────────
 
